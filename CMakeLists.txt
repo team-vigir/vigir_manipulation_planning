@@ -80,8 +80,10 @@ include_directories(include
 )
 
 ## Declare a cpp library
- add_library(flor_visualization_utils  ${SOURCES} ${HEADERS} )
- target_link_libraries(flor_visualization_utils ${catkin_LIBRARIES})
+ add_library(${PROJECT_NAME} ${SOURCES} ${HEADERS} )
+ target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+ 
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a cpp executable
 # add_executable(flor_utilities_node src/flor_utilities_node.cpp)
