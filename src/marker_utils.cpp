@@ -65,8 +65,46 @@ namespace flor_visualization_utils {
 
     tempMarker.id = markerArray.markers.size();
     markerArray.markers.push_back(tempMarker);
+  }
 
+  void drawPoses(const std::vector<geometry_msgs::Pose> poses,
+                     visualization_msgs::MarkerArray& markerArray,
+                     std::string frame_id,
+                     ros::Time stamp)
+  {
 
+    visualization_msgs::Marker tempMarker;
+    tempMarker.type = visualization_msgs::Marker::SPHERE;
+    tempMarker.header.frame_id = frame_id;
+    tempMarker.header.stamp = stamp;
+
+    tempMarker.color.r = 1.0;
+    tempMarker.color.a = 0.5;
+
+    tempMarker.scale.x = 0.1;
+    tempMarker.scale.y = 0.1;
+    tempMarker.scale.z = 0.1;
+
+    size_t size = poses.size();
+
+    for (size_t i = 0; i < size; ++i){
+
+      const geometry_msgs::Pose& pose = poses[i];
+
+      tempMarker.pose.position.x = pose.position.x;
+      tempMarker.pose.position.y = pose.position.y;
+      tempMarker.pose.position.z = pose.position.z;
+
+      tempMarker.pose.orientation.w = pose.orientation.w;
+      tempMarker.pose.orientation.x = pose.orientation.x;
+      tempMarker.pose.orientation.y = pose.orientation.y;
+      tempMarker.pose.orientation.z = pose.orientation.z;
+
+      tempMarker.id = markerArray.markers.size();
+
+      markerArray.markers.push_back(tempMarker);
+
+    }
   }
 
 
