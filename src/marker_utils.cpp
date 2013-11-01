@@ -72,20 +72,31 @@ namespace flor_visualization_utils {
                      std::string frame_id,
                      ros::Time stamp)
   {
+    size_t size = poses.size();
+
+    if (size == 0){
+      return;
+    }
 
     visualization_msgs::Marker tempMarker;
-    tempMarker.type = visualization_msgs::Marker::SPHERE;
+    tempMarker.type = visualization_msgs::Marker::LINE_LIST;
     tempMarker.header.frame_id = frame_id;
     tempMarker.header.stamp = stamp;
 
-    tempMarker.color.r = 1.0;
-    tempMarker.color.a = 0.5;
+    tempMarker.color.r = 0.0;
+    tempMarker.color.a = 0.15;
 
-    tempMarker.scale.x = 0.1;
+    tempMarker.scale.x = 0.01;
     tempMarker.scale.y = 0.1;
     tempMarker.scale.z = 0.1;
 
-    size_t size = poses.size();
+    std_msgs::ColorRGBA col;
+    col.a=0.25;
+    col.r=0.0;
+    col.g=0.0;
+    col.b=0.0;
+
+    geometry_msgs::Point zero_point;
 
     for (size_t i = 0; i < size; ++i){
 
@@ -100,9 +111,39 @@ namespace flor_visualization_utils {
       tempMarker.pose.orientation.y = pose.orientation.y;
       tempMarker.pose.orientation.z = pose.orientation.z;
 
+      tempMarker.points.push_back(zero_point);
+      tempMarker.points.push_back(zero_point);
+      tempMarker.points[0].x = 0.05;
+
+      tempMarker.points.push_back(zero_point);
+      tempMarker.points.push_back(zero_point);
+      tempMarker.points[2].y = 0.05;
+
+      tempMarker.points.push_back(zero_point);
+      tempMarker.points.push_back(zero_point);
+      tempMarker.points[4].z = 0.05;
+
+      tempMarker.colors.push_back(col);
+      tempMarker.colors.push_back(col);
+      tempMarker.colors[0].r=1.0;
+      tempMarker.colors[1].r=1.0;
+      tempMarker.colors.push_back(col);
+      tempMarker.colors.push_back(col);
+      tempMarker.colors[2].g=1.0;
+      tempMarker.colors[3].g=1.0;
+      tempMarker.colors.push_back(col);
+      tempMarker.colors.push_back(col);
+      tempMarker.colors[4].b=1.0;
+      tempMarker.colors[5].b=1.0;
+
+
+
       tempMarker.id = markerArray.markers.size();
 
       markerArray.markers.push_back(tempMarker);
+
+      tempMarker.points.clear();
+      tempMarker.colors.clear();
 
     }
   }
