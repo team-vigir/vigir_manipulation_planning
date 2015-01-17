@@ -45,6 +45,8 @@
 
 #include <moveit/trajectory_processing/iterative_time_parameterization.h>
 
+#include <std_msgs/Empty.h>
+
 namespace move_group
 {
 
@@ -57,6 +59,10 @@ namespace move_group
     virtual void initialize();
 
   private:
+    void triggerCb(const std_msgs::Empty::ConstPtr& msg);
+
+
+    ros::Subscriber trigger_sub_;
 
   };
 

@@ -50,6 +50,8 @@
 
 
 
+
+
 move_group::ContinuousReplanningCapability::ContinuousReplanningCapability():
   MoveGroupCapability("ContinuousReplanningCapability")
 {}
@@ -58,7 +60,50 @@ void move_group::ContinuousReplanningCapability::initialize()
 {  
   const planning_scene::PlanningScenePtr& planning_scene = context_->planning_scene_monitor_->getPlanningScene();
 
+  trigger_sub_ = root_node_handle_.subscribe("/trigger_cont", 1, &ContinuousReplanningCapability::triggerCb, this);
+}
 
+void move_group::ContinuousReplanningCapability::triggerCb(const std_msgs::Empty::ConstPtr& msg)
+{
+  ROS_INFO("Received trigger");
+
+  const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
+  const planning_scene::PlanningScenePtr& planning_scene = context_->planning_scene_monitor_->getPlanningScene();
+
+
+  std::string group_name = "l_arm_group";
+
+  planning_interface::MotionPlanRequest motion_plan_request;
+
+  motion_plan_request.allowed_planning_time = 1.0;
+  motion_plan_request.group_name = group_name;
+  motion_plan_request.goal_constraints.resize(1);
+
+  planning_interface::MotionPlanResponse mp_res;
+
+
+
+  size_t count = 1000;
+  ros::WallTime start = ros::WallTime::now();
+
+  for (size_t i = 0; i < count; ++i){
+      context_->planning_scene_monitor_->updateFrameTransforms();
+
+      robot_state::RobotState tmp = planning_scene->getCurrentState();
+
+      const robot_state::JointModelGroup* jmg = tmp.getJointModelGroup(group_name);
+
+      tmp.setToRandomPositions(jmg);
+
+      motion_plan_request.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(tmp, jmg);
+
+      planning_scene_monitor::LockedPlanningSceneRO ps(context_->planning_scene_monitor_);
+
+      bool solved = context_->planning_pipeline_->generatePlan(ps, motion_plan_request, mp_res);
+
+  }
+
+  ROS_INFO("Elapsed time %f seconds, %f seconds per planning attempt", (ros::WallTime::now()-start).toSec(), (ros::WallTime::now()-start).toSec()/static_cast<double>(count));
 }
 
 
