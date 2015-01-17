@@ -1,0 +1,9 @@
+<library path="libflor_move_group_capabilities">
+
+<!--  <class name="move_group/MoveGroupCartPosePlanService" type="move_group::MoveGroupCartPosePlanService" base_class_type="move_group::MoveGroupCapability">
+    <description>
+      Team ViGIR custom move_group capability that permits more control over planning settings
+    </description>
+  </class>-->
+
+</library>
