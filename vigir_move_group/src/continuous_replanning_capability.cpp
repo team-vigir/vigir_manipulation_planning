@@ -44,6 +44,7 @@
 #include <octomap_msgs/GetOctomap.h>
 #include <octomap_msgs/conversions.h>
 #include <moveit_msgs/PlanningScene.h>
+#include <moveit/trajectory_execution_manager/trajectory_execution_manager.h>
 
 //#include <eigen_conversions/eigen_msg.h>
 
@@ -99,7 +100,16 @@ void move_group::ContinuousReplanningCapability::triggerCb(const std_msgs::Empty
 
       planning_scene_monitor::LockedPlanningSceneRO ps(context_->planning_scene_monitor_);
 
+
+
       bool solved = context_->planning_pipeline_->generatePlan(ps, motion_plan_request, mp_res);
+
+      if (solved){
+        moveit_msgs::RobotTrajectory robot_traj;
+        mp_res.trajectory_->getRobotTrajectoryMsg(robot_traj);
+        robot_traj.joint_trajectory.header.stamp = ros::Time::now() + ros::Duration(0.05);
+        context_->trajectory_execution_manager_->pushAndExecute(robot_traj);
+      }
 
   }
 
