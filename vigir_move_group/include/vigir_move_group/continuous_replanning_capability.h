@@ -35,6 +35,8 @@
 #include <moveit_msgs/GetCartesianPath.h>
 #include <moveit_msgs/MoveItErrorCodes.h>
 
+#include <vigir_plan_execution/continuous_plan_execution.h>
+
 #include <moveit/trajectory_processing/iterative_time_parameterization.h>
 
 #include <std_msgs/Empty.h>
@@ -57,14 +59,15 @@ namespace move_group
     void stopExecution();
 
 
-    void continuousReplanningThread();
+    //void continuousReplanningThread();
 
     ros::Subscriber trigger_sub_;
     ros::Subscriber abort_sub_;
 
-    boost::scoped_ptr<boost::thread> continuous_replanning_thread_;
-    boost::mutex continuous_replanning_mutex_;
-    bool stop_continuous_replanning_;
+    //boost::scoped_ptr<boost::thread> continuous_replanning_thread_;
+    //boost::mutex continuous_replanning_mutex_;
+    //bool stop_continuous_replanning_;
+    plan_execution::ContinuousPlanExecutionPtr plan_execution_;
 
   };
 

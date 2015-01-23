@@ -64,6 +64,8 @@ namespace plan_execution
 
   };
 
+  typedef boost::shared_ptr<ContinuousPlanExecution> ContinuousPlanExecutionPtr;
+
 }
 
 #endif

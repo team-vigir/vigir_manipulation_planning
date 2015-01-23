@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_move_group
   pluginlib
   roscpp
+  vigir_plan_execution
 )
 
 ## System dependencies are found with CMake's conventions

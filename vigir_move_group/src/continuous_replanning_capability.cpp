@@ -51,7 +51,7 @@ move_group::ContinuousReplanningCapability::ContinuousReplanningCapability():
 
 void move_group::ContinuousReplanningCapability::initialize()
 {  
-  const planning_scene::PlanningScenePtr& planning_scene = context_->planning_scene_monitor_->getPlanningScene();
+  plan_execution_.reset(new plan_execution::ContinuousPlanExecution(context_));
 
   trigger_sub_ = root_node_handle_.subscribe("/trigger_cont", 1, &ContinuousReplanningCapability::triggerCb, this);
   abort_sub_ = root_node_handle_.subscribe("/abort_cont", 1, &ContinuousReplanningCapability::abortCb, this);
@@ -61,86 +61,15 @@ void move_group::ContinuousReplanningCapability::triggerCb(const std_msgs::Empty
 {
   ROS_INFO("Received trigger");
 
-  //if (!continuous_replanning_thread_){
-    continuous_replanning_thread_.reset(new boost::thread(boost::bind(&ContinuousReplanningCapability::continuousReplanningThread, this)));
-  //}
+  plan_execution_->startExecution();
 }
 
 void move_group::ContinuousReplanningCapability::abortCb(const std_msgs::Empty::ConstPtr& msg)
 {
   ROS_INFO("Received abort");
 
-  stop_continuous_replanning_ = true;
-
-  continuous_replanning_thread_->join();
-  continuous_replanning_thread_.reset();
+  plan_execution_->stopExecution();
 }
-
-
-void move_group::ContinuousReplanningCapability::continuousReplanningThread()
-{
-  stop_continuous_replanning_ = false;
-
-  const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
-  const planning_scene::PlanningScenePtr& planning_scene = context_->planning_scene_monitor_->getPlanningScene();
-
-
-  std::string group_name = "l_arm_group";
-
-  planning_interface::MotionPlanRequest motion_plan_request;
-
-  motion_plan_request.allowed_planning_time = 1.0;
-  motion_plan_request.group_name = group_name;
-  motion_plan_request.goal_constraints.resize(1);
-
-  planning_interface::MotionPlanResponse mp_res;
-
-
-
-  size_t count = 1000;
-  ros::WallTime start = ros::WallTime::now();
-
-  for (size_t i = 0; i < count; ++i){
-      context_->planning_scene_monitor_->updateFrameTransforms();
-
-      robot_state::RobotState tmp = planning_scene->getCurrentState();
-
-      const robot_state::JointModelGroup* jmg = tmp.getJointModelGroup(group_name);
-
-      tmp.setToRandomPositions(jmg);
-
-      motion_plan_request.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(tmp, jmg);
-      motion_plan_request.start_state.is_diff = true;
-
-      if (stop_continuous_replanning_){
-        context_->trajectory_execution_manager_->stopExecution();
-        return;
-      }
-
-      bool solved = false;
-      {
-        planning_scene_monitor::LockedPlanningSceneRO ps(context_->planning_scene_monitor_);
-        solved = context_->planning_pipeline_->generatePlan(ps, motion_plan_request, mp_res);
-      }
-
-      if (stop_continuous_replanning_){
-        context_->trajectory_execution_manager_->stopExecution();
-        return;
-      }
-
-      if (solved){
-        moveit_msgs::RobotTrajectory robot_traj;
-        mp_res.trajectory_->getRobotTrajectoryMsg(robot_traj);
-        robot_traj.joint_trajectory.header.stamp = ros::Time::now() + ros::Duration(0.05);
-        //context_->trajectory_execution_manager_->ensureActiveControllers();
-        context_->trajectory_execution_manager_->pushAndExecute(robot_traj);
-        sleep(2);
-      }
-
-  }
-  ROS_INFO("Elapsed time %f seconds, %f seconds per planning attempt", (ros::WallTime::now()-start).toSec(), (ros::WallTime::now()-start).toSec()/static_cast<double>(count));
-}
-
 
 #include <class_loader/class_loader.h>
 CLASS_LOADER_REGISTER_CLASS(move_group::ContinuousReplanningCapability, move_group::MoveGroupCapability)
