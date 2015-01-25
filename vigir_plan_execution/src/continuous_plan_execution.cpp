@@ -93,22 +93,22 @@ void ContinuousPlanExecution::continuousReplanningThread()
 
   planning_interface::MotionPlanResponse mp_res;
 
-
-
-  size_t count = 1000;
+  size_t count = 100;
   ros::WallTime start = ros::WallTime::now();
+
+  context_->planning_scene_monitor_->updateFrameTransforms();
+
+  robot_state::RobotState tmp = planning_scene->getCurrentState();
+
+  const robot_state::JointModelGroup* jmg = tmp.getJointModelGroup(group_name);
+
+  tmp.setToRandomPositions(jmg);
+
+  motion_plan_request.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(tmp, jmg);
+  motion_plan_request.start_state.is_diff = true;
 
   for (size_t i = 0; i < count; ++i){
       context_->planning_scene_monitor_->updateFrameTransforms();
-
-      robot_state::RobotState tmp = planning_scene->getCurrentState();
-
-      const robot_state::JointModelGroup* jmg = tmp.getJointModelGroup(group_name);
-
-      tmp.setToRandomPositions(jmg);
-
-      motion_plan_request.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(tmp, jmg);
-      motion_plan_request.start_state.is_diff = true;
 
       if (stop_continuous_replanning_){
         context_->trajectory_execution_manager_->stopExecution();
@@ -129,10 +129,10 @@ void ContinuousPlanExecution::continuousReplanningThread()
       if (solved){
         moveit_msgs::RobotTrajectory robot_traj;
         mp_res.trajectory_->getRobotTrajectoryMsg(robot_traj);
-        robot_traj.joint_trajectory.header.stamp = ros::Time::now() + ros::Duration(0.05);
+        robot_traj.joint_trajectory.header.stamp = ros::Time::now() + ros::Duration(0.1);
         //context_->trajectory_execution_manager_->ensureActiveControllers();
         context_->trajectory_execution_manager_->pushAndExecute(robot_traj);
-        sleep(2);
+        sleep(0.1);
       }
 
   }
