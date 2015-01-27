@@ -91,7 +91,12 @@ void ContinuousPlanExecution::continuousReplanningThread()
   motion_plan_request.group_name = group_name;
   motion_plan_request.goal_constraints.resize(1);
 
-  planning_interface::MotionPlanResponse mp_res;
+  boost::shared_ptr<planning_interface::MotionPlanResponse> mp_res;
+  mp_res.reset(new planning_interface::MotionPlanResponse());
+
+  boost::shared_ptr<planning_interface::MotionPlanResponse> mp_res_prior;
+  ros::Time start_exec_time_prior;
+
 
   size_t count = 100;
   ros::WallTime start = ros::WallTime::now();
@@ -118,7 +123,7 @@ void ContinuousPlanExecution::continuousReplanningThread()
       bool solved = false;
       {
         planning_scene_monitor::LockedPlanningSceneRO ps(context_->planning_scene_monitor_);
-        solved = context_->planning_pipeline_->generatePlan(ps, motion_plan_request, mp_res);
+        solved = context_->planning_pipeline_->generatePlan(ps, motion_plan_request, *mp_res);
       }
 
       if (stop_continuous_replanning_){
@@ -126,13 +131,59 @@ void ContinuousPlanExecution::continuousReplanningThread()
         return;
       }
 
+      ros::Time start_stamp = ros::Time::now(); // + ros::Duration(0.1);
+
+
       if (solved){
-        moveit_msgs::RobotTrajectory robot_traj;
-        mp_res.trajectory_->getRobotTrajectoryMsg(robot_traj);
-        robot_traj.joint_trajectory.header.stamp = ros::Time::now() + ros::Duration(0.1);
-        //context_->trajectory_execution_manager_->ensureActiveControllers();
+        if (mp_res_prior.get()){
+
+          ros::Time now = ros::Time::now();
+
+          ros::Duration plan_duration = now - start_exec_time_prior;
+
+          int before, after;
+          double blend;
+          mp_res->trajectory_->findWayPointIndicesForDurationAfterStart(plan_duration.toSec(), before, after, blend);
+          ROS_INFO("before: %d after: %d", before, after);
+
+          const std::deque<double>& durations = mp_res->trajectory_->getWayPointDurations();
+
+          if (after != 0){
+
+            //double duration_diff = durations[after];
+            robot_trajectory::RobotTrajectory traj_tmp(robot_model, group_name);
+
+            for (int i = after; i < mp_res->trajectory_->getWayPointCount(); ++i){
+              traj_tmp.addSuffixWayPoint(mp_res->trajectory_->getWayPoint(i), durations[i]);
+            }
+
+            ROS_INFO("Traj points before: %d", static_cast<int>(mp_res->trajectory_->getWayPointCount()));
+            *mp_res->trajectory_ = traj_tmp;
+            ROS_INFO("Traj points before: %d", static_cast<int>(mp_res->trajectory_->getWayPointCount()));
+
+            //start_stamp = start_stamp + ros::Duration(0.1);
+          }else{
+            ROS_WARN("Asked for state at %f and got before and after 0!", plan_duration.toSec());
+            for (int i = after; i < mp_res->trajectory_->getWayPointCount(); ++i){
+              ROS_WARN("State %d duration: %f", i, durations[i] );
+            }
+
+          }
+        }
+
+        moveit_msgs::RobotTrajectory robot_traj;        
+        mp_res->trajectory_->getRobotTrajectoryMsg(robot_traj);
+        robot_traj.joint_trajectory.header.stamp = start_stamp;
+
         context_->trajectory_execution_manager_->pushAndExecute(robot_traj);
+        mp_res_prior = mp_res;
+
+        start_exec_time_prior = robot_traj.joint_trajectory.header.stamp;
+
         sleep(0.1);
+      }else{
+        ROS_WARN("Cannot plan to given goal!");
+        return;
       }
 
   }
