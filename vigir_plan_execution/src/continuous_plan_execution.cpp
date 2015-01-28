@@ -38,6 +38,7 @@
 //#include <moveit_msgs/PlanningScene.h>
 #include <moveit/planning_scene_monitor/planning_scene_monitor.h>
 #include <moveit/trajectory_execution_manager/trajectory_execution_manager.h>
+#include <vigir_moveit_utils/trajectory_utils.h>
 
 //#include <eigen_conversions/eigen_msg.h>
 
@@ -137,9 +138,22 @@ void ContinuousPlanExecution::continuousReplanningThread()
       if (solved){
         if (mp_res_prior.get()){
 
-          ros::Time now = ros::Time::now();
+          start_stamp = ros::Time::now() + ros::Duration(0.4);
 
-          ros::Duration plan_duration = now - start_exec_time_prior;
+          //ros::Duration plan_duration = now - start_exec_time_prior;
+
+          ROS_INFO("Traj points before: %d", static_cast<int>(mp_res->trajectory_->getWayPointCount()));
+
+          robot_trajectory::RobotTrajectory merged_traj(mp_res->trajectory_->getRobotModel(), mp_res->trajectory_->getGroupName());
+
+          trajectory_utils::mergeTrajectories(*mp_res_prior->trajectory_ , *mp_res->trajectory_, start_exec_time_prior, start_stamp, merged_traj);
+
+          *mp_res->trajectory_ = merged_traj;
+
+          ROS_INFO("Traj points after: %d", static_cast<int>(mp_res->trajectory_->getWayPointCount()));
+
+          /*
+          //ros::Duration plan_duration = now - start_exec_time_prior + ros::Duration(0.5);
 
           int before, after;
           double blend;
@@ -169,6 +183,7 @@ void ContinuousPlanExecution::continuousReplanningThread()
             }
 
           }
+          */
         }
 
         moveit_msgs::RobotTrajectory robot_traj;        
@@ -178,9 +193,9 @@ void ContinuousPlanExecution::continuousReplanningThread()
         context_->trajectory_execution_manager_->pushAndExecute(robot_traj);
         mp_res_prior = mp_res;
 
-        start_exec_time_prior = robot_traj.joint_trajectory.header.stamp;
+        start_exec_time_prior = start_stamp;
 
-        sleep(0.1);
+        ros::Time::sleepUntil(start_stamp);
       }else{
         ROS_WARN("Cannot plan to given goal!");
         return;

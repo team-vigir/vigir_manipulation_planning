@@ -78,13 +78,16 @@ namespace trajectory_utils{
     }
   }
 
-  static bool mergeTrajectories(robot_trajectory::RobotTrajectory& trajectory,
+  static bool mergeTrajectories(const robot_trajectory::RobotTrajectory& trajectory,
                                 const robot_trajectory::RobotTrajectory& to_be_merged,
                                 const ros::Time& trajectory_start_exec_time,
-                                const ros::Time& target_time)
+                                const ros::Time& target_time,
+                                robot_trajectory::RobotTrajectory& merged_traj)
   {
     //Time into old trajectory
     ros::Duration time_into_trajectory = target_time - trajectory_start_exec_time;
+
+    ROS_INFO("Diff: %f seconds", time_into_trajectory.toSec());
 
     int before, after;
     double blend;
@@ -104,24 +107,20 @@ namespace trajectory_utils{
       }
     }
 
-    robot_trajectory::RobotTrajectory traj_tmp(trajectory.getRobotModel(), trajectory.getGroupName());
-
     const std::deque<double>& trajectory_durations = trajectory.getWayPointDurations();
 
     //Add original trajectory stitch waypoint
-    traj_tmp.addSuffixWayPoint(trajectory.getWayPoint(after), (trajectory_durations[after] * (1.0 - blend)) -0.001);
+    merged_traj.addSuffixWayPoint(trajectory.getWayPoint(after), (trajectory_durations[after] * (1.0 - blend)) -0.001);
 
     //Add to be merged waypoints
     const std::deque<double>& to_be_merged_durations = trajectory.getWayPointDurations();
 
     for (int i = min_index; i < to_be_merged.getWayPointCount(); ++i){
-     traj_tmp.addSuffixWayPoint(to_be_merged.getWayPoint(i), to_be_merged_durations[i]);
+     merged_traj.addSuffixWayPoint(to_be_merged.getWayPoint(i), to_be_merged_durations[i]);
     }
 
-    traj_tmp.setWayPointDurationFromPrevious(1, 0.1);
+    merged_traj.setWayPointDurationFromPrevious(1, 0.1);
 
-
-    trajectory = traj_tmp;
     return true;
 
   }
