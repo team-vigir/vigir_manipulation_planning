@@ -38,7 +38,7 @@
 //#include <moveit_msgs/PlanningScene.h>
 #include <moveit/planning_scene_monitor/planning_scene_monitor.h>
 #include <moveit/trajectory_execution_manager/trajectory_execution_manager.h>
-#include <vigir_moveit_utils/trajectory_utils.h>
+
 
 //#include <eigen_conversions/eigen_msg.h>
 
@@ -99,7 +99,7 @@ void ContinuousPlanExecution::continuousReplanningThread()
   ros::Time start_exec_time_prior;
 
 
-  size_t count = 100;
+  size_t count = 40;
   ros::WallTime start = ros::WallTime::now();
 
   context_->planning_scene_monitor_->updateFrameTransforms();
@@ -133,12 +133,13 @@ void ContinuousPlanExecution::continuousReplanningThread()
       }
 
       ros::Time start_stamp = ros::Time::now(); // + ros::Duration(0.1);
-
+      ros::Time merge_stamp = start_stamp + ros::Duration(0.4);
 
       if (solved){
         if (mp_res_prior.get()){
 
-          start_stamp = ros::Time::now() + ros::Duration(0.4);
+          //start_stamp = ros::Time::now();
+
 
           //ros::Duration plan_duration = now - start_exec_time_prior;
 
@@ -146,7 +147,8 @@ void ContinuousPlanExecution::continuousReplanningThread()
 
           robot_trajectory::RobotTrajectory merged_traj(mp_res->trajectory_->getRobotModel(), mp_res->trajectory_->getGroupName());
 
-          trajectory_utils::mergeTrajectories(*mp_res_prior->trajectory_ , *mp_res->trajectory_, start_exec_time_prior, start_stamp, merged_traj);
+          //trajectory_utils::mergeTrajectories(*mp_res_prior->trajectory_ , *mp_res->trajectory_, start_exec_time_prior, start_stamp, merged_traj);
+          traj_merger_.mergeTrajectories(*mp_res_prior->trajectory_ , *mp_res->trajectory_, start_exec_time_prior, start_stamp, merge_stamp, merged_traj);
 
           *mp_res->trajectory_ = merged_traj;
 
@@ -195,7 +197,7 @@ void ContinuousPlanExecution::continuousReplanningThread()
 
         start_exec_time_prior = start_stamp;
 
-        ros::Time::sleepUntil(start_stamp);
+        ros::Time::sleepUntil(merge_stamp);
       }else{
         ROS_WARN("Cannot plan to given goal!");
         return;

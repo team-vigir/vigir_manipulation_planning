@@ -31,13 +31,8 @@
 
 #include <moveit/move_group/move_group_context.h>
 #include <moveit/planning_pipeline/planning_pipeline.h>
-//#include <moveit_msgs/GetMotionPlan.h>
-//#include <moveit_msgs/GetCartesianPath.h>
-//#include <moveit_msgs/MoveItErrorCodes.h>
 
-//#include <moveit/trajectory_processing/iterative_time_parameterization.h>
-
-//#include <std_msgs/Empty.h>
+#include <vigir_moveit_utils/trajectory_utils.h>
 
 namespace plan_execution
 {
@@ -61,6 +56,8 @@ namespace plan_execution
     bool stop_continuous_replanning_;
 
     move_group::MoveGroupContextPtr context_;
+
+    trajectory_utils::TrajectoryMerger traj_merger_;
 
   };
 

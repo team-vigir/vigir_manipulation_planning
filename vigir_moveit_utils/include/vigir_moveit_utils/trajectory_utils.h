@@ -33,11 +33,12 @@
 
 #include <moveit/robot_trajectory/robot_trajectory.h>
 #include <limits.h>
+#include <moveit/trajectory_processing/iterative_time_parameterization.h>
 
 
 namespace trajectory_utils{
 
-  /*
+/*
   // Doesn´t work for some reason
   static void removeZeroDurationJointTrajectoryPoints(robot_trajectory::RobotTrajectory& rt)
   {
@@ -59,33 +60,61 @@ namespace trajectory_utils{
   }
   */
 
-  static void removeDuplicateStates(const std::vector<robot_state::RobotStatePtr>& in, std::vector<robot_state::RobotStatePtr>& out )
-  {
-    size_t size = in.size();
+static void removeDuplicateStates(const std::vector<robot_state::RobotStatePtr>& in, std::vector<robot_state::RobotStatePtr>& out )
+{
+  size_t size = in.size();
 
 
-    if (size < 1){
-      out = in;
-      return;
-    }else{
-      out.push_back(in[0]);
-    }
-
-    for (int i = 1; i < size; ++i){
-      if (in[i-1]->distance(*in[i]) > 0.02){
-        out.push_back(in[i]);
-      }
-    }
+  if (size < 1){
+    out = in;
+    return;
+  }else{
+    out.push_back(in[0]);
   }
 
-  static bool mergeTrajectories(const robot_trajectory::RobotTrajectory& trajectory,
-                                const robot_trajectory::RobotTrajectory& to_be_merged,
-                                const ros::Time& trajectory_start_exec_time,
-                                const ros::Time& target_time,
-                                robot_trajectory::RobotTrajectory& merged_traj)
+  for (int i = 1; i < size; ++i){
+    if (in[i-1]->distance(*in[i]) > 0.02){
+      out.push_back(in[i]);
+    }
+  }
+}
+
+static void cut_trajectory(robot_trajectory::RobotTrajectory& trajectory, const ros::Duration& cut_duration)
+{
+  int before, after;
+  double blend;
+  trajectory.findWayPointIndicesForDurationAfterStart(cut_duration.toSec(), before, after, blend);
+
+  robot_trajectory::RobotTrajectory new_traj(trajectory.getRobotModel(), trajectory.getGroupName());
+
+  const std::deque<double>& trajectory_durations = trajectory.getWayPointDurations();
+
+  for (int i = after; i < trajectory.getWayPointCount(); ++i){
+    new_traj.addSuffixWayPoint(trajectory.getWayPoint(i), trajectory_durations[i]);
+  }
+
+  //new_traj.setWayPointDurationFromPrevious(0, (trajectory_durations[after] * (1.0 - blend)) -0.001);
+  new_traj.setWayPointDurationFromPrevious(0, 0.1);
+
+
+  trajectory = new_traj;
+
+
+}
+
+class TrajectoryMerger
+{
+
+public:
+  bool mergeTrajectories(const robot_trajectory::RobotTrajectory& trajectory,
+                         const robot_trajectory::RobotTrajectory& to_be_merged,
+                         const ros::Time& previous_start_time,
+                         const ros::Time& next_start_time,
+                         const ros::Time& merge_time,
+                         robot_trajectory::RobotTrajectory& merged_traj)
   {
     //Time into old trajectory
-    ros::Duration time_into_trajectory = target_time - trajectory_start_exec_time;
+    ros::Duration time_into_trajectory = merge_time - previous_start_time;
 
     ROS_INFO("Diff: %f seconds", time_into_trajectory.toSec());
 
@@ -109,21 +138,32 @@ namespace trajectory_utils{
 
     const std::deque<double>& trajectory_durations = trajectory.getWayPointDurations();
 
-    //Add original trajectory stitch waypoint
-    merged_traj.addSuffixWayPoint(trajectory.getWayPoint(after), (trajectory_durations[after] * (1.0 - blend)) -0.001);
+    //Add original trajectory stitch waypoints
+    for (int i = 0; i < after; ++i){
+      merged_traj.addSuffixWayPoint(trajectory.getWayPoint(i), 0.0);
+    }
+    ROS_INFO("Added %d original waypoints", after);
+
 
     //Add to be merged waypoints
     const std::deque<double>& to_be_merged_durations = trajectory.getWayPointDurations();
 
     for (int i = min_index; i < to_be_merged.getWayPointCount(); ++i){
-     merged_traj.addSuffixWayPoint(to_be_merged.getWayPoint(i), to_be_merged_durations[i]);
+      merged_traj.addSuffixWayPoint(to_be_merged.getWayPoint(i), 0.0);
     }
+    ROS_INFO("Added %d changed waypoints", to_be_merged.getWayPointCount()- min_index);
 
-    merged_traj.setWayPointDurationFromPrevious(1, 0.1);
+    time_parametrization_.computeTimeStamps(merged_traj);
+
+    cut_trajectory(merged_traj, (next_start_time-previous_start_time));
+
 
     return true;
-
   }
+
+private:
+  trajectory_processing::IterativeParabolicTimeParameterization time_parametrization_;
+};
 
 }
 
