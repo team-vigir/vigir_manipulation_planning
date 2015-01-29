@@ -58,6 +58,7 @@ namespace plan_execution
     move_group::MoveGroupContextPtr context_;
 
     trajectory_utils::TrajectoryMerger traj_merger_;
+    boost::shared_ptr<trajectory_utils::TrajectoryVisualization> traj_vis_;
 
   };
 

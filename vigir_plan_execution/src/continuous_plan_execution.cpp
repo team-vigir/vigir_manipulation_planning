@@ -49,7 +49,10 @@ namespace plan_execution{
 
 ContinuousPlanExecution::ContinuousPlanExecution(const move_group::MoveGroupContextPtr context)
   : context_(context)
-{}
+{
+  traj_vis_.reset(new trajectory_utils::TrajectoryVisualization());
+
+}
 
 void ContinuousPlanExecution::initialize()
 {
@@ -194,6 +197,8 @@ void ContinuousPlanExecution::continuousReplanningThread()
 
         context_->trajectory_execution_manager_->pushAndExecute(robot_traj);
         mp_res_prior = mp_res;
+
+        traj_vis_->publishTrajectoryEndeffectorVis(*mp_res->trajectory_);
 
         start_exec_time_prior = start_stamp;
 
