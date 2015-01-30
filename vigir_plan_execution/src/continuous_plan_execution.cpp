@@ -115,6 +115,7 @@ void ContinuousPlanExecution::continuousReplanningThread()
 
   motion_plan_request.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(tmp, jmg);
   motion_plan_request.start_state.is_diff = true;
+  motion_plan_request.max_velocity_scaling_factor = 0.1;
 
   for (size_t i = 0; i < count; ++i){
       context_->planning_scene_monitor_->updateFrameTransforms();
@@ -143,7 +144,6 @@ void ContinuousPlanExecution::continuousReplanningThread()
 
           //start_stamp = ros::Time::now();
 
-
           //ros::Duration plan_duration = now - start_exec_time_prior;
 
           ROS_INFO("Traj points before: %d", static_cast<int>(mp_res->trajectory_->getWayPointCount()));
@@ -157,38 +157,6 @@ void ContinuousPlanExecution::continuousReplanningThread()
 
           ROS_INFO("Traj points after: %d", static_cast<int>(mp_res->trajectory_->getWayPointCount()));
 
-          /*
-          //ros::Duration plan_duration = now - start_exec_time_prior + ros::Duration(0.5);
-
-          int before, after;
-          double blend;
-          mp_res->trajectory_->findWayPointIndicesForDurationAfterStart(plan_duration.toSec(), before, after, blend);
-          ROS_INFO("before: %d after: %d", before, after);
-
-          const std::deque<double>& durations = mp_res->trajectory_->getWayPointDurations();
-
-          if (after != 0){
-
-            //double duration_diff = durations[after];
-            robot_trajectory::RobotTrajectory traj_tmp(robot_model, group_name);
-
-            for (int i = after; i < mp_res->trajectory_->getWayPointCount(); ++i){
-              traj_tmp.addSuffixWayPoint(mp_res->trajectory_->getWayPoint(i), durations[i]);
-            }
-
-            ROS_INFO("Traj points before: %d", static_cast<int>(mp_res->trajectory_->getWayPointCount()));
-            *mp_res->trajectory_ = traj_tmp;
-            ROS_INFO("Traj points before: %d", static_cast<int>(mp_res->trajectory_->getWayPointCount()));
-
-            //start_stamp = start_stamp + ros::Duration(0.1);
-          }else{
-            ROS_WARN("Asked for state at %f and got before and after 0!", plan_duration.toSec());
-            for (int i = after; i < mp_res->trajectory_->getWayPointCount(); ++i){
-              ROS_WARN("State %d duration: %f", i, durations[i] );
-            }
-
-          }
-          */
         }
 
         moveit_msgs::RobotTrajectory robot_traj;        

@@ -214,7 +214,6 @@ public:
 
     cut_trajectory(merged_traj, (next_start_time-previous_start_time));
 
-
     return true;
   }
 
