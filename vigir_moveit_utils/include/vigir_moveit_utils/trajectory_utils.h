@@ -168,6 +168,7 @@ public:
                          const ros::Time& previous_start_time,
                          const ros::Time& next_start_time,
                          const ros::Time& merge_time,
+                         const double velocity_factor,
                          robot_trajectory::RobotTrajectory& merged_traj)
   {
     //Time into old trajectory
@@ -210,7 +211,7 @@ public:
     }
     ROS_INFO("Added %d changed waypoints", static_cast<int>(to_be_merged.getWayPointCount())- min_index);
 
-    time_parametrization_.computeTimeStamps(merged_traj);
+    time_parametrization_.computeTimeStamps(merged_traj, velocity_factor);
 
     cut_trajectory(merged_traj, (next_start_time-previous_start_time));
 

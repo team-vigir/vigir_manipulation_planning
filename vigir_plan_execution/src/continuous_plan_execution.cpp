@@ -150,8 +150,12 @@ void ContinuousPlanExecution::continuousReplanningThread()
 
           robot_trajectory::RobotTrajectory merged_traj(mp_res->trajectory_->getRobotModel(), mp_res->trajectory_->getGroupName());
 
-          //trajectory_utils::mergeTrajectories(*mp_res_prior->trajectory_ , *mp_res->trajectory_, start_exec_time_prior, start_stamp, merged_traj);
-          traj_merger_.mergeTrajectories(*mp_res_prior->trajectory_ , *mp_res->trajectory_, start_exec_time_prior, start_stamp, merge_stamp, merged_traj);
+          traj_merger_.mergeTrajectories(*mp_res_prior->trajectory_ ,
+                                         *mp_res->trajectory_,
+                                         start_exec_time_prior,
+                                         start_stamp, merge_stamp,
+                                         motion_plan_request.max_velocity_scaling_factor,
+                                         merged_traj);
 
           *mp_res->trajectory_ = merged_traj;
 
