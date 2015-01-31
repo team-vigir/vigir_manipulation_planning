@@ -115,7 +115,7 @@ void ContinuousPlanExecution::continuousReplanningThread()
 
   motion_plan_request.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(tmp, jmg);
   motion_plan_request.start_state.is_diff = true;
-  motion_plan_request.max_velocity_scaling_factor = 0.1;
+  motion_plan_request.max_velocity_scaling_factor = 0.3;
 
   for (size_t i = 0; i < count; ++i){
       context_->planning_scene_monitor_->updateFrameTransforms();
