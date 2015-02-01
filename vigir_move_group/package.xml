@@ -2,14 +2,11 @@
 <package>
   <name>vigir_move_group</name>
   <version>0.0.0</version>
-  <description>The vigir_move_group package</description>
+  <description>The vigir_move_group package provides custom move_group pluigins</description>
 
   <maintainer email="kohlbrecher@sim.tu-darmstadt.de">Stefan Kohlbrecher</maintainer>
 
-
-
   <license>BSD</license>
-
 
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>cmake_modules</build_depend>
