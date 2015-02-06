@@ -123,7 +123,7 @@ public:
   void publishTrajectoryEndeffectorVis(const robot_trajectory::RobotTrajectory& trajectory, bool increase_marker_id = false)
   {
     const robot_model::RobotModelConstPtr& model = trajectory.getRobotModel();
-    marker_.header.frame_id = model->getRootLinkName();
+    marker_.header.frame_id = model->getModelFrame();
     marker_.header.stamp = ros::Time::now();
 
     marker_.ns = "eef_trajectory";
