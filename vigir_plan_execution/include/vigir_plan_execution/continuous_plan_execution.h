@@ -53,6 +53,7 @@ namespace plan_execution
 
     boost::scoped_ptr<boost::thread> continuous_replanning_thread_;
     boost::mutex continuous_replanning_mutex_;
+    boost::mutex goal_config_mutex_;
     bool stop_continuous_replanning_;
 
     move_group::MoveGroupContextPtr context_;

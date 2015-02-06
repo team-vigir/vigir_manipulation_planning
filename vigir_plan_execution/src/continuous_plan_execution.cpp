@@ -64,18 +64,22 @@ void ContinuousPlanExecution::initialize()
 
 void ContinuousPlanExecution::startExecution()
 {
-  continuous_replanning_thread_.reset(new boost::thread(boost::bind(&ContinuousPlanExecution::continuousReplanningThread, this)));
+  if (!continuous_replanning_thread_.get()){
+    continuous_replanning_thread_.reset(new boost::thread(boost::bind(&ContinuousPlanExecution::continuousReplanningThread, this)));
+  }
 }
 
 
 void ContinuousPlanExecution::stopExecution()
 {
-  ROS_INFO("Received abort");
+  ROS_INFO("Aborting continuous plan execution");
 
   stop_continuous_replanning_ = true;
 
-  continuous_replanning_thread_->join();
-  continuous_replanning_thread_.reset();
+  if (continuous_replanning_thread_.get()){
+    continuous_replanning_thread_->join();
+    continuous_replanning_thread_.reset();
+  }
 }
 
 
@@ -94,6 +98,8 @@ void ContinuousPlanExecution::continuousReplanningThread()
   motion_plan_request.allowed_planning_time = 1.0;
   motion_plan_request.group_name = group_name;
   motion_plan_request.goal_constraints.resize(1);
+  motion_plan_request.start_state.is_diff = true;
+  motion_plan_request.max_velocity_scaling_factor = 0.3;
 
   boost::shared_ptr<planning_interface::MotionPlanResponse> mp_res;
   mp_res.reset(new planning_interface::MotionPlanResponse());
@@ -111,11 +117,14 @@ void ContinuousPlanExecution::continuousReplanningThread()
 
   const robot_state::JointModelGroup* jmg = tmp.getJointModelGroup(group_name);
 
+  if (!jmg->getSolverInstance()){
+    ROS_ERROR("No IK solver specified for group %s, cannot run continuous replanning!", group_name.c_str());
+    return;
+  }
+
   tmp.setToRandomPositions(jmg);
 
-  motion_plan_request.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(tmp, jmg);
-  motion_plan_request.start_state.is_diff = true;
-  motion_plan_request.max_velocity_scaling_factor = 0.3;
+  const Eigen::Affine3d& target_pose = tmp.getGlobalLinkTransform(jmg->getSolverInstance()->getTipFrame());
 
   for (size_t i = 0; i < count; ++i){
       context_->planning_scene_monitor_->updateFrameTransforms();
@@ -125,8 +134,16 @@ void ContinuousPlanExecution::continuousReplanningThread()
         return;
       }
 
+      bool ik_solved = tmp.setFromIK(jmg, target_pose);
+
+      if (!ik_solved)
+        ROS_ERROR("IK failed!");
+
+      motion_plan_request.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(tmp, jmg);
+
       bool solved = false;
-      {
+
+      if (ik_solved){
         planning_scene_monitor::LockedPlanningSceneRO ps(context_->planning_scene_monitor_);
         solved = context_->planning_pipeline_->generatePlan(ps, motion_plan_request, *mp_res);
       }
