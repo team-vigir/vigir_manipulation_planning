@@ -107,45 +107,43 @@ static void cut_trajectory(robot_trajectory::RobotTrajectory& trajectory, const 
 class TrajectoryVisualization
 {
 public:
-  TrajectoryVisualization()
+  TrajectoryVisualization(ros::NodeHandle pnh)
   {
-    ros::NodeHandle pnh("~");
-
     marker_array_pub_ = pnh.advertise<visualization_msgs::MarkerArray>("eef_trajectory",5);
     marker_.pose.orientation.w = 1.0;
     marker_.scale.x = 0.01;
     marker_.color.a = 1.0;
     marker_.color.r = 1.0;
-
-
   }
 
   void publishTrajectoryEndeffectorVis(const robot_trajectory::RobotTrajectory& trajectory, bool increase_marker_id = false)
   {
-    const robot_model::RobotModelConstPtr& model = trajectory.getRobotModel();
-    marker_.header.frame_id = model->getModelFrame();
-    marker_.header.stamp = ros::Time::now();
+    if (marker_array_pub_.getNumSubscribers() > 0){
+      const robot_model::RobotModelConstPtr& model = trajectory.getRobotModel();
+      marker_.header.frame_id = model->getModelFrame();
+      marker_.header.stamp = ros::Time::now();
 
-    marker_.ns = "eef_trajectory";
-    marker_.id = 0;
-    marker_.type = visualization_msgs::Marker::LINE_STRIP;
-    marker_.action = visualization_msgs::Marker::ADD;
+      marker_.ns = "eef_trajectory";
+      marker_.id = 0;
+      marker_.type = visualization_msgs::Marker::LINE_STRIP;
+      marker_.action = visualization_msgs::Marker::ADD;
 
-    marker_.points.resize(trajectory.getWayPointCount());
+      marker_.points.resize(trajectory.getWayPointCount());
 
-    const robot_model::JointModelGroup* group = trajectory.getGroup();
+      const robot_model::JointModelGroup* group = trajectory.getGroup();
 
-    for (int i = 0; i < trajectory.getWayPointCount(); ++i){
-      const robot_state::RobotState& state = trajectory.getWayPoint(i);
+      for (int i = 0; i < trajectory.getWayPointCount(); ++i){
+        const robot_state::RobotState& state = trajectory.getWayPoint(i);
 
-      const Eigen::Affine3d& transform = state.getGlobalLinkTransform("l_hand");
+        const Eigen::Affine3d& transform = state.getGlobalLinkTransform("l_hand");
 
-      marker_.points[i].x = transform.translation().x();
-      marker_.points[i].y = transform.translation().y();
-      marker_.points[i].z = transform.translation().z();
+        marker_.points[i].x = transform.translation().x();
+        marker_.points[i].y = transform.translation().y();
+        marker_.points[i].z = transform.translation().z();
+      }
+      marker_array_.markers.push_back(marker_);
+      marker_array_pub_.publish (marker_array_);
     }
-    marker_array_.markers.push_back(marker_);
-    marker_array_pub_.publish (marker_array_);
 
   }
 

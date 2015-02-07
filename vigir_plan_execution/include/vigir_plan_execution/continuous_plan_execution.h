@@ -61,6 +61,8 @@ namespace plan_execution
     trajectory_utils::TrajectoryMerger traj_merger_;
     boost::shared_ptr<trajectory_utils::TrajectoryVisualization> traj_vis_;
 
+    ros::Publisher debug_pose_pub_;
+
   };
 
   typedef boost::shared_ptr<ContinuousPlanExecution> ContinuousPlanExecutionPtr;

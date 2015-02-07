@@ -40,7 +40,7 @@
 #include <moveit/trajectory_execution_manager/trajectory_execution_manager.h>
 
 
-//#include <eigen_conversions/eigen_msg.h>
+#include <eigen_conversions/eigen_msg.h>
 
 
 
@@ -50,7 +50,10 @@ namespace plan_execution{
 ContinuousPlanExecution::ContinuousPlanExecution(const move_group::MoveGroupContextPtr context)
   : context_(context)
 {
-  traj_vis_.reset(new trajectory_utils::TrajectoryVisualization());
+  ros::NodeHandle pnh("~/continuous_replanning");
+
+  traj_vis_.reset(new trajectory_utils::TrajectoryVisualization(pnh));
+  debug_pose_pub_ = pnh.advertise<geometry_msgs::PoseStamped>("debug_pose", 1, false);
 
 }
 
@@ -125,6 +128,14 @@ void ContinuousPlanExecution::continuousReplanningThread()
   tmp.setToRandomPositions(jmg);
 
   const Eigen::Affine3d& target_pose = tmp.getGlobalLinkTransform(jmg->getSolverInstance()->getTipFrame());
+
+  if (debug_pose_pub_.getNumSubscribers() > 0){
+    geometry_msgs::PoseStamped pose_stamped;
+    pose_stamped.header.frame_id = robot_model->getModelFrame();
+    pose_stamped.header.stamp = ros::Time::now();
+    tf::poseEigenToMsg(target_pose, pose_stamped.pose);
+    debug_pose_pub_.publish(pose_stamped);
+  }
 
   for (size_t i = 0; i < count; ++i){
       context_->planning_scene_monitor_->updateFrameTransforms();

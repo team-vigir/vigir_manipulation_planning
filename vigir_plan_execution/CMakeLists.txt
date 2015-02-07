@@ -10,12 +10,13 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   vigir_planning_msgs
   vigir_moveit_utils
+  eigen_conversions
 )
 
 catkin_package(
    INCLUDE_DIRS include
    LIBRARIES vigir_plan_execution
-   CATKIN_DEPENDS moveit_msgs moveit_ros_move_group roscpp vigir_planning_msgs vigir_moveit_utils
+   CATKIN_DEPENDS moveit_msgs moveit_ros_move_group roscpp vigir_planning_msgs vigir_moveit_utils eigen_conversions
 #  DEPENDS system_lib
 )
 
