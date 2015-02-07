@@ -134,12 +134,16 @@ void ContinuousPlanExecution::continuousReplanningThread()
         return;
       }
 
-      bool ik_solved = tmp.setFromIK(jmg, target_pose);
+      robot_state::RobotState current_state = planning_scene->getCurrentState();
+
+      const robot_state::JointModelGroup* current_group = current_state.getJointModelGroup(group_name);
+
+      bool ik_solved = current_state.setFromIK(current_group, target_pose);
 
       if (!ik_solved)
         ROS_ERROR("IK failed!");
 
-      motion_plan_request.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(tmp, jmg);
+      motion_plan_request.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(current_state, current_group);
 
       bool solved = false;
 
