@@ -52,7 +52,7 @@ move_group::MoveGroupManipulationAction::MoveGroupManipulationAction() :
 void move_group::MoveGroupManipulationAction::initialize()
 {
   // start the move action server
-  move_action_server_.reset(new actionlib::SimpleActionServer<moveit_msgs::MoveGroupAction>(root_node_handle_, MOVE_ACTION,
+  move_action_server_.reset(new actionlib::SimpleActionServer<moveit_msgs::MoveGroupAction>(root_node_handle_, "manipulation_action",
                                                                                             boost::bind(&MoveGroupManipulationAction::executeMoveCallback, this, _1), false));
   move_action_server_->registerPreemptCallback(boost::bind(&MoveGroupManipulationAction::preemptMoveCallback, this));
   move_action_server_->start();
