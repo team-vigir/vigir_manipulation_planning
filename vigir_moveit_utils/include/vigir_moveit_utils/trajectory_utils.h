@@ -107,13 +107,16 @@ static void cut_trajectory(robot_trajectory::RobotTrajectory& trajectory, const 
 class TrajectoryVisualization
 {
 public:
-  TrajectoryVisualization(ros::NodeHandle pnh)
+  TrajectoryVisualization(ros::NodeHandle pnh, const std::string topic_name = "eef_trajectory", double r = 1.0, double g = 0.0, double b = 0.0, double a = 1.0)
   {
-    marker_array_pub_ = pnh.advertise<visualization_msgs::MarkerArray>("eef_trajectory",5);
+    marker_array_pub_ = pnh.advertise<visualization_msgs::MarkerArray>(topic_name, 5);
     marker_.pose.orientation.w = 1.0;
     marker_.scale.x = 0.01;
-    marker_.color.a = 1.0;
-    marker_.color.r = 1.0;
+
+    marker_.color.r = r;
+    marker_.color.g = g;
+    marker_.color.b = b;
+    marker_.color.a = a;
   }
 
   void publishTrajectoryEndeffectorVis(const robot_trajectory::RobotTrajectory& trajectory, bool increase_marker_id = false)
@@ -135,6 +138,7 @@ public:
       for (int i = 0; i < trajectory.getWayPointCount(); ++i){
         const robot_state::RobotState& state = trajectory.getWayPoint(i);
 
+        //@TODO: Properly get tips for group
         const Eigen::Affine3d& transform = state.getGlobalLinkTransform("l_hand");
 
         marker_.points[i].x = transform.translation().x();

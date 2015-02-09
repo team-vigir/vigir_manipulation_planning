@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   pluginlib
   roscpp
   vigir_plan_execution
+  vigir_moveit_utils
 )
 
 catkin_package(

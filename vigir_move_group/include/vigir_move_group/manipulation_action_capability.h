@@ -41,6 +41,8 @@
 #include <actionlib/server/simple_action_server.h>
 #include <moveit_msgs/MoveGroupAction.h>
 
+#include <vigir_moveit_utils/trajectory_utils.h>
+
 namespace move_group
 {
 
@@ -67,6 +69,9 @@ private:
   moveit_msgs::MoveGroupFeedback move_feedback_;
 
   MoveGroupState move_state_;
+
+  boost::shared_ptr<trajectory_utils::TrajectoryVisualization> planned_traj_vis_;
+  boost::shared_ptr<trajectory_utils::TrajectoryVisualization> executed_traj_vis_;
 };
 
 

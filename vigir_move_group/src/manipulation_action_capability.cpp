@@ -51,8 +51,14 @@ move_group::MoveGroupManipulationAction::MoveGroupManipulationAction() :
 
 void move_group::MoveGroupManipulationAction::initialize()
 {
-  // start the move action server
-  move_action_server_.reset(new actionlib::SimpleActionServer<moveit_msgs::MoveGroupAction>(root_node_handle_, "manipulation_action",
+  ros::NodeHandle pnh("~/visualization");
+
+  planned_traj_vis_.reset(new trajectory_utils::TrajectoryVisualization(pnh));
+  executed_traj_vis_.reset(new trajectory_utils::TrajectoryVisualization(pnh, "eef_traj_executed", 0.0, 0.0, 1.0));
+
+
+  // start the move action server MOVE_ACTION
+  move_action_server_.reset(new actionlib::SimpleActionServer<moveit_msgs::MoveGroupAction>(root_node_handle_, MOVE_ACTION, //"manipulation_action",
                                                                                             boost::bind(&MoveGroupManipulationAction::executeMoveCallback, this, _1), false));
   move_action_server_->registerPreemptCallback(boost::bind(&MoveGroupManipulationAction::preemptMoveCallback, this));
   move_action_server_->start();
@@ -131,9 +137,16 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
   plan_execution::ExecutableMotionPlan plan;
   context_->plan_execution_->planAndExecute(plan, planning_scene_diff, opt);
 
+  //@TODO: We only consider first plan for visualization at the moment
+  if (plan.plan_components_.size() > 0){
+    planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
+  }
+
   convertToMsg(plan.plan_components_, action_res.trajectory_start, action_res.planned_trajectory);
-  if (plan.executed_trajectory_)
+  if (plan.executed_trajectory_){
     plan.executed_trajectory_->getRobotTrajectoryMsg(action_res.executed_trajectory);
+    executed_traj_vis_->publishTrajectoryEndeffectorVis(*plan.executed_trajectory_);
+  }
   action_res.error_code = plan.error_code_;
 }
 
@@ -161,6 +174,10 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanOnly(const
   }
 
   convertToMsg(res.trajectory_, action_res.trajectory_start, action_res.planned_trajectory);
+
+  if (res.trajectory_)
+    planned_traj_vis_->publishTrajectoryEndeffectorVis(*res.trajectory_);
+
   action_res.error_code = res.error_code_;
   action_res.planning_time = res.planning_time_;
 }
