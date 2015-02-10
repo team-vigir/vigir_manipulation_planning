@@ -34,7 +34,7 @@
 
 /* Author: Ioan Sucan, Dave Coleman, Adam Leeper, Sachin Chitta */
 
-#include <moveit/motion_planning_rviz_plugin/motion_planning_display.h>
+#include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_display.h>
 #include <moveit/rviz_plugin_render_tools/planning_link_updater.h>
 #include <moveit/rviz_plugin_render_tools/robot_state_visualization.h>
 #include <rviz/visualization_manager.h>
@@ -73,7 +73,7 @@
 
 #include "ui_motion_planning_rviz_plugin_frame.h"
 
-namespace moveit_rviz_plugin
+namespace vigir_moveit_rviz_plugin
 {
 
 // ******************************************************************************************
@@ -247,12 +247,12 @@ void MotionPlanningDisplay::onInitialize()
 {
   PlanningSceneDisplay::onInitialize();
 
-  display_path_robot_.reset(new RobotStateVisualization(planning_scene_node_, context_, "Planned Path", path_category_));
+  display_path_robot_.reset(new moveit_rviz_plugin::RobotStateVisualization(planning_scene_node_, context_, "Planned Path", path_category_));
   display_path_robot_->setVisualVisible(display_path_visual_enabled_property_->getBool());
   display_path_robot_->setCollisionVisible(display_path_collision_enabled_property_->getBool());
   display_path_robot_->setVisible(false);
 
-  query_robot_start_.reset(new RobotStateVisualization(planning_scene_node_, context_, "Planning Request Start", NULL));
+  query_robot_start_.reset(new moveit_rviz_plugin::RobotStateVisualization(planning_scene_node_, context_, "Planning Request Start", NULL));
   query_robot_start_->setCollisionVisible(false);
   query_robot_start_->setVisualVisible(true);
   query_robot_start_->setVisible(query_start_state_property_->getBool());
@@ -260,7 +260,7 @@ void MotionPlanningDisplay::onInitialize()
   color.r = qcolor.redF(); color.g = qcolor.greenF(); color.b = qcolor.blueF(); color.a = 1.0f;
   query_robot_start_->setDefaultAttachedObjectColor(color);
 
-  query_robot_goal_.reset(new RobotStateVisualization(planning_scene_node_, context_, "Planning Request Goal", NULL));
+  query_robot_goal_.reset(new moveit_rviz_plugin::RobotStateVisualization(planning_scene_node_, context_, "Planning Request Goal", NULL));
   query_robot_goal_->setCollisionVisible(false);
   query_robot_goal_->setVisualVisible(true);
   query_robot_goal_->setVisible(query_goal_state_property_->getBool());
@@ -516,7 +516,7 @@ void MotionPlanningDisplay::changedShowTrail()
     r->load(*getRobotModel()->getURDF());
     r->setVisualVisible(display_path_visual_enabled_property_->getBool());
     r->setCollisionVisible(display_path_collision_enabled_property_->getBool());
-    r->update(PlanningLinkUpdater(t->getWayPointPtr(i)));
+    r->update(moveit_rviz_plugin::PlanningLinkUpdater(t->getWayPointPtr(i)));
     r->setVisible(isEnabled() && (!animating_path_ || i <= current_state_));
     trajectory_trail_[i] = r;
   }
@@ -1568,4 +1568,4 @@ void MotionPlanningDisplay::visualizePlaceLocations(const std::vector<geometry_m
 }
 
 
-} // namespace moveit_rviz_plugin
+} // namespace vigir_moveit_rviz_plugin

@@ -1,7 +1,7 @@
-<library path="libmoveit_motion_planning_rviz_plugin">
-  <class name="moveit_rviz_plugin/MotionPlanning" type="vigir_moveit_rviz_plugin::MotionPlanningDisplay" base_class_type="rviz::Display">
+<library path="libvigir_moveit_motion_planning_rviz_plugin">
+  <class name="vigir_moveit_rviz_plugin/MotionPlanning" type="vigir_moveit_rviz_plugin::MotionPlanningDisplay" base_class_type="rviz::Display">
     <description>
-      Displays information about a planning scene and can animate solution paths within that planning scene.
+      Custom display based on MotionPlanning used at Team ViGIR for planner development
     </description>
   </class>
 </library>

@@ -34,8 +34,8 @@
 
 /* Author: Ioan Sucan */
 
-#include <moveit/motion_planning_rviz_plugin/motion_planning_frame.h>
-#include <moveit/motion_planning_rviz_plugin/motion_planning_display.h>
+#include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_frame.h>
+#include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_display.h>
 
 #include <moveit/kinematic_constraints/utils.h>
 #include <moveit/robot_state/conversions.h>
@@ -44,7 +44,7 @@
 
 #include "ui_motion_planning_rviz_plugin_frame.h"
 
-namespace moveit_rviz_plugin
+namespace vigir_moveit_rviz_plugin
 {
 
 void MotionPlanningFrame::planButtonClicked()

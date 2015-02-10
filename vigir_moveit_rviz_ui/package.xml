@@ -41,15 +41,16 @@
   <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>moveit_ros_visualization</build_depend>
+  <build_depend>cmake_modules</build_depend>
+  <build_depend>rviz</build_depend>
+  <build_depend>pluginlib</build_depend>
   <run_depend>moveit_ros_visualization</run_depend>
+  <run_depend>pluginlib</run_depend>
+  <run_depend>rviz</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
-    <!-- You can specify that this package is a metapackage here: -->
-    <!-- <metapackage/> -->
-
-    <!-- Other tools can request additional information be placed here -->
-
+    <rviz plugin="${prefix}/vigir_motion_planning_rviz_plugin_description.xml"/>
   </export>
 </package>

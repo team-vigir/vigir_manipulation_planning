@@ -34,8 +34,8 @@
 
 /* Author: Ioan Sucan, Dave Coleman, Adam Leeper, Sachin Chitta */
 
-#ifndef MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_DISPLAY_
-#define MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_DISPLAY_
+#ifndef VIGIR_MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_DISPLAY_
+#define VIGIR_MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_DISPLAY_
 
 #include <rviz/display.h>
 #include <rviz/selection/selection_manager.h>
@@ -43,7 +43,7 @@
 #include <std_msgs/String.h>
 
 #ifndef Q_MOC_RUN
-#include <moveit/motion_planning_rviz_plugin/motion_planning_frame.h>
+#include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_frame.h>
 #include <moveit/robot_interaction/robot_interaction.h>
 #include <moveit/robot_interaction/interaction_handler.h>
 
@@ -75,10 +75,10 @@ class ColorProperty;
 class MovableText;
 }
 
-namespace moveit_rviz_plugin
+namespace vigir_moveit_rviz_plugin
 {
 
-class MotionPlanningDisplay : public PlanningSceneDisplay
+class MotionPlanningDisplay : public moveit_rviz_plugin::PlanningSceneDisplay
 {
   Q_OBJECT
 
@@ -237,9 +237,9 @@ protected:
   virtual void fixedFrameChanged();
 
 
-  RobotStateVisualizationPtr query_robot_start_;                  ///< Handles drawing the robot at the start configuration
-  RobotStateVisualizationPtr query_robot_goal_;                   ///< Handles drawing the robot at the goal configuration
-  RobotStateVisualizationPtr display_path_robot_;                 ///< Handles actually drawing the robot along motion plans
+  moveit_rviz_plugin::RobotStateVisualizationPtr query_robot_start_;                  ///< Handles drawing the robot at the start configuration
+  moveit_rviz_plugin::RobotStateVisualizationPtr query_robot_goal_;                   ///< Handles drawing the robot at the goal configuration
+  moveit_rviz_plugin::RobotStateVisualizationPtr display_path_robot_;                 ///< Handles actually drawing the robot along motion plans
 
   Ogre::SceneNode* text_display_scene_node_;        ///< displays texts
   bool text_display_for_start_;                     ///< indicates whether the text display is for the start state or not
@@ -319,6 +319,6 @@ protected:
   rviz::Display *int_marker_display_;
 };
 
-} // namespace moveit_rviz_plugin
+} // namespace vigir_moveit_rviz_plugin
 
 #endif

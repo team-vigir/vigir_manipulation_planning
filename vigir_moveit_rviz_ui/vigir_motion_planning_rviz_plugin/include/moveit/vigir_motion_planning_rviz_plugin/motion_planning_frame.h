@@ -34,8 +34,8 @@
 
 /* Author: Ioan Sucan */
 
-#ifndef MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_FRAME_
-#define MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_FRAME_
+#ifndef VIGIR_MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_FRAME_
+#define VIGIR_MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_FRAME_
 
 #include <QWidget>
 #include <QTreeWidgetItem>
@@ -78,7 +78,7 @@ class ConstraintsStorage;
 class RobotStateStorage;
 }
 
-namespace moveit_rviz_plugin
+namespace vigir_moveit_rviz_plugin
 {
 class MotionPlanningDisplay;
 

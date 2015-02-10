@@ -38,8 +38,8 @@
 #include <moveit/warehouse/constraints_storage.h>
 #include <moveit/warehouse/state_storage.h>
 
-#include <moveit/motion_planning_rviz_plugin/motion_planning_frame.h>
-#include <moveit/motion_planning_rviz_plugin/motion_planning_display.h>
+#include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_frame.h>
+#include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_display.h>
 
 #include <rviz/display_context.h>
 #include <rviz/window_manager_interface.h>
@@ -49,7 +49,7 @@
 
 #include "ui_motion_planning_rviz_plugin_frame.h"
 
-namespace moveit_rviz_plugin
+namespace vigir_moveit_rviz_plugin
 {
 
 void MotionPlanningFrame::databaseConnectButtonClicked()

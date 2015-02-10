@@ -34,8 +34,8 @@
 
 /* Author: Ioan Sucan */
 
-#include <moveit/motion_planning_rviz_plugin/motion_planning_frame.h>
-#include <moveit/motion_planning_rviz_plugin/motion_planning_display.h>
+#include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_frame.h>
+#include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_display.h>
 #include <moveit/move_group/capability_names.h>
 
 #include <geometric_shapes/shape_operations.h>
@@ -51,7 +51,7 @@
 
 #include "ui_motion_planning_rviz_plugin_frame.h"
 
-namespace moveit_rviz_plugin
+namespace vigir_moveit_rviz_plugin
 {
 
 MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay *pdisplay, rviz::DisplayContext *context, QWidget *parent) :

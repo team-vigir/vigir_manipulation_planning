@@ -1,8 +1,8 @@
 
 # Header files that need Qt Moc pre-processing for use with Qt signals, etc:
 set( headers
-  include/moveit/motion_planning_rviz_plugin/motion_planning_display.h
-  include/moveit/motion_planning_rviz_plugin/motion_planning_frame.h
+  include/moveit/vigir_motion_planning_rviz_plugin/motion_planning_display.h
+  include/moveit/vigir_motion_planning_rviz_plugin/motion_planning_frame.h
 )
 
 # Convert the Qt Signals and Slots for QWidget events
@@ -26,10 +26,10 @@ set(SOURCE_FILES
   src/motion_planning_frame_manipulation.cpp
 )
 
-set(MOVEIT_LIB_NAME moveit_motion_planning_rviz_plugin)
+set(MOVEIT_LIB_NAME vigir_moveit_motion_planning_rviz_plugin)
 add_library(${MOVEIT_LIB_NAME}_core ${SOURCE_FILES} ${MOC_SOURCES} ${UIC_FILES})
 target_link_libraries(${MOVEIT_LIB_NAME}_core
-  moveit_rviz_plugin_render_tools
+  #vigir_moveit_rviz_plugin_render_tools
   moveit_planning_scene_rviz_plugin_core
   ${catkin_LIBRARIES} ${OGRE_LIBRARIES} ${QT_LIBRARIES} ${Boost_LIBRARIES})
 
