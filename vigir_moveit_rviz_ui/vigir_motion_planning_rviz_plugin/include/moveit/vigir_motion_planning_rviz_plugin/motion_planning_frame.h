@@ -112,11 +112,11 @@ protected:
   rviz::DisplayContext* context_;
   Ui::MotionPlanningUI *ui_;
 
-  boost::shared_ptr<moveit::planning_interface::MoveGroup> move_group_;
+  boost::shared_ptr<moveit::planning_interface::VigirMoveGroup> move_group_;
   boost::shared_ptr<moveit::planning_interface::PlanningSceneInterface> planning_scene_interface_;
   boost::shared_ptr<moveit::semantic_world::SemanticWorld> semantic_world_;
 
-  boost::shared_ptr<moveit::planning_interface::MoveGroup::Plan> current_plan_;
+  boost::shared_ptr<moveit::planning_interface::VigirMoveGroup::Plan> current_plan_;
   boost::shared_ptr<moveit_warehouse::PlanningSceneStorage> planning_scene_storage_;
   boost::shared_ptr<moveit_warehouse::ConstraintsStorage> constraints_storage_;
   boost::shared_ptr<moveit_warehouse::RobotStateStorage> robot_state_storage_;

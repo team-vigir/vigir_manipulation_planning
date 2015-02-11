@@ -27,6 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   rosconsole
   cmake_modules
+  vigir_planning_msgs
 )
 find_package(Eigen REQUIRED)
 
@@ -51,6 +52,7 @@ catkin_package(
     moveit_ros_warehouse 
     moveit_ros_manipulation
     moveit_ros_move_group
+    vigir_planning_msgs
     )
 
 include_directories(${THIS_PACKAGE_INCLUDE_DIRS} 

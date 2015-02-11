@@ -279,13 +279,13 @@ void MotionPlanningFrame::changePlanningGroupHelper()
     if (move_group_ && move_group_->getName() == group)
       return;
     ROS_INFO("Constructing new MoveGroup connection for group '%s' in namespace '%s'", group.c_str(), planning_display_->getMoveGroupNS().c_str());
-    moveit::planning_interface::MoveGroup::Options opt(group);
+    moveit::planning_interface::VigirMoveGroup::Options opt(group);
     opt.robot_model_ = kmodel;
     opt.robot_description_.clear(); 
     opt.node_handle_ = ros::NodeHandle(planning_display_->getMoveGroupNS());
     try
     {
-      move_group_.reset(new moveit::planning_interface::MoveGroup(opt, context_->getFrameManager()->getTFClientPtr(), ros::Duration(30, 0)));
+      move_group_.reset(new moveit::planning_interface::VigirMoveGroup(opt, context_->getFrameManager()->getTFClientPtr(), ros::Duration(30, 0)));
       if (planning_scene_storage_)
         move_group_->setConstraintsDatabase(ui_->database_host->text().toStdString(), ui_->database_port->value());
     }

@@ -34,7 +34,7 @@
 
 /* Author: Ioan Sucan */
 
-#include <moveit/move_group_interface/move_group.h>
+#include <moveit/vigir_move_group_interface/move_group.h>
 #include <moveit/py_bindings_tools/roscpp_initializer.h>
 #include <moveit/py_bindings_tools/py_conversions.h>
 #include <moveit/py_bindings_tools/serialize_msg.h>
@@ -54,15 +54,15 @@ namespace moveit
 namespace planning_interface
 {
 
-class MoveGroupWrapper : protected py_bindings_tools::ROScppInitializer,
-                         public MoveGroup
+class VigirMoveGroupWrapper : protected py_bindings_tools::ROScppInitializer,
+                         public VigirMoveGroup
 {
 public:
 
   // ROSInitializer is constructed first, and ensures ros::init() was called, if needed
-  MoveGroupWrapper(const std::string &group_name, const std::string &robot_description) :
+  VigirMoveGroupWrapper(const std::string &group_name, const std::string &robot_description) :
     py_bindings_tools::ROScppInitializer(),
-    MoveGroup(Options(group_name, robot_description), boost::shared_ptr<tf::Transformer>(), ros::Duration(5, 0))
+    VigirMoveGroup(Options(group_name, robot_description), boost::shared_ptr<tf::Transformer>(), ros::Duration(5, 0))
   {
   }
 
@@ -338,15 +338,15 @@ public:
 
   bool executePython(const std::string &plan_str)
   {
-    MoveGroup::Plan plan;
+    VigirMoveGroup::Plan plan;
     py_bindings_tools::deserializeMsg(plan_str, plan.trajectory_);
     return execute(plan);
   }
 
   std::string getPlanPython()
   {
-    MoveGroup::Plan plan;
-    MoveGroup::plan(plan);
+    VigirMoveGroup::Plan plan;
+    VigirMoveGroup::plan(plan);
     return py_bindings_tools::serializeMsg(plan.trajectory_);
   }
 
@@ -393,106 +393,106 @@ public:
 
 static void wrap_move_group_interface()
 {
-  bp::class_<MoveGroupWrapper> MoveGroupClass("MoveGroup", bp::init<std::string, std::string>());
+  bp::class_<VigirMoveGroupWrapper> VigirMoveGroupClass("VigirMoveGroup", bp::init<std::string, std::string>());
 
-  MoveGroupClass.def("async_move", &MoveGroupWrapper::asyncMovePython);
-  MoveGroupClass.def("move", &MoveGroupWrapper::movePython);
-  MoveGroupClass.def("execute", &MoveGroupWrapper::executePython);
-  moveit::planning_interface::MoveItErrorCode (MoveGroupWrapper::*pick_1)(const std::string&) = &MoveGroupWrapper::pick;
-  MoveGroupClass.def("pick", pick_1);
-  MoveGroupClass.def("pick", &MoveGroupWrapper::pickGrasp);
-  MoveGroupClass.def("pick", &MoveGroupWrapper::pickGrasps);
-  MoveGroupClass.def("place", &MoveGroupWrapper::placePose);
-  MoveGroupClass.def("place", &MoveGroupWrapper::placeLocation);
-  MoveGroupClass.def("place", &MoveGroupWrapper::placeAnywhere);
-  MoveGroupClass.def("stop", &MoveGroupWrapper::stop);
+  VigirMoveGroupClass.def("async_move", &VigirMoveGroupWrapper::asyncMovePython);
+  VigirMoveGroupClass.def("move", &VigirMoveGroupWrapper::movePython);
+  VigirMoveGroupClass.def("execute", &VigirMoveGroupWrapper::executePython);
+  moveit::planning_interface::MoveItErrorCode (VigirMoveGroupWrapper::*pick_1)(const std::string&) = &VigirMoveGroupWrapper::pick;
+  VigirMoveGroupClass.def("pick", pick_1);
+  VigirMoveGroupClass.def("pick", &VigirMoveGroupWrapper::pickGrasp);
+  VigirMoveGroupClass.def("pick", &VigirMoveGroupWrapper::pickGrasps);
+  VigirMoveGroupClass.def("place", &VigirMoveGroupWrapper::placePose);
+  VigirMoveGroupClass.def("place", &VigirMoveGroupWrapper::placeLocation);
+  VigirMoveGroupClass.def("place", &VigirMoveGroupWrapper::placeAnywhere);
+  VigirMoveGroupClass.def("stop", &VigirMoveGroupWrapper::stop);
 
-  MoveGroupClass.def("get_name", &MoveGroupWrapper::getNameCStr);
-  MoveGroupClass.def("get_planning_frame", &MoveGroupWrapper::getPlanningFrameCStr);
+  VigirMoveGroupClass.def("get_name", &VigirMoveGroupWrapper::getNameCStr);
+  VigirMoveGroupClass.def("get_planning_frame", &VigirMoveGroupWrapper::getPlanningFrameCStr);
 
-  MoveGroupClass.def("get_active_joints", &MoveGroupWrapper::getActiveJointsList);
-  MoveGroupClass.def("get_joints", &MoveGroupWrapper::getJointsList);
-  MoveGroupClass.def("get_variable_count", &MoveGroupWrapper::getVariableCount);
-  MoveGroupClass.def("allow_looking", &MoveGroupWrapper::allowLooking);
-  MoveGroupClass.def("allow_replanning", &MoveGroupWrapper::allowReplanning);
+  VigirMoveGroupClass.def("get_active_joints", &VigirMoveGroupWrapper::getActiveJointsList);
+  VigirMoveGroupClass.def("get_joints", &VigirMoveGroupWrapper::getJointsList);
+  VigirMoveGroupClass.def("get_variable_count", &VigirMoveGroupWrapper::getVariableCount);
+  VigirMoveGroupClass.def("allow_looking", &VigirMoveGroupWrapper::allowLooking);
+  VigirMoveGroupClass.def("allow_replanning", &VigirMoveGroupWrapper::allowReplanning);
 
-  MoveGroupClass.def("set_pose_reference_frame", &MoveGroupWrapper::setPoseReferenceFrame);
+  VigirMoveGroupClass.def("set_pose_reference_frame", &VigirMoveGroupWrapper::setPoseReferenceFrame);
 
-  MoveGroupClass.def("set_pose_reference_frame", &MoveGroupWrapper::setPoseReferenceFrame);
-  MoveGroupClass.def("set_end_effector_link", &MoveGroupWrapper::setEndEffectorLink);
-  MoveGroupClass.def("get_end_effector_link", &MoveGroupWrapper::getEndEffectorLinkCStr);
-  MoveGroupClass.def("get_pose_reference_frame", &MoveGroupWrapper::getPoseReferenceFrameCStr);
+  VigirMoveGroupClass.def("set_pose_reference_frame", &VigirMoveGroupWrapper::setPoseReferenceFrame);
+  VigirMoveGroupClass.def("set_end_effector_link", &VigirMoveGroupWrapper::setEndEffectorLink);
+  VigirMoveGroupClass.def("get_end_effector_link", &VigirMoveGroupWrapper::getEndEffectorLinkCStr);
+  VigirMoveGroupClass.def("get_pose_reference_frame", &VigirMoveGroupWrapper::getPoseReferenceFrameCStr);
 
-  MoveGroupClass.def("set_pose_target", &MoveGroupWrapper::setPoseTargetPython);
+  VigirMoveGroupClass.def("set_pose_target", &VigirMoveGroupWrapper::setPoseTargetPython);
 
-  MoveGroupClass.def("set_pose_targets", &MoveGroupWrapper::setPoseTargetsPython);
+  VigirMoveGroupClass.def("set_pose_targets", &VigirMoveGroupWrapper::setPoseTargetsPython);
 
-  MoveGroupClass.def("set_position_target", &MoveGroupWrapper::setPositionTarget);
-  MoveGroupClass.def("set_rpy_target", &MoveGroupWrapper::setRPYTarget);
-  MoveGroupClass.def("set_orientation_target", &MoveGroupWrapper::setOrientationTarget);
+  VigirMoveGroupClass.def("set_position_target", &VigirMoveGroupWrapper::setPositionTarget);
+  VigirMoveGroupClass.def("set_rpy_target", &VigirMoveGroupWrapper::setRPYTarget);
+  VigirMoveGroupClass.def("set_orientation_target", &VigirMoveGroupWrapper::setOrientationTarget);
 
-  MoveGroupClass.def("get_current_pose", &MoveGroupWrapper::getCurrentPosePython);
-  MoveGroupClass.def("get_current_rpy", &MoveGroupWrapper::getCurrentRPYPython);
+  VigirMoveGroupClass.def("get_current_pose", &VigirMoveGroupWrapper::getCurrentPosePython);
+  VigirMoveGroupClass.def("get_current_rpy", &VigirMoveGroupWrapper::getCurrentRPYPython);
 
-  MoveGroupClass.def("get_random_pose", &MoveGroupWrapper::getRandomPosePython);
+  VigirMoveGroupClass.def("get_random_pose", &VigirMoveGroupWrapper::getRandomPosePython);
 
-  MoveGroupClass.def("clear_pose_target", &MoveGroupWrapper::clearPoseTarget);
-  MoveGroupClass.def("clear_pose_targets", &MoveGroupWrapper::clearPoseTargets);
+  VigirMoveGroupClass.def("clear_pose_target", &VigirMoveGroupWrapper::clearPoseTarget);
+  VigirMoveGroupClass.def("clear_pose_targets", &VigirMoveGroupWrapper::clearPoseTargets);
 
-  MoveGroupClass.def("set_joint_value_target", &MoveGroupWrapper::setJointValueTargetPythonList);
-  MoveGroupClass.def("set_joint_value_target", &MoveGroupWrapper::setJointValueTargetPythonDict);
+  VigirMoveGroupClass.def("set_joint_value_target", &VigirMoveGroupWrapper::setJointValueTargetPythonList);
+  VigirMoveGroupClass.def("set_joint_value_target", &VigirMoveGroupWrapper::setJointValueTargetPythonDict);
 
-  MoveGroupClass.def("set_joint_value_target", &MoveGroupWrapper::setJointValueTargetPerJointPythonList);
-  bool (MoveGroupWrapper::*setJointValueTarget_4)(const std::string&, double) = &MoveGroupWrapper::setJointValueTarget;
-  MoveGroupClass.def("set_joint_value_target", setJointValueTarget_4);
+  VigirMoveGroupClass.def("set_joint_value_target", &VigirMoveGroupWrapper::setJointValueTargetPerJointPythonList);
+  bool (VigirMoveGroupWrapper::*setJointValueTarget_4)(const std::string&, double) = &VigirMoveGroupWrapper::setJointValueTarget;
+  VigirMoveGroupClass.def("set_joint_value_target", setJointValueTarget_4);
 
-  MoveGroupClass.def("set_joint_value_target_from_pose", &MoveGroupWrapper::setJointValueTargetFromPosePython);
-  MoveGroupClass.def("set_joint_value_target_from_pose_stamped", &MoveGroupWrapper::setJointValueTargetFromPoseStampedPython);
-  MoveGroupClass.def("set_joint_value_target_from_joint_state_message", &MoveGroupWrapper::setJointValueTargetFromJointStatePython);
+  VigirMoveGroupClass.def("set_joint_value_target_from_pose", &VigirMoveGroupWrapper::setJointValueTargetFromPosePython);
+  VigirMoveGroupClass.def("set_joint_value_target_from_pose_stamped", &VigirMoveGroupWrapper::setJointValueTargetFromPoseStampedPython);
+  VigirMoveGroupClass.def("set_joint_value_target_from_joint_state_message", &VigirMoveGroupWrapper::setJointValueTargetFromJointStatePython);
 
-  MoveGroupClass.def("set_named_target", &MoveGroupWrapper::setNamedTarget);
-  MoveGroupClass.def("set_random_target", &MoveGroupWrapper::setRandomTarget);
+  VigirMoveGroupClass.def("set_named_target", &VigirMoveGroupWrapper::setNamedTarget);
+  VigirMoveGroupClass.def("set_random_target", &VigirMoveGroupWrapper::setRandomTarget);
 
-  void (MoveGroupWrapper::*rememberJointValues_2)(const std::string&) = &MoveGroupWrapper::rememberJointValues;
-  MoveGroupClass.def("remember_joint_values", rememberJointValues_2);
+  void (VigirMoveGroupWrapper::*rememberJointValues_2)(const std::string&) = &VigirMoveGroupWrapper::rememberJointValues;
+  VigirMoveGroupClass.def("remember_joint_values", rememberJointValues_2);
 
-  MoveGroupClass.def("remember_joint_values",  &MoveGroupWrapper::rememberJointValuesFromPythonList);
+  VigirMoveGroupClass.def("remember_joint_values",  &VigirMoveGroupWrapper::rememberJointValuesFromPythonList);
 
-  MoveGroupClass.def("start_state_monitor",  &MoveGroupWrapper::startStateMonitor);
-  MoveGroupClass.def("get_current_joint_values",  &MoveGroupWrapper::getCurrentJointValuesList);
-  MoveGroupClass.def("get_random_joint_values",  &MoveGroupWrapper::getRandomJointValuesList);
-  MoveGroupClass.def("get_remembered_joint_values",  &MoveGroupWrapper::getRememberedJointValuesPython);
+  VigirMoveGroupClass.def("start_state_monitor",  &VigirMoveGroupWrapper::startStateMonitor);
+  VigirMoveGroupClass.def("get_current_joint_values",  &VigirMoveGroupWrapper::getCurrentJointValuesList);
+  VigirMoveGroupClass.def("get_random_joint_values",  &VigirMoveGroupWrapper::getRandomJointValuesList);
+  VigirMoveGroupClass.def("get_remembered_joint_values",  &VigirMoveGroupWrapper::getRememberedJointValuesPython);
 
-  MoveGroupClass.def("forget_joint_values", &MoveGroupWrapper::forgetJointValues);
+  VigirMoveGroupClass.def("forget_joint_values", &VigirMoveGroupWrapper::forgetJointValues);
 
-  MoveGroupClass.def("get_goal_joint_tolerance", &MoveGroupWrapper::getGoalJointTolerance);
-  MoveGroupClass.def("get_goal_position_tolerance", &MoveGroupWrapper::getGoalPositionTolerance);
-  MoveGroupClass.def("get_goal_orientation_tolerance", &MoveGroupWrapper::getGoalOrientationTolerance);
+  VigirMoveGroupClass.def("get_goal_joint_tolerance", &VigirMoveGroupWrapper::getGoalJointTolerance);
+  VigirMoveGroupClass.def("get_goal_position_tolerance", &VigirMoveGroupWrapper::getGoalPositionTolerance);
+  VigirMoveGroupClass.def("get_goal_orientation_tolerance", &VigirMoveGroupWrapper::getGoalOrientationTolerance);
 
-  MoveGroupClass.def("set_goal_joint_tolerance", &MoveGroupWrapper::setGoalJointTolerance);
-  MoveGroupClass.def("set_goal_position_tolerance", &MoveGroupWrapper::setGoalPositionTolerance);
-  MoveGroupClass.def("set_goal_orientation_tolerance", &MoveGroupWrapper::setGoalOrientationTolerance);
-  MoveGroupClass.def("set_goal_tolerance", &MoveGroupWrapper::setGoalTolerance);
+  VigirMoveGroupClass.def("set_goal_joint_tolerance", &VigirMoveGroupWrapper::setGoalJointTolerance);
+  VigirMoveGroupClass.def("set_goal_position_tolerance", &VigirMoveGroupWrapper::setGoalPositionTolerance);
+  VigirMoveGroupClass.def("set_goal_orientation_tolerance", &VigirMoveGroupWrapper::setGoalOrientationTolerance);
+  VigirMoveGroupClass.def("set_goal_tolerance", &VigirMoveGroupWrapper::setGoalTolerance);
 
-  MoveGroupClass.def("set_start_state_to_current_state", &MoveGroupWrapper::setStartStateToCurrentState);
-  MoveGroupClass.def("set_start_state", &MoveGroupWrapper::setStartStatePython);
+  VigirMoveGroupClass.def("set_start_state_to_current_state", &VigirMoveGroupWrapper::setStartStateToCurrentState);
+  VigirMoveGroupClass.def("set_start_state", &VigirMoveGroupWrapper::setStartStatePython);
 
-  bool (MoveGroupWrapper::*setPathConstraints_1)(const std::string&) = &MoveGroupWrapper::setPathConstraints;
-  MoveGroupClass.def("set_path_constraints", setPathConstraints_1);
-  MoveGroupClass.def("set_path_constraints_from_msg", &MoveGroupWrapper::setPathConstraintsFromMsg);
-  MoveGroupClass.def("get_path_constraints", &MoveGroupWrapper::getPathConstraintsPython);
-  MoveGroupClass.def("clear_path_constraints", &MoveGroupWrapper::clearPathConstraints);
-  MoveGroupClass.def("get_known_constraints", &MoveGroupWrapper::getKnownConstraintsList);
-  MoveGroupClass.def("set_constraints_database", &MoveGroupWrapper::setConstraintsDatabase);
-  MoveGroupClass.def("set_workspace", &MoveGroupWrapper::setWorkspace);
-  MoveGroupClass.def("set_planning_time", &MoveGroupWrapper::setPlanningTime);
-  MoveGroupClass.def("get_planning_time", &MoveGroupWrapper::getPlanningTime);
-  MoveGroupClass.def("set_planner_id", &MoveGroupWrapper::setPlannerId);
-  MoveGroupClass.def("compute_plan", &MoveGroupWrapper::getPlanPython);
-  MoveGroupClass.def("compute_cartesian_path", &MoveGroupWrapper::computeCartesianPathPython);
-  MoveGroupClass.def("set_support_surface_name", &MoveGroupWrapper::setSupportSurfaceName);
-  MoveGroupClass.def("attach_object", &MoveGroupWrapper::attachObjectPython);
-  MoveGroupClass.def("detach_object", &MoveGroupWrapper::detachObject);
+  bool (VigirMoveGroupWrapper::*setPathConstraints_1)(const std::string&) = &VigirMoveGroupWrapper::setPathConstraints;
+  VigirMoveGroupClass.def("set_path_constraints", setPathConstraints_1);
+  VigirMoveGroupClass.def("set_path_constraints_from_msg", &VigirMoveGroupWrapper::setPathConstraintsFromMsg);
+  VigirMoveGroupClass.def("get_path_constraints", &VigirMoveGroupWrapper::getPathConstraintsPython);
+  VigirMoveGroupClass.def("clear_path_constraints", &VigirMoveGroupWrapper::clearPathConstraints);
+  VigirMoveGroupClass.def("get_known_constraints", &VigirMoveGroupWrapper::getKnownConstraintsList);
+  VigirMoveGroupClass.def("set_constraints_database", &VigirMoveGroupWrapper::setConstraintsDatabase);
+  VigirMoveGroupClass.def("set_workspace", &VigirMoveGroupWrapper::setWorkspace);
+  VigirMoveGroupClass.def("set_planning_time", &VigirMoveGroupWrapper::setPlanningTime);
+  VigirMoveGroupClass.def("get_planning_time", &VigirMoveGroupWrapper::getPlanningTime);
+  VigirMoveGroupClass.def("set_planner_id", &VigirMoveGroupWrapper::setPlannerId);
+  VigirMoveGroupClass.def("compute_plan", &VigirMoveGroupWrapper::getPlanPython);
+  VigirMoveGroupClass.def("compute_cartesian_path", &VigirMoveGroupWrapper::computeCartesianPathPython);
+  VigirMoveGroupClass.def("set_support_surface_name", &VigirMoveGroupWrapper::setSupportSurfaceName);
+  VigirMoveGroupClass.def("attach_object", &VigirMoveGroupWrapper::attachObjectPython);
+  VigirMoveGroupClass.def("detach_object", &VigirMoveGroupWrapper::detachObject);
 }
 
 }

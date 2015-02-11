@@ -35,8 +35,8 @@
 
 /* Author: Ioan Sucan, Sachin Chitta */
 
-#ifndef MOVEIT_MOVE_GROUP_INTERFACE_MOVE_GROUP_
-#define MOVEIT_MOVE_GROUP_INTERFACE_MOVE_GROUP_
+#ifndef VIGIR_MOVEIT_MOVE_GROUP_INTERFACE_MOVE_GROUP_
+#define VIGIR_MOVEIT_MOVE_GROUP_INTERFACE_MOVE_GROUP_
 
 #include <moveit/robot_state/robot_state.h>
 #include <moveit_msgs/RobotTrajectory.h>
@@ -65,15 +65,15 @@ public:
   operator bool() const { return val == moveit_msgs::MoveItErrorCodes::SUCCESS; }
 };
 
-/** \brief Client class for the MoveGroup action. This class includes many default settings to make things easy to use. */
-class MoveGroup
+/** \brief Client class for the VigirMoveGroup action. This class includes many default settings to make things easy to use. */
+class VigirMoveGroup
 {
 public:
 
   /** \brief Default ROS parameter name from where to read the robot's URDF. Set to 'robot_description' */
   static const std::string ROBOT_DESCRIPTION;
 
-  /** \brief Specification of options to use when constructing the MoveGroup client class */
+  /** \brief Specification of options to use when constructing the VigirMoveGroup client class */
   struct Options
   {
     Options(const std::string &group_name,
@@ -110,19 +110,19 @@ public:
     double planning_time_;
   };
 
-  /** \brief Construct a client for the MoveGroup action using a specified set of options \e opt. Optionally, specify a TF instance to use.
+  /** \brief Construct a client for the VigirMoveGroup action using a specified set of options \e opt. Optionally, specify a TF instance to use.
       If not specified, one will be constructed internally. A timeout for connecting to the action server can also be specified. If it is not specified,
       the wait time is unlimited. */
-  MoveGroup(const Options &opt, const boost::shared_ptr<tf::Transformer> &tf = boost::shared_ptr<tf::Transformer>(),
+  VigirMoveGroup(const Options &opt, const boost::shared_ptr<tf::Transformer> &tf = boost::shared_ptr<tf::Transformer>(),
             const ros::Duration &wait_for_server = ros::Duration(0, 0));
 
-  /** \brief Construct a client for the MoveGroup action for a particular \e group. Optionally, specify a TF instance to use.
+  /** \brief Construct a client for the VigirMoveGroup action for a particular \e group. Optionally, specify a TF instance to use.
       If not specified, one will be constructed internally. A timeout for connecting to the action server can also be specified. If it is not specified,
       the wait time is unlimited. */
-  MoveGroup(const std::string &group, const boost::shared_ptr<tf::Transformer> &tf = boost::shared_ptr<tf::Transformer>(),
+  VigirMoveGroup(const std::string &group, const boost::shared_ptr<tf::Transformer> &tf = boost::shared_ptr<tf::Transformer>(),
             const ros::Duration &wait_for_server = ros::Duration(0, 0));
 
-  ~MoveGroup();
+  ~VigirMoveGroup();
 
   /** \brief Get the name of the group this instance operates on */
   const std::string& getName() const;
@@ -189,7 +189,7 @@ public:
 
   /** \brief Specify the workspace bounding box.
        The box is specified in the planning frame (i.e. relative to the robot root link start position).
-       This is useful when the MoveGroup's group contains the root joint of the robot -- i.e. when planning motion for the robot relative to the world. */
+       This is useful when the VigirMoveGroup's group contains the root joint of the robot -- i.e. when planning motion for the robot relative to the world. */
   void setWorkspace(double minx, double miny, double minz, double maxx, double maxy, double maxz);
 
   /** \brief If a different start state should be considered instead of the current state of the robot, this function sets that state */
@@ -735,7 +735,7 @@ public:
   /** \brief Get the names of the constraints known as read from the MongoDB server, if a connection was achieved. */
   std::vector<std::string> getKnownConstraints() const;
 
-  /** \brief Get the actual set of constraints for this MoveGroup. 
+  /** \brief Get the actual set of constraints for this VigirMoveGroup.
       @return A copy of the current path constraints set for this move_group
       */
   moveit_msgs::Constraints getPathConstraints() const;
@@ -759,8 +759,8 @@ public:
 private:
 
   std::map<std::string, std::vector<double> > remembered_joint_values_;
-  class MoveGroupImpl;
-  MoveGroupImpl *impl_;
+  class VigirMoveGroupImpl;
+  VigirMoveGroupImpl *impl_;
 
 };
 
