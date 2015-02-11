@@ -18,5 +18,5 @@ install(TARGETS ${MOVEIT_LIB_NAME}_python
 
 install(DIRECTORY include/ DESTINATION include)
 
-add_executable(demo src/demo.cpp)
-target_link_libraries(demo ${MOVEIT_LIB_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+#add_executable(demo src/demo.cpp)
+#target_link_libraries(demo ${MOVEIT_LIB_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES})

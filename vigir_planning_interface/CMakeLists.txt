@@ -34,7 +34,7 @@ set(THIS_PACKAGE_INCLUDE_DIRS
   py_bindings_tools/include
   common_planning_interface_objects/include
   planning_scene_interface/include
-  move_group_interface/include
+  vigir_move_group_interface/include
 )
 
 catkin_python_setup()
@@ -43,7 +43,7 @@ catkin_package(
   LIBRARIES
     moveit_common_planning_interface_objects
     moveit_planning_scene_interface
-    moveit_move_group_interface
+    vigir_move_group_interface
   INCLUDE_DIRS
     ${THIS_PACKAGE_INCLUDE_DIRS}
   CATKIN_DEPENDS
@@ -67,6 +67,6 @@ link_directories(${catkin_LIBRARY_DIRS})
 #add_subdirectory(py_bindings_tools)
 #add_subdirectory(common_planning_interface_objects)
 #add_subdirectory(planning_scene_interface)
-add_subdirectory(move_group_interface)
+add_subdirectory(vigir_move_group_interface)
 #add_subdirectory(robot_interface)
 
