@@ -58,7 +58,7 @@ void move_group::MoveGroupManipulationAction::initialize()
 
 
   // start the move action server MOVE_ACTION
-  move_action_server_.reset(new actionlib::SimpleActionServer<moveit_msgs::MoveGroupAction>(root_node_handle_, MOVE_ACTION, //"manipulation_action",
+  move_action_server_.reset(new actionlib::SimpleActionServer<moveit_msgs::MoveGroupAction>(root_node_handle_, "vigir_move_group",
                                                                                             boost::bind(&MoveGroupManipulationAction::executeMoveCallback, this, _1), false));
   move_action_server_->registerPreemptCallback(boost::bind(&MoveGroupManipulationAction::preemptMoveCallback, this));
   move_action_server_->start();
@@ -70,14 +70,26 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const moveit_m
   context_->planning_scene_monitor_->updateFrameTransforms();
 
   moveit_msgs::MoveGroupResult action_res;
-  if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
-  {
-    if (!goal->planning_options.plan_only)
-      ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
-    executeMoveCallback_PlanOnly(goal, action_res);
+
+  if (goal->request.planner_id == "drake"){
+    // @DRAKE Plan using Drake here. Alternatively, could also implement alternative callback below where @DRAKE is marked
+    ROS_WARN("Planning using Drake requested, but not implemented yet!");
+    action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+  }else{
+
+
+    if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
+    {
+      if (!goal->planning_options.plan_only)
+        ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
+      executeMoveCallback_PlanOnly(goal, action_res);
+    }
+    else
+    {
+      executeMoveCallback_PlanAndExecute(goal, action_res);
+    }
+
   }
-  else
-    executeMoveCallback_PlanAndExecute(goal, action_res);
 
   bool planned_trajectory_empty = trajectory_processing::isTrajectoryEmpty(action_res.planned_trajectory);
   std::string response = getActionResultString(action_res.error_code, planned_trajectory_empty, goal->planning_options.plan_only);
@@ -126,6 +138,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
   opt.replan_delay_ = goal->planning_options.replan_delay;
   opt.before_execution_callback_ = boost::bind(&MoveGroupManipulationAction::startMoveExecutionCallback, this);
 
+  // @DRAKE: Could implement callback for Drake
   opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
   if (goal->planning_options.look_around && context_->plan_with_sensing_)
   {

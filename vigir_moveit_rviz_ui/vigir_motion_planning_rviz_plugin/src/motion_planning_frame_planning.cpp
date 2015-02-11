@@ -252,6 +252,7 @@ void MotionPlanningFrame::populatePlannersList(const moveit_msgs::PlannerInterfa
     for (std::size_t i = 0 ; i < desc.planner_ids.size() ; ++i)
       ui_->planning_algorithm_combo_box->addItem(QString::fromStdString(desc.planner_ids[i]));
   ui_->planning_algorithm_combo_box->insertItem(0, "<unspecified>");
+  ui_->planning_algorithm_combo_box->insertItem(1, "drake");
   ui_->planning_algorithm_combo_box->setCurrentIndex(0);
 }
 
