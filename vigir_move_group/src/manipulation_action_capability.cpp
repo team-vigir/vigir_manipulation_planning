@@ -58,18 +58,19 @@ void move_group::MoveGroupManipulationAction::initialize()
 
 
   // start the move action server MOVE_ACTION
-  move_action_server_.reset(new actionlib::SimpleActionServer<moveit_msgs::MoveGroupAction>(root_node_handle_, "vigir_move_group",
+  move_action_server_.reset(new actionlib::SimpleActionServer<vigir_planning_msgs::MoveAction>(root_node_handle_, "vigir_move_group",
                                                                                             boost::bind(&MoveGroupManipulationAction::executeMoveCallback, this, _1), false));
   move_action_server_->registerPreemptCallback(boost::bind(&MoveGroupManipulationAction::preemptMoveCallback, this));
   move_action_server_->start();
 }
 
-void move_group::MoveGroupManipulationAction::executeMoveCallback(const moveit_msgs::MoveGroupGoalConstPtr& goal)
+void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal)
 {
   setMoveState(PLANNING);
   context_->planning_scene_monitor_->updateFrameTransforms();
 
-  moveit_msgs::MoveGroupResult action_res;
+  vigir_planning_msgs::MoveResult action_res;
+  //goal->extended_planning_options;
 
   if (goal->request.planner_id == "drake"){
     // @DRAKE Plan using Drake here. Alternatively, could also implement alternative callback below where @DRAKE is marked
@@ -106,7 +107,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const moveit_m
   setMoveState(IDLE);
 }
 
-void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute(const moveit_msgs::MoveGroupGoalConstPtr& goal, moveit_msgs::MoveGroupResult &action_res)
+void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
 {
   ROS_INFO("Combined planning and execution request received for MoveGroup action. Forwarding to planning and execution pipeline.");
 
@@ -163,7 +164,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
   action_res.error_code = plan.error_code_;
 }
 
-void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanOnly(const moveit_msgs::MoveGroupGoalConstPtr& goal, moveit_msgs::MoveGroupResult &action_res)
+void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
 {
   ROS_INFO("Planning request received for MoveGroup action. Forwarding to planning pipeline.");
 

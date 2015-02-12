@@ -39,7 +39,8 @@
 
 #include <moveit/move_group/move_group_capability.h>
 #include <actionlib/server/simple_action_server.h>
-#include <moveit_msgs/MoveGroupAction.h>
+//#include <moveit_msgs/MoveGroupAction.h>
+#include <vigir_planning_msgs/MoveAction.h>
 
 #include <vigir_moveit_utils/trajectory_utils.h>
 
@@ -56,17 +57,17 @@ public:
 
 private:
 
-  void executeMoveCallback(const moveit_msgs::MoveGroupGoalConstPtr& goal);
-  void executeMoveCallback_PlanAndExecute(const moveit_msgs::MoveGroupGoalConstPtr& goal, moveit_msgs::MoveGroupResult &action_res);
-  void executeMoveCallback_PlanOnly(const moveit_msgs::MoveGroupGoalConstPtr& goal, moveit_msgs::MoveGroupResult &action_res);
+  void executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal);
+  void executeMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
+  void executeMoveCallback_PlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
   void startMoveExecutionCallback();
   void startMoveLookCallback();
   void preemptMoveCallback();
   void setMoveState(MoveGroupState state);
   bool planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan);
 
-  boost::scoped_ptr<actionlib::SimpleActionServer<moveit_msgs::MoveGroupAction> > move_action_server_;
-  moveit_msgs::MoveGroupFeedback move_feedback_;
+  boost::scoped_ptr<actionlib::SimpleActionServer<vigir_planning_msgs::MoveAction> > move_action_server_;
+  vigir_planning_msgs::MoveFeedback move_feedback_;
 
   MoveGroupState move_state_;
 
