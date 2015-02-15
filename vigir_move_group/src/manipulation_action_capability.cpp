@@ -139,29 +139,35 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
   opt.replan_delay_ = goal->planning_options.replan_delay;
   opt.before_execution_callback_ = boost::bind(&MoveGroupManipulationAction::startMoveExecutionCallback, this);
 
-  // @DRAKE: Could implement callback for Drake
-  opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
-  if (goal->planning_options.look_around && context_->plan_with_sensing_)
-  {
-    opt.plan_callback_ = boost::bind(&plan_execution::PlanWithSensing::computePlan, context_->plan_with_sensing_.get(), _1, opt.plan_callback_,
-                                     goal->planning_options.look_around_attempts, goal->planning_options.max_safe_execution_cost);
-    context_->plan_with_sensing_->setBeforeLookCallback(boost::bind(&MoveGroupManipulationAction::startMoveLookCallback, this));
-  }
+  if (goal->extended_planning_options.continuous_replanning){
+    ROS_WARN("Continuous replanning not implemented yet!");
+  }else{
+    // @DRAKE: Could implement callback for Drake and use here
+    opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
+    if (goal->planning_options.look_around && context_->plan_with_sensing_)
+    {
+      opt.plan_callback_ = boost::bind(&plan_execution::PlanWithSensing::computePlan, context_->plan_with_sensing_.get(), _1, opt.plan_callback_,
+                                       goal->planning_options.look_around_attempts, goal->planning_options.max_safe_execution_cost);
+      context_->plan_with_sensing_->setBeforeLookCallback(boost::bind(&MoveGroupManipulationAction::startMoveLookCallback, this));
+    }
 
-  plan_execution::ExecutableMotionPlan plan;
-  context_->plan_execution_->planAndExecute(plan, planning_scene_diff, opt);
 
-  //@TODO: We only consider first plan for visualization at the moment
-  if (plan.plan_components_.size() > 0){
-    planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
-  }
+    plan_execution::ExecutableMotionPlan plan;
+    context_->plan_execution_->planAndExecute(plan, planning_scene_diff, opt);
 
-  convertToMsg(plan.plan_components_, action_res.trajectory_start, action_res.planned_trajectory);
-  if (plan.executed_trajectory_){
-    plan.executed_trajectory_->getRobotTrajectoryMsg(action_res.executed_trajectory);
-    executed_traj_vis_->publishTrajectoryEndeffectorVis(*plan.executed_trajectory_);
+
+    //@TODO: We only consider first plan for visualization at the moment
+    if (plan.plan_components_.size() > 0){
+      planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
+    }
+
+    convertToMsg(plan.plan_components_, action_res.trajectory_start, action_res.planned_trajectory);
+    if (plan.executed_trajectory_){
+      plan.executed_trajectory_->getRobotTrajectoryMsg(action_res.executed_trajectory);
+      executed_traj_vis_->publishTrajectoryEndeffectorVis(*plan.executed_trajectory_);
+    }
+    action_res.error_code = plan.error_code_;
   }
-  action_res.error_code = plan.error_code_;
 }
 
 void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
