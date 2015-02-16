@@ -76,6 +76,13 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
     // @DRAKE Plan using Drake here. Alternatively, could also implement alternative callback below where @DRAKE is marked
     ROS_WARN("Planning using Drake requested, but not implemented yet!");
     action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+  }else if (goal->extended_planning_options.target_poses.size() != 0){
+
+    const boost::shared_ptr<tf::Transformer>& tf = context_->planning_scene_monitor_->getTFClient();
+    tf->waitForTransform(context_->planning_scene_monitor_->getRobotModel()->getModelFrame(), goal->extended_planning_options.target_frame, ros::Time::now(), ros::Duration(0.5));
+
+
+
   }else{
 
 
@@ -140,7 +147,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
   opt.before_execution_callback_ = boost::bind(&MoveGroupManipulationAction::startMoveExecutionCallback, this);
 
   if (goal->extended_planning_options.continuous_replanning){
-    ROS_WARN("Continuous replanning not implemented yet!");
+    ROS_WARN("Continuous replanning not integrated yet!");
   }else{
     // @DRAKE: Could implement callback for Drake and use here
     opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
