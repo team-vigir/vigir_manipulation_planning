@@ -164,9 +164,9 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
 
 
     //@TODO: We only consider first plan for visualization at the moment
-    if (plan.plan_components_.size() > 0){
-      planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
-    }
+    //if (plan.plan_components_.size() > 0){
+    //  planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
+    //}
 
     convertToMsg(plan.plan_components_, action_res.trajectory_start, action_res.planned_trajectory);
     if (plan.executed_trajectory_){
@@ -235,6 +235,8 @@ bool move_group::MoveGroupManipulationAction::planUsingPlanningPipeline(const pl
     plan.plan_components_.resize(1);
     plan.plan_components_[0].trajectory_ = res.trajectory_;
     plan.plan_components_[0].description_ = "plan";
+
+    planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
   }
   plan.error_code_ = res.error_code_;
   return solved;
