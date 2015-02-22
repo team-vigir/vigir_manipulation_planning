@@ -38,7 +38,7 @@ set(THIS_PACKAGE_INCLUDE_DIRS
   vigir_move_group_interface/include
 )
 
-catkin_python_setup()
+#catkin_python_setup()
 
 catkin_package(
   LIBRARIES

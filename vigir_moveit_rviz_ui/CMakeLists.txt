@@ -69,5 +69,5 @@ install(FILES
   vigir_motion_planning_rviz_plugin_description.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
-install(DIRECTORY icons DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})           
+#install(DIRECTORY icons DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})           
                     
