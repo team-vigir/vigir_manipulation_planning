@@ -36,6 +36,7 @@
 
 #include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_frame.h>
 #include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_display.h>
+#include <moveit/vigir_motion_planning_rviz_plugin/manual_cartesian_trajectory_dialog.h>
 #include <moveit/move_group/capability_names.h>
 
 #include <geometric_shapes/shape_operations.h>
@@ -60,6 +61,7 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay *pdisplay, rviz::
   context_(context),
   ui_(new Ui::MotionPlanningUI()),
   first_time_(true),
+  manual_cartesian_trajectory_dialog_(NULL),
   clear_octomap_service_client_(nh_.serviceClient<std_srvs::Empty>(move_group::CLEAR_OCTOMAP_SERVICE_NAME))
 {
   // set up the GUI
@@ -114,7 +116,7 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay *pdisplay, rviz::
   connect( ui_->remove_state_button, SIGNAL( clicked() ), this, SLOT( removeStateButtonClicked() ));
   connect( ui_->clear_states_button, SIGNAL( clicked() ), this, SLOT( clearStatesButtonClicked() ));
   connect( ui_->approximate_ik, SIGNAL( stateChanged(int) ), this, SLOT( approximateIKChanged(int) ));
-
+  connect( ui_->manual_cartesian_trajectory_button, SIGNAL( clicked() ), this, SLOT( cartesianTrajectoryDialogButtonClicked()));
 
   connect( ui_->detect_objects_button, SIGNAL( clicked() ), this, SLOT( detectObjectsButtonClicked() ));
   connect( ui_->pick_button, SIGNAL( clicked() ), this, SLOT( pickObjectButtonClicked() ));
@@ -190,6 +192,15 @@ MotionPlanningFrame::~MotionPlanningFrame()
 void MotionPlanningFrame::approximateIKChanged(int state)
 {
   planning_display_->useApproximateIK(state == Qt::Checked);
+}
+
+void MotionPlanningFrame::cartesianTrajectoryDialogButtonClicked() 
+{
+  if ( manual_cartesian_trajectory_dialog_ == NULL ) {
+    manual_cartesian_trajectory_dialog_ = new ManualCartesianTrajectoryDialog(this);
+  }
+  
+  manual_cartesian_trajectory_dialog_->show();
 }
 
 void MotionPlanningFrame::setItemSelectionInList(const std::string &item_name, bool selection, QListWidget *list)

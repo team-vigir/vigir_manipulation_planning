@@ -61,6 +61,8 @@
 #include <map>
 #include <string>
 
+
+
 namespace rviz
 {
 class DisplayContext;
@@ -81,6 +83,7 @@ class RobotStateStorage;
 namespace vigir_moveit_rviz_plugin
 {
 class MotionPlanningDisplay;
+class ManualCartesianTrajectoryDialog;
 
 const std::string OBJECT_RECOGNITION_ACTION = "/recognize_objects";
 
@@ -190,6 +193,9 @@ private Q_SLOTS:
   void selectedDetectedObjectChanged();
   void detectedObjectChanged(QListWidgetItem *item);
   void selectedSupportSurfaceChanged();  
+  
+  //Testing
+  void cartesianTrajectoryDialogButtonClicked();
 
   //General
   void tabChanged(int index);
@@ -293,6 +299,8 @@ private:
   long unsigned int known_collision_objects_version_;
   bool first_time_;
   ros::ServiceClient clear_octomap_service_client_;
+  
+  ManualCartesianTrajectoryDialog *manual_cartesian_trajectory_dialog_;
 };
 
 // \todo THIS IS REALLY BAD. NEED TO MOVE THIS AND RELATED FUNCTIONALITY OUT OF HERE
