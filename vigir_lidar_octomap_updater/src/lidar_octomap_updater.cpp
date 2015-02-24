@@ -44,7 +44,7 @@
 namespace occupancy_map_monitor
 {
 
-LidarOctomapUpdater::LidarOctomapUpdater() : OccupancyMapUpdater("PointCloudUpdater"),
+LidarOctomapUpdater::LidarOctomapUpdater() : OccupancyMapUpdater("LidarCloudUpdater"),
                                                        private_nh_("~"),
                                                        scale_(1.0),
                                                        padding_(0.0),
@@ -64,9 +64,9 @@ bool LidarOctomapUpdater::setParams(XmlRpc::XmlRpcValue &params)
 {
   try
   {
-    if (!params.hasMember("point_cloud_topic"))
+    if (!params.hasMember("scan_topic"))
       return false;
-    point_cloud_topic_ = static_cast<const std::string&>(params["point_cloud_topic"]);
+    point_cloud_topic_ = static_cast<const std::string&>(params["scan_topic"]);
 
     readXmlParam(params, "max_range", &max_range_);
     readXmlParam(params, "padding_offset", &padding_);
@@ -86,6 +86,10 @@ bool LidarOctomapUpdater::setParams(XmlRpc::XmlRpcValue &params)
 
 bool LidarOctomapUpdater::initialize()
 {
+  wait_duration_ = ros::Duration(0.5);
+
+  cloud_msg.reset(new sensor_msgs::PointCloud2());
+
   tf_ = monitor_->getTFClient();
   shape_mask_.reset(new point_containment_filter::ShapeMask());
   shape_mask_->setTransformCallback(boost::bind(&LidarOctomapUpdater::getShapeTransform, this, _1, _2));
@@ -99,10 +103,10 @@ void LidarOctomapUpdater::start()
   if (point_cloud_subscriber_)
     return;
   /* subscribe to point cloud topic using tf filter*/
-  point_cloud_subscriber_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(root_nh_, point_cloud_topic_, 5);
+  point_cloud_subscriber_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(root_nh_, point_cloud_topic_, 5);
   if (tf_ && !monitor_->getMapFrame().empty())
   {
-    point_cloud_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_subscriber_, *tf_, monitor_->getMapFrame(), 5);
+    point_cloud_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*point_cloud_subscriber_, *tf_, monitor_->getMapFrame(), 5);
     point_cloud_filter_->registerCallback(boost::bind(&LidarOctomapUpdater::cloudMsgCallback, this, _1));
     ROS_INFO("Listening to '%s' using message filter with target frame '%s'", point_cloud_topic_.c_str(), point_cloud_filter_->getTargetFramesString().c_str());
   }
@@ -158,7 +162,7 @@ void LidarOctomapUpdater::updateMask(const sensor_msgs::PointCloud2 &cloud, cons
 {
 }
 
-void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::ConstPtr &cloud_msg)
+void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPtr &scan_msg)
 {
   ROS_DEBUG("Received a new point cloud message");
   ros::WallTime start = ros::WallTime::now();
@@ -168,7 +172,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
 
   /* get transform for cloud into map frame */
   tf::StampedTransform map_H_sensor;
-  if (monitor_->getMapFrame() == cloud_msg->header.frame_id)
+  if (monitor_->getMapFrame() == scan_msg->header.frame_id)
     map_H_sensor.setIdentity();
   else
   {
@@ -176,7 +180,12 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
     {
       try
       {
-        tf_->lookupTransform(monitor_->getMapFrame(), cloud_msg->header.frame_id, cloud_msg->header.stamp, map_H_sensor);
+        ros::Time end_time   = scan_msg->header.stamp + ros::Duration().fromSec(scan_msg->ranges.size()*scan_msg->time_increment) ;
+
+        if(tf_->waitForTransform(monitor_->getMapFrame(), scan_msg->header.frame_id, scan_msg->header.stamp, wait_duration_) &&
+           tf_->waitForTransform(monitor_->getMapFrame(), scan_msg->header.frame_id, end_time, wait_duration_)){
+          tf_->lookupTransform(monitor_->getMapFrame(), scan_msg->header.frame_id, scan_msg->header.stamp, map_H_sensor);
+        }
       }
       catch (tf::TransformException& ex)
       {
@@ -192,6 +201,8 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
   const tf::Vector3 &sensor_origin_tf = map_H_sensor.getOrigin();
   octomap::point3d sensor_origin(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
   Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
+
+  projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), *scan_msg, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity);//||laser_geometry::channel_option::Index);
 
   if (!updateTransformCache(cloud_msg->header.frame_id, cloud_msg->header.stamp))
   {
@@ -250,8 +261,9 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
         if (!isnan(pt_iter[0]) && !isnan(pt_iter[1]) && !isnan(pt_iter[2]))
         {
           /* transform to map frame */
-          tf::Vector3 point_tf = map_H_sensor * tf::Vector3(pt_iter[0], pt_iter[1],
-            pt_iter[2]);
+          //tf::Vector3 point_tf = map_H_sensor * tf::Vector3(pt_iter[0], pt_iter[1],
+          //  pt_iter[2]);
+          tf::Vector3 point_tf (pt_iter[0], pt_iter[1], pt_iter[2]);
 
           /* occupied cell at ray endpoint if ray is shorter than max range and this point
              isn't on a part of the robot*/

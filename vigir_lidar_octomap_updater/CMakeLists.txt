@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_perception
   pluginlib
   roscpp
+  laser_geometry
 )
 
 catkin_package(

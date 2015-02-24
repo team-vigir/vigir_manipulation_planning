@@ -1,0 +1,7 @@
+<library path="libvigir_lidar_octomap_updater">
+  <class name="occupancy_map_monitor/LidarOctomapUpdater" type="occupancy_map_monitor::LidarOctomapUpdater" base_class_type="occupancy_map_monitor::OccupancyMapUpdater">
+    <description>
+    </description>
+  </class>
+
+</library>

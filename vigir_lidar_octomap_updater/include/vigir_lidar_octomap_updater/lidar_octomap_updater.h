@@ -42,8 +42,10 @@
 #include <tf/message_filter.h>
 #include <message_filters/subscriber.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/LaserScan.h>
 #include <moveit/occupancy_map_monitor/occupancy_map_updater.h>
 #include <moveit/point_containment_filter/shape_mask.h>
+#include <laser_geometry/laser_geometry.h>
 
 namespace occupancy_map_monitor
 {
@@ -70,7 +72,7 @@ protected:
 private:
 
   bool getShapeTransform(ShapeHandle h, Eigen::Affine3d &transform) const;
-  void cloudMsgCallback(const sensor_msgs::PointCloud2::ConstPtr &cloud_msg);
+  void cloudMsgCallback(const sensor_msgs::LaserScan::ConstPtr &cloud_msg);
   void stopHelper();
 
   ros::NodeHandle root_nh_;
@@ -86,8 +88,8 @@ private:
   std::string filtered_cloud_topic_;
   ros::Publisher filtered_cloud_publisher_;
 
-  message_filters::Subscriber<sensor_msgs::PointCloud2> *point_cloud_subscriber_;
-  tf::MessageFilter<sensor_msgs::PointCloud2> *point_cloud_filter_;
+  message_filters::Subscriber<sensor_msgs::LaserScan> *point_cloud_subscriber_;
+  tf::MessageFilter<sensor_msgs::LaserScan> *point_cloud_filter_;
 
   /* used to store all cells in the map which a given ray passes through during raycasting.
      we cache this here because it dynamically pre-allocates a lot of memory in its contsructor */
@@ -95,6 +97,10 @@ private:
 
   boost::scoped_ptr<point_containment_filter::ShapeMask> shape_mask_;
   std::vector<int> mask_;
+
+  ros::Duration wait_duration_;
+  boost::shared_ptr<sensor_msgs::PointCloud2> cloud_msg;
+  laser_geometry::LaserProjection projector_;
 
 };
 
