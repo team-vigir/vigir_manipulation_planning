@@ -37,4 +37,4 @@
 #include <class_loader/class_loader.h>
 #include <vigir_lidar_octomap_updater/lidar_octomap_updater.h>
 
-CLASS_LOADER_REGISTER_CLASS( occupancy_map_monitor::LidarCloudOctomapUpdater, occupancy_map_monitor::OccupancyMapUpdater )
+CLASS_LOADER_REGISTER_CLASS( occupancy_map_monitor::LidarOctomapUpdater, occupancy_map_monitor::OccupancyMapUpdater )
