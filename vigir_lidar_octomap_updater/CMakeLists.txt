@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   pluginlib
   roscpp
   laser_geometry
+  laser_filters
 )
 
 catkin_package(

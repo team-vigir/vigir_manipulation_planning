@@ -46,6 +46,7 @@
 #include <moveit/occupancy_map_monitor/occupancy_map_updater.h>
 #include <moveit/point_containment_filter/shape_mask.h>
 #include <laser_geometry/laser_geometry.h>
+#include <filters/filter_chain.h>
 
 namespace occupancy_map_monitor
 {
@@ -101,6 +102,8 @@ private:
   ros::Duration wait_duration_;
   boost::shared_ptr<sensor_msgs::PointCloud2> cloud_msg;
   laser_geometry::LaserProjection projector_;
+  filters::FilterChain<sensor_msgs::LaserScan> filter_chain_;
+  sensor_msgs::LaserScan scan_filtered_;
 
 };
 

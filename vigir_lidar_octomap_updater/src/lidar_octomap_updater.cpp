@@ -51,7 +51,8 @@ LidarOctomapUpdater::LidarOctomapUpdater() : OccupancyMapUpdater("LidarCloudUpda
                                                        max_range_(std::numeric_limits<double>::infinity()),
                                                        point_subsample_(1),
                                                        point_cloud_subscriber_(NULL),
-                                                       point_cloud_filter_(NULL)
+                                                       point_cloud_filter_(NULL),
+                                                       filter_chain_("sensor_msgs::LaserScan")
 {
 }
 
@@ -87,6 +88,8 @@ bool LidarOctomapUpdater::setParams(XmlRpc::XmlRpcValue &params)
 bool LidarOctomapUpdater::initialize()
 {
   wait_duration_ = ros::Duration(0.5);
+
+  filter_chain_.configure("scan_filter_chain", private_nh_);
 
   cloud_msg.reset(new sensor_msgs::PointCloud2());
 
@@ -164,6 +167,11 @@ void LidarOctomapUpdater::updateMask(const sensor_msgs::PointCloud2 &cloud, cons
 
 void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPtr &scan_msg)
 {
+  if (!filter_chain_.update(*scan_msg, scan_filtered_)){
+    ROS_ERROR("Error in filter chain update, aborting self filtering/octomap update!");
+    return;
+  }
+
   ROS_DEBUG("Received a new point cloud message");
   ros::WallTime start = ros::WallTime::now();
 
@@ -172,7 +180,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
 
   /* get transform for cloud into map frame */
   tf::StampedTransform map_H_sensor;
-  if (monitor_->getMapFrame() == scan_msg->header.frame_id)
+  if (monitor_->getMapFrame() == scan_filtered_.header.frame_id)
     map_H_sensor.setIdentity();
   else
   {
@@ -180,11 +188,11 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     {
       try
       {
-        ros::Time end_time   = scan_msg->header.stamp + ros::Duration().fromSec(scan_msg->ranges.size()*scan_msg->time_increment) ;
+        ros::Time end_time   = scan_filtered_.header.stamp + ros::Duration().fromSec(scan_filtered_.ranges.size()*scan_filtered_.time_increment) ;
 
-        if(tf_->waitForTransform(monitor_->getMapFrame(), scan_msg->header.frame_id, scan_msg->header.stamp, wait_duration_) &&
-           tf_->waitForTransform(monitor_->getMapFrame(), scan_msg->header.frame_id, end_time, wait_duration_)){
-          tf_->lookupTransform(monitor_->getMapFrame(), scan_msg->header.frame_id, scan_msg->header.stamp, map_H_sensor);
+        if(tf_->waitForTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, scan_filtered_.header.stamp, wait_duration_) &&
+           tf_->waitForTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, end_time, wait_duration_)){
+          tf_->lookupTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, scan_filtered_.header.stamp, map_H_sensor);
         }
       }
       catch (tf::TransformException& ex)
@@ -343,7 +351,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     ROS_ERROR("Internal error while updating octree");
   }
   tree_->unlockWrite();
-  ROS_DEBUG("Processed point cloud in %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0);
+  ROS_DEBUG("Processed laser scan in %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0);
   tree_->triggerUpdateCallback();
 
   if (filtered_cloud)
