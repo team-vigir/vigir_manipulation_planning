@@ -89,7 +89,8 @@ bool LidarOctomapUpdater::initialize()
 {
   wait_duration_ = ros::Duration(0.5);
 
-  filter_chain_.configure("scan_filter_chain", private_nh_);
+  if (!filter_chain_.configure("scan_filter_chain", private_nh_))
+    ROS_ERROR("Error while configuring filter chain, proceeding without filtering!");
 
   cloud_msg.reset(new sensor_msgs::PointCloud2());
 
@@ -176,7 +177,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   ros::WallTime start = ros::WallTime::now();
 
   if (monitor_->getMapFrame().empty())
-    monitor_->setMapFrame(cloud_msg->header.frame_id);
+    monitor_->setMapFrame(scan_msg->header.frame_id);
 
   /* get transform for cloud into map frame */
   tf::StampedTransform map_H_sensor;
@@ -210,7 +211,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   octomap::point3d sensor_origin(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
   Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
 
-  projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), *scan_msg, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity);//||laser_geometry::channel_option::Index);
+  projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), scan_filtered_, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity);//||laser_geometry::channel_option::Index);
 
   if (!updateTransformCache(cloud_msg->header.frame_id, cloud_msg->header.stamp))
   {
