@@ -105,6 +105,8 @@ private:
   filters::FilterChain<sensor_msgs::LaserScan> filter_chain_;
   sensor_msgs::LaserScan scan_filtered_;
 
+  //octomap::KeySet free_cells, occupied_cells, model_cells, clip_cells;
+
 };
 
 }

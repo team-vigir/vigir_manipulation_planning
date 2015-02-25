@@ -1,3 +1,31 @@
+//=================================================================================================
+// Copyright (c) 2014, Stefan Kohlbrecher, TU Darmstadt
+// All rights reserved.
+
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above copyright
+//       notice, this list of conditions and the following disclaimer in the
+//       documentation and/or other materials provided with the distribution.
+//     * Neither the name of the Simulation, Systems Optimization and Robotics
+//       group, TU Darmstadt nor the names of its contributors may be used to
+//       endorse or promote products derived from this software without
+//       specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//=================================================================================================
+
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
@@ -32,7 +60,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-/* Author: Jon Binney, Ioan Sucan */
+/* Author: Jon Binney, Ioan Sucan, Stefan Kohlbrecher */
 
 #include <cmath>
 #include <vigir_lidar_octomap_updater/lidar_octomap_updater.h>
@@ -107,10 +135,10 @@ void LidarOctomapUpdater::start()
   if (point_cloud_subscriber_)
     return;
   /* subscribe to point cloud topic using tf filter*/
-  point_cloud_subscriber_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(root_nh_, point_cloud_topic_, 5);
+  point_cloud_subscriber_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(root_nh_, point_cloud_topic_, 40);
   if (tf_ && !monitor_->getMapFrame().empty())
   {
-    point_cloud_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*point_cloud_subscriber_, *tf_, monitor_->getMapFrame(), 5);
+    point_cloud_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*point_cloud_subscriber_, *tf_, monitor_->getMapFrame(), 40);
     point_cloud_filter_->registerCallback(boost::bind(&LidarOctomapUpdater::cloudMsgCallback, this, _1));
     ROS_INFO("Listening to '%s' using message filter with target frame '%s'", point_cloud_topic_.c_str(), point_cloud_filter_->getTargetFramesString().c_str());
   }
@@ -175,6 +203,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
 
   ROS_DEBUG("Received a new point cloud message");
   ros::WallTime start = ros::WallTime::now();
+  ros::WallTime self_filter_finished_time;
 
   if (monitor_->getMapFrame().empty())
     monitor_->setMapFrame(scan_msg->header.frame_id);
@@ -223,7 +252,14 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   shape_mask_->maskContainment(*cloud_msg, sensor_origin_eigen, 0.0, max_range_, mask_);
   updateMask(*cloud_msg, sensor_origin_eigen, mask_);
 
+  self_filter_finished_time = ros::WallTime::now();
+
   octomap::KeySet free_cells, occupied_cells, model_cells, clip_cells;
+  //free_cells.clear();
+  //occupied_cells.clear();
+  //model_cells.clear();
+  //clip_cells.clear();
+  //std::cout << free_cells.bucket_count() <<  "\n";
   boost::scoped_ptr<sensor_msgs::PointCloud2> filtered_cloud;
 
   //We only use these iterators if we are creating a filtered_cloud for
@@ -313,6 +349,8 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     for (octomap::KeySet::iterator it = clip_cells.begin(), end = clip_cells.end(); it != end; ++it)
       if (tree_->computeRayKeys(sensor_origin, tree_->keyToCoord(*it), key_ray_))
         free_cells.insert(key_ray_.begin(), key_ray_.end());
+
+    //std::cout << free_cells.bucket_count() <<  "\n";
   }
   catch (...)
   {
@@ -352,7 +390,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     ROS_ERROR("Internal error while updating octree");
   }
   tree_->unlockWrite();
-  ROS_DEBUG("Processed laser scan in %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0);
+  ROS_DEBUG("Processed laser scan in %lf ms. Self filtering took %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0, (self_filter_finished_time - start).toSec() * 1000.0 );
   tree_->triggerUpdateCallback();
 
   if (filtered_cloud)
