@@ -57,14 +57,16 @@ void move_group::OctomapAccessCapability::visTimerCallback(const ros::TimerEvent
 
     moveit_msgs::PlanningScene tmp;
     moveit_msgs::PlanningSceneComponents comp;
+    std::string octomap_frame_id;
     comp.components = moveit_msgs::PlanningSceneComponents::OCTOMAP;
 
     {
       planning_scene_monitor::LockedPlanningSceneRO ls (context_->planning_scene_monitor_);
       ls.getPlanningSceneMonitor()->getPlanningScene()->getPlanningSceneMsg(tmp, comp);
+      octomap_frame_id = ls.getPlanningSceneMonitor()->getPlanningScene()->getPlanningFrame();
     }
 
-    tmp.world.octomap.octomap.header.frame_id = "world";
+    tmp.world.octomap.octomap.header.frame_id = octomap_frame_id;
 
     octomap_full_pub_.publish(tmp.world.octomap.octomap);
   }
