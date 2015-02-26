@@ -33,18 +33,20 @@
 #include <boost/algorithm/string.hpp>
 #include <vector>
 
+#include <math.h>
+#include <iostream>
+#include <boost/thread/locks.hpp>
+#include <fstream>
+
 #include <geometry_msgs/PoseStamped.h>
 #include <std_msgs/Int8.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt8.h>
 
-#include <osrf_msgs/JointCommands.h>
 #include <sensor_msgs/JointState.h>
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/WrenchStamped.h>
-#include <atlas_msgs/ForceTorqueSensors.h>
-#include <atlas_msgs/AtlasState.h>
 #include <sandia_hand_msgs/RawTactile.h>
 
 #include <flor_grasp_msgs/GraspSelection.h>
@@ -57,6 +59,7 @@
 #include "flor_control_msgs/FlorControlMode.h"
 #include <flor_planning_msgs/PlanRequest.h>
 #include <flor_atlas_msgs/AtlasHandMass.h>
+#include <flor_control_msgs/FlorControlModeCommand.h>
 
 #include <boost/thread.hpp>
 #include <vector>
@@ -76,6 +79,7 @@
 #include "geometric_shapes/shape_messages.h"
 #include "geometric_shapes/shape_operations.h"
 #include <moveit_msgs/GripperTranslation.h>
+#include <trajectory_msgs/JointTrajectory.h>
 
 #include <vigir_object_template_msgs/GetTemplateStateAndTypeInfo.h>
 #include <vigir_object_template_msgs/SetAttachedObjectTemplate.h>
@@ -97,20 +101,6 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
       void initializeManipulationController(ros::NodeHandle &nh, ros::NodeHandle &nhp);
 
-     /** called to change from no grasping, to manual to template grasping while (this->run_flag) */
-     int  processSetGraspMode(const flor_grasp_msgs::GraspState& mode_command);
-
-     /** called to update planner status */
-     void  plannerStatusCallback(const flor_ocs_msgs::OCSRobotStatus& planner_status);
-
-     void controllerModeCallback(const flor_control_msgs::FlorControlMode& controller_mode);
-
-     /** This function is called whenever the template pose is updated by the world modeling code
-      * Make sure the template info matches,and then do transform selected grasp to wrist pose in world frame.
-      * assump template pose is given in world frame
-      */
-     void  templateUpdateCallback(const flor_grasp_msgs::TemplateSelection& template_pose);
-
      /** This function is called whenever the template needs to be stitched to the real object.
       * assump template pose is given in world frame
       */
@@ -118,6 +108,8 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
      /** called to update the latest wrist pose */
      void  wristPoseCallback(const geometry_msgs::PoseStamped& mode_command);
+
+     void moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp);
 
      /** called to update the latest hand offset pose */
      void handOffsetCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
@@ -155,13 +147,6 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
   protected:
 
-    /**
-     * This function copies the latest sensor data, and signals the main grasping control inside a worker thread
-     * to execute the state machine and joint control.  It is called by the derived class once all sensor data is processed
-     * and we're ready to do the control calculations.
-     */
-     void updatedSensorData();
-
    inline int16_t  getGraspStatus() { return RobotStatusCodes::status(grasp_status_code_, grasp_status_severity_);}
    void            setGraspStatus(const RobotStatusCodes::StatusCode& status, const RobotStatusCodes::StatusLevel& severity);
 
@@ -181,7 +166,6 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
     // Variables to store locally sensor data recieved from ROS interface
     geometry_msgs::WrenchStamped            local_force_torque_msg_;
-    geometry_msgs::PoseStamped              local_wrist_pose_msg_;
 
 
     // Internal data set by the controller (specifies right or left hand)
@@ -212,15 +196,11 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     flor_planning_msgs::PlanRequest         wrist_target_pose_;
     flor_atlas_msgs::AtlasHandMass          hand_mass_msg_;
     geometry_msgs::PoseStamped              com_;
-    flor_grasp_msgs::GraspState             active_state_;
 
     //Grasp status message
     flor_ocs_msgs::OCSRobotStatus      grasp_status_;
     RobotStatusCodes::StatusCode       grasp_status_code_;      // Using RobotStatusCodes with severity
     RobotStatusCodes::StatusLevel      grasp_status_severity_;
-
-    ros::Time                          grasp_status_timer;
-
 
     double                             within_range_timer_threshold_;
 
@@ -237,14 +217,12 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
 
   private:
-    ros::Publisher active_state_pub_ ;
     ros::Publisher wrist_target_pub_ ;
     ros::Publisher template_stitch_pose_pub_ ;
     ros::Publisher wrist_plan_pub_   ;
     ros::Publisher grasp_status_pub_ ;
     ros::Publisher hand_mass_pub_ ;
 
-    ros::Subscriber mode_commander_sub_;        ///< Grasping control mode
     ros::Subscriber grasp_selection_sub_;       ///< Current template and grasp selection message
     ros::Subscriber release_grasp_sub_;         ///< Releasgrasp_joint_controller.e grasp and reset the initial finger positions
     ros::Subscriber template_selection_sub_;    ///< Current template pose update
