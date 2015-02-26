@@ -20,7 +20,7 @@
     <remap from="wrist_target"         to="/grasp_control/l_hand/target_pose" />
     <remap from="template_stitch_pose" to="/manipulation_control/l_hand/template_stitch_pose" />
     
-    <remap from="wrist_plan"           to="/manipulation_control/l_hand/plan_request" />
+    <remap from="wrist_plan"           to="/grasp_control/l_hand/plan_request" />
     <remap from="template_stitch"      to="/manipulation_control/l_hand/template_stitch_request" />
     <remap from="wrist_pose"           to="/flor/l_arm_current_pose" />
     <remap from="planner_status"       to="/grasp_planning/l_hand/status" />

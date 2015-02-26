@@ -277,6 +277,8 @@ void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::Gras
                 if(!grasp.final_pose)  //Pre-Grasp pose
                     gripperTranslationToPreGraspPose(template_T_palm,trans);
 
+                staticTransform(template_T_palm);
+
                 this->wrist_target_pose_.planning_group.data = planning_group_;
                 this->wrist_target_pose_.use_environment_obstacle_avoidance.data = true;
                 this->wrist_target_pose_.pose = last_template_res_.template_state_information.pose;
@@ -369,19 +371,7 @@ int VigirManipulationController::calcWristTarget(const geometry_msgs::Pose& wris
     this->wrist_target_pose_.pose.pose.position.x = tg_vector.getX();
     this->wrist_target_pose_.pose.pose.position.y = tg_vector.getY();
     this->wrist_target_pose_.pose.pose.position.z = tg_vector.getZ();
-    this->update_error_calc = true; // flag need to calculate
-//        ROS_INFO(" %s wrist: frame=%s p=(%f, %f, %f) q=(%f, %f, %f, %f)",
-//                 hand_name_.c_str(), "wrist",
-//                 wrist_pose.position.x,wrist_pose.position.z,wrist_pose.position.z,
-//                 wrist_pose.orientation.w, wrist_pose.orientation.x, wrist_pose.orientation.y, wrist_pose.orientation.z);
-//        ROS_INFO(" %s template: frame=%s p=(%f, %f, %f) q=(%f, %f, %f, %f)",
-//                 hand_name_.c_str(), template_pose.header.frame_id.c_str(),
-//                 template_pose.pose.position.x,template_pose.pose.position.z,template_pose.pose.position.z,
-//                 template_pose.pose.orientation.w, template_pose.pose.orientation.x, template_pose.pose.orientation.y, template_pose.pose.orientation.z);
-//        ROS_INFO(" %s target: frame=%s p=(%f, %f, %f) q=(%f, %f, %f, %f)",
-//                 hand_name_.c_str(), this->wrist_target_pose_.header.frame_id.c_str(),
-//                 this->wrist_target_pose_.pose.position.x,this->wrist_target_pose_.pose.position.z,this->wrist_target_pose_.pose.position.z,
-//                 this->wrist_target_pose_.pose.orientation.w, this->wrist_target_pose_.pose.orientation.x, this->wrist_target_pose_.pose.orientation.y, this->wrist_target_pose_.pose.orientation.z);
+
     return 0;
 }
 
@@ -1229,6 +1219,32 @@ void VigirManipulationController::gripperTranslationToPreGraspPose(geometry_msgs
     pose.position.x += vec_out.getOrigin().getX();
     pose.position.y += vec_out.getOrigin().getY();
     pose.position.z += vec_out.getOrigin().getZ();
+}
+
+int VigirManipulationController::staticTransform(geometry_msgs::Pose& palm_pose)
+{
+    tf::Transform o_T_palm;    //describes palm in object's frame
+    tf::Transform o_T_pg;       //describes palm_from_graspit in object's frame
+
+    o_T_pg.setRotation(tf::Quaternion(palm_pose.orientation.x,palm_pose.orientation.y,palm_pose.orientation.z,palm_pose.orientation.w));
+    o_T_pg.setOrigin(tf::Vector3(palm_pose.position.x,palm_pose.position.y,palm_pose.position.z) );
+
+    o_T_palm = o_T_pg * gp_T_hand_;
+
+    tf::Quaternion hand_quat;
+    tf::Vector3    hand_vector;
+    hand_quat   = o_T_palm.getRotation();
+    hand_vector = o_T_palm.getOrigin();
+
+    palm_pose.position.x = hand_vector.getX();
+    palm_pose.position.y = hand_vector.getY();
+    palm_pose.position.z = hand_vector.getZ();
+    palm_pose.orientation.x = hand_quat.getX();
+    palm_pose.orientation.y = hand_quat.getY();
+    palm_pose.orientation.z = hand_quat.getZ();
+    palm_pose.orientation.w = hand_quat.getW();
+
+    return 0;
 }
 
 
