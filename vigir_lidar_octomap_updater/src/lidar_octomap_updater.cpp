@@ -269,7 +269,9 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   boost::scoped_ptr<sensor_msgs::PointCloud2Iterator<float> > iter_filtered_y;
   boost::scoped_ptr<sensor_msgs::PointCloud2Iterator<float> > iter_filtered_z;
 
-  if (!filtered_cloud_topic_.empty()) {
+  bool publish_filtered_cloud = (!filtered_cloud_topic_.empty()) && (filtered_cloud_publisher_.getNumSubscribers() > 0);
+
+  if (publish_filtered_cloud) {
     filtered_cloud.reset(new sensor_msgs::PointCloud2());
     filtered_cloud->header = cloud_msg->header;
     sensor_msgs::PointCloud2Modifier pcd_modifier(*filtered_cloud);
@@ -281,6 +283,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     iter_filtered_y.reset(new sensor_msgs::PointCloud2Iterator<float>(*filtered_cloud, "y"));
     iter_filtered_z.reset(new sensor_msgs::PointCloud2Iterator<float>(*filtered_cloud, "z"));
   }
+
   size_t filtered_cloud_size = 0;
 
   tree_->lockRead();
@@ -320,7 +323,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
           {
             occupied_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
             //build list of valid points if we want to publish them
-            if (filtered_cloud)
+            if (publish_filtered_cloud)
             {
               **iter_filtered_x = pt_iter[0];
               **iter_filtered_y = pt_iter[1];
@@ -393,7 +396,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   ROS_DEBUG("Processed laser scan in %lf ms. Self filtering took %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0, (self_filter_finished_time - start).toSec() * 1000.0 );
   tree_->triggerUpdateCallback();
 
-  if (filtered_cloud)
+  if (publish_filtered_cloud)
   {
     sensor_msgs::PointCloud2Modifier pcd_modifier(*filtered_cloud);
     pcd_modifier.resize(filtered_cloud_size);
