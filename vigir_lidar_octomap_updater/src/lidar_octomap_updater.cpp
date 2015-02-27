@@ -243,7 +243,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   octomap::point3d sensor_origin(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
   Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
 
-  projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), scan_filtered_, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity||laser_geometry::channel_option::Index);
+  projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), scan_filtered_, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity|laser_geometry::channel_option::Index);
 
   if (!updateTransformCache(cloud_msg->header.frame_id, cloud_msg->header.stamp))
   {
@@ -258,21 +258,23 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
 
   uint32_t index_offset = -1;
 
-  //Find index field
-  /*
+  //Check if field "index" exists, exit otherwise
   for(unsigned int i = 0; i < cloud_msg->fields.size(); ++i)
   {
     if(cloud_msg->fields[i].name == "index")
     {
       index_offset = cloud_msg->fields[i].offset;
     }
+    //ROS_INFO("Field name: %s ", cloud_msg->fields[i].name.c_str());
   }
+
+  //ROS_INFO("Index offset: %d", index_offset);
 
   if (index_offset < 0){
     ROS_ERROR_THROTTLE(1, "Index offset for cloud < 0, aborting.");
     return;
   }
-  */
+
 
   /* mask out points on the robot */
   shape_mask_->maskContainment(*cloud_msg, sensor_origin_eigen, 0.0, max_range_, mask_);
@@ -326,12 +328,12 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     {
       //unsigned int row_c = row * cloud_msg->width;
       sensor_msgs::PointCloud2ConstIterator<float> pt_iter(*cloud_msg, "x");
-      //sensor_msgs::PointCloud2ConstIterator<unsigned int> index_iter(*cloud_msg, "index");
+      sensor_msgs::PointCloud2ConstIterator<unsigned int> index_iter(*cloud_msg, "index");
       //set iterator to point at start of the current row
       //pt_iter += row_c;
 
       for (unsigned int col = 0; col < cloud_msg->width; col += point_subsample_,
-        pt_iter += point_subsample_)//, index_iter += point_subsample_)
+        pt_iter += point_subsample_, index_iter += point_subsample_)
       {
         //if (mask_[row_c + col] == point_containment_filter::ShapeMask::CLIP)
         //  continue;
@@ -348,10 +350,12 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
              isn't on a part of the robot*/
           if (mask_[col] == point_containment_filter::ShapeMask::INSIDE){
             model_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
-            //scan_self_filtered_.ranges[index_iter[0]] = std::numeric_limits<float>::quiet_NaN();
+            scan_self_filtered_.ranges[index_iter[0]] = std::numeric_limits<float>::quiet_NaN();
           }
           else if (mask_[col] == point_containment_filter::ShapeMask::CLIP)
-            clip_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
+          {
+            //clip_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
+          }
           else
           {
             occupied_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
