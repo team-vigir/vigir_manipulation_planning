@@ -423,7 +423,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     filtered_localized_scan_.processed_scan.angle_min = scan_msg->angle_min;
     filtered_localized_scan_.processed_scan.angle_max = scan_msg->angle_max;
     filtered_localized_scan_.processed_scan.angle_increment = scan_msg->angle_increment;
-    filtered_localized_scan_.processed_scan.angle_increment = scan_msg->time_increment;
+    filtered_localized_scan_.processed_scan.time_increment = scan_msg->time_increment;
     filtered_localized_scan_.processed_scan.scan_time = scan_msg->scan_time;
     filtered_localized_scan_.processed_scan.range_min = scan_msg->range_min;
     filtered_localized_scan_.processed_scan.range_max = scan_msg->range_max;
