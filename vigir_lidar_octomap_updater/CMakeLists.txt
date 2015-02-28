@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   laser_geometry
   laser_filters
+  vigir_perception_msgs
 )
 
 catkin_package(
