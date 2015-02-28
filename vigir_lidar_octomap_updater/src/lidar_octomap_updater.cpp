@@ -127,6 +127,9 @@ bool LidarOctomapUpdater::initialize()
   shape_mask_->setTransformCallback(boost::bind(&LidarOctomapUpdater::getShapeTransform, this, _1, _2));
   if (!filtered_cloud_topic_.empty())
     filtered_cloud_publisher_ = private_nh_.advertise<sensor_msgs::PointCloud2>(filtered_cloud_topic_, 10, false);
+
+  scan_filtered_publisher_ = private_nh_.advertise<sensor_msgs::LaserScan>("scan_filtered", 10, false);
+  scan_self_filtered_publisher_ = private_nh_.advertise<sensor_msgs::LaserScan>("scan_self_filtered", 10, false);
   return true;
 }
 
@@ -240,13 +243,38 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   octomap::point3d sensor_origin(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
   Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
 
-  projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), scan_filtered_, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity);//||laser_geometry::channel_option::Index);
+  projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), scan_filtered_, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity|laser_geometry::channel_option::Index);
 
   if (!updateTransformCache(cloud_msg->header.frame_id, cloud_msg->header.stamp))
   {
     ROS_ERROR_THROTTLE(1, "Transform cache was not updated. Self-filtering may fail.");
     return;
   }
+
+  if (cloud_msg->height > 1){
+    ROS_ERROR_THROTTLE(1,"Cloud height > 1 not supported by lidar octomap updater!");
+    return;
+  }
+
+  uint32_t index_offset = -1;
+
+  //Check if field "index" exists, exit otherwise
+  for(unsigned int i = 0; i < cloud_msg->fields.size(); ++i)
+  {
+    if(cloud_msg->fields[i].name == "index")
+    {
+      index_offset = cloud_msg->fields[i].offset;
+    }
+    //ROS_INFO("Field name: %s ", cloud_msg->fields[i].name.c_str());
+  }
+
+  //ROS_INFO("Index offset: %d", index_offset);
+
+  if (index_offset < 0){
+    ROS_ERROR_THROTTLE(1, "Index offset for cloud < 0, aborting.");
+    return;
+  }
+
 
   /* mask out points on the robot */
   shape_mask_->maskContainment(*cloud_msg, sensor_origin_eigen, 0.0, max_range_, mask_);
@@ -269,7 +297,9 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   boost::scoped_ptr<sensor_msgs::PointCloud2Iterator<float> > iter_filtered_y;
   boost::scoped_ptr<sensor_msgs::PointCloud2Iterator<float> > iter_filtered_z;
 
-  if (!filtered_cloud_topic_.empty()) {
+  bool publish_filtered_cloud = (!filtered_cloud_topic_.empty()) && (filtered_cloud_publisher_.getNumSubscribers() > 0);
+
+  if (publish_filtered_cloud) {
     filtered_cloud.reset(new sensor_msgs::PointCloud2());
     filtered_cloud->header = cloud_msg->header;
     sensor_msgs::PointCloud2Modifier pcd_modifier(*filtered_cloud);
@@ -281,23 +311,29 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     iter_filtered_y.reset(new sensor_msgs::PointCloud2Iterator<float>(*filtered_cloud, "y"));
     iter_filtered_z.reset(new sensor_msgs::PointCloud2Iterator<float>(*filtered_cloud, "z"));
   }
+
   size_t filtered_cloud_size = 0;
 
   tree_->lockRead();
+
+  //Make copy of filtered scan, modify below with self filter information
+  scan_self_filtered_ = scan_filtered_;
 
   try
   {
     /* do ray tracing to find which cells this point cloud indicates should be free, and which it indicates
      * should be occupied */
-    for (unsigned int row = 0; row < cloud_msg->height; row += point_subsample_)
+    //for (
+    unsigned int row = 0;//; row < cloud_msg->height; row += point_subsample_)
     {
-      unsigned int row_c = row * cloud_msg->width;
+      //unsigned int row_c = row * cloud_msg->width;
       sensor_msgs::PointCloud2ConstIterator<float> pt_iter(*cloud_msg, "x");
+      sensor_msgs::PointCloud2ConstIterator<unsigned int> index_iter(*cloud_msg, "index");
       //set iterator to point at start of the current row
-      pt_iter += row_c;
+      //pt_iter += row_c;
 
       for (unsigned int col = 0; col < cloud_msg->width; col += point_subsample_,
-        pt_iter += point_subsample_)
+        pt_iter += point_subsample_, index_iter += point_subsample_)
       {
         //if (mask_[row_c + col] == point_containment_filter::ShapeMask::CLIP)
         //  continue;
@@ -312,15 +348,19 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
 
           /* occupied cell at ray endpoint if ray is shorter than max range and this point
              isn't on a part of the robot*/
-          if (mask_[row_c + col] == point_containment_filter::ShapeMask::INSIDE)
+          if (mask_[col] == point_containment_filter::ShapeMask::INSIDE){
             model_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
-          else if (mask_[row_c + col] == point_containment_filter::ShapeMask::CLIP)
-            clip_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
+            scan_self_filtered_.ranges[index_iter[0]] = std::numeric_limits<float>::quiet_NaN();
+          }
+          else if (mask_[col] == point_containment_filter::ShapeMask::CLIP)
+          {
+            //clip_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
+          }
           else
           {
             occupied_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
             //build list of valid points if we want to publish them
-            if (filtered_cloud)
+            if (publish_filtered_cloud)
             {
               **iter_filtered_x = pt_iter[0];
               **iter_filtered_y = pt_iter[1];
@@ -393,7 +433,15 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   ROS_DEBUG("Processed laser scan in %lf ms. Self filtering took %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0, (self_filter_finished_time - start).toSec() * 1000.0 );
   tree_->triggerUpdateCallback();
 
-  if (filtered_cloud)
+  if (scan_filtered_publisher_.getNumSubscribers() > 0){
+    scan_filtered_publisher_.publish(scan_filtered_);
+  }
+
+  if (scan_self_filtered_publisher_.getNumSubscribers() > 0){
+    scan_self_filtered_publisher_.publish(scan_self_filtered_);
+  }
+
+  if (publish_filtered_cloud)
   {
     sensor_msgs::PointCloud2Modifier pcd_modifier(*filtered_cloud);
     pcd_modifier.resize(filtered_cloud_size);
