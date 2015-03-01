@@ -418,7 +418,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     filtered_localized_scan_.header.stamp = scan_msg->header.stamp;
     filtered_localized_scan_.header.frame_id = monitor_->getMapFrame();
 
-    filtered_localized_scan_.header = scan_msg->header;
+    filtered_localized_scan_.processed_scan.header = scan_msg->header;
 
     filtered_localized_scan_.processed_scan.angle_min = scan_msg->angle_min;
     filtered_localized_scan_.processed_scan.angle_max = scan_msg->angle_max;
