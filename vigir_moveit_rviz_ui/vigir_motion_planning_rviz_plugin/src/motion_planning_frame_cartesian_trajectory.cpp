@@ -8,6 +8,7 @@
 #include <QSignalMapper>
 #include <QFileDialog>
 #include <QDomDocument>
+#include <QMessageBox>
 
 #include "ui_motion_planning_rviz_plugin_frame.h"
 
@@ -17,6 +18,9 @@ namespace vigir_moveit_rviz_plugin
 
 void MotionPlanningFrame::initCartesianTrajectoryTab()
 {
+    int tab_page_index = ui_->tabWidget->indexOf(ui_->cartesian_trajectory);
+    ui_->tabWidget->removeTab(tab_page_index);
+
     cartesian_trajectory_orientation_group_.addButton(ui_->keep_full_orientation_button, vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_FULL);
     cartesian_trajectory_orientation_group_.addButton(ui_->use_axis_only_button, vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_AXIS_ONLY);
     cartesian_trajectory_orientation_group_.addButton(ui_->ignore_orientation_button, vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_IGNORE);
@@ -276,6 +280,11 @@ bool MotionPlanningFrame::saveExtendedPlanningOptions(vigir_planning_msgs::Exten
 
 void MotionPlanningFrame::planCartesianTrajectoryButtonClicked()
 {
+    if ( ui_->planning_algorithm_combo_box->currentText() != "drake") {
+        QMessageBox::warning(this, tr("Warning"), tr("Selected planning algorithm is not 'drake'. Cartesian planning is only possible with Drake planner selected. Aborting."), QMessageBox::Ok);
+        return;
+    }
+
     planning_display_->addBackgroundJob(boost::bind(&MotionPlanningFrame::computeCartesianPlanButtonClicked, this), "compute cartesian plan");
 }
   

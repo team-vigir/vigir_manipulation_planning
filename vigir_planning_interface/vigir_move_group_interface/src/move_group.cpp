@@ -568,7 +568,7 @@ public:
     }
   }
 
-  MoveItErrorCode plan(Plan &plan, vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extendedOptions)
+  MoveItErrorCode plan(Plan &plan, vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extended_options)
   {
     if (!move_action_client_)
     {
@@ -587,9 +587,9 @@ public:
     goal.planning_options.planning_scene_diff.is_diff = true;
     goal.planning_options.planning_scene_diff.robot_state.is_diff = true;
 
-    if ( extendedOptions )
+    if ( extended_options )
     {
-        goal.extended_planning_options = *extendedOptions;
+        goal.extended_planning_options = *extended_options;
     }
 
     move_action_client_->sendGoal(goal);
@@ -611,7 +611,7 @@ public:
     }
   }
 
-  MoveItErrorCode move(bool wait)
+  MoveItErrorCode move(bool wait, vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extended_options)
   {
     if (!move_action_client_)
     {
@@ -630,6 +630,11 @@ public:
     goal.planning_options.replan_delay = replan_delay_;
     goal.planning_options.planning_scene_diff.is_diff = true;
     goal.planning_options.planning_scene_diff.robot_state.is_diff = true;
+
+    if ( extended_options )
+    {
+        goal.extended_planning_options = *extended_options;
+    }
 
     move_action_client_->sendGoal(goal);
     if (!wait)    
@@ -1099,14 +1104,14 @@ void moveit::planning_interface::VigirMoveGroup::setMaxVelocityScalingFactor(dou
 }
 
 
-moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMoveGroup::asyncMove()
+moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMoveGroup::asyncMove(vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extended_options)
 {
-  return impl_->move(false);
+  return impl_->move(false, extended_options);
 }
 
-moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMoveGroup::move()
+moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMoveGroup::move(vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extended_options)
 {
-  return impl_->move(true);
+  return impl_->move(true, extended_options);
 }
 
 moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMoveGroup::asyncExecute(const Plan &plan)
@@ -1119,9 +1124,9 @@ moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMov
   return impl_->execute(plan, true);
 }
 
-moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMoveGroup::plan(Plan &plan, vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extendedOptions)
+moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMoveGroup::plan(Plan &plan, vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extended_options)
 {
-  return impl_->plan(plan, extendedOptions);
+  return impl_->plan(plan, extended_options);
 }
 
 moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMoveGroup::pick(const std::string &object)

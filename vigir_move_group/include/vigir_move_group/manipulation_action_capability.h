@@ -68,7 +68,7 @@ private:
   void preemptMoveCallback();
   void setMoveState(MoveGroupState state);
   bool planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan);
-  bool planUsingDrake(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan);
+  bool planUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
   bool planCartesianUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
 
   boost::scoped_ptr<actionlib::SimpleActionServer<vigir_planning_msgs::MoveAction> > move_action_server_;

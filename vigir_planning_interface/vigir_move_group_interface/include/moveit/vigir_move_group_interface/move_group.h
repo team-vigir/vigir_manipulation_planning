@@ -572,15 +572,15 @@ public:
 
   /** \brief Plan and execute a trajectory that takes the group of joints declared in the constructor to the specified target.
       This call is not blocking (does not wait for the execution of the trajectory to complete). */
-  MoveItErrorCode asyncMove();
+  MoveItErrorCode asyncMove(vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extended_options = vigir_planning_msgs::ExtendedPlanningOptionsConstPtr());
 
   /** \brief Plan and execute a trajectory that takes the group of joints declared in the constructor to the specified target.
       This call is always blocking (waits for the execution of the trajectory to complete). */
-  MoveItErrorCode move();
+  MoveItErrorCode move(vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extended_options = vigir_planning_msgs::ExtendedPlanningOptionsConstPtr());
 
   /** \brief Compute a motion plan that takes the group declared in the constructor from the current state to the specified
       target. No execution is performed. The resulting plan is stored in \e plan*/
-  MoveItErrorCode plan(Plan &plan, vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extendedOptions = vigir_planning_msgs::ExtendedPlanningOptionsConstPtr());
+  MoveItErrorCode plan(Plan &plan, vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extended_options = vigir_planning_msgs::ExtendedPlanningOptionsConstPtr());
 
   /** \brief Given a \e plan, execute it without waiting for completion. Return true on success. */
   MoveItErrorCode asyncExecute(const Plan &plan);
