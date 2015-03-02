@@ -10,6 +10,12 @@
     <description>
       Manipulation action capability, extending default MoveAction with custom functionality
     </description>
-  </class>  
+  </class>
+
+  <class name="move_group/OctomapAccessCapability" type="move_group::OctomapAccessCapability" base_class_type="move_group::MoveGroupCapability">
+    <description>
+      Provides API for access to Octomap data of planning scene
+    </description>
+  </class>    
 
 </library>
