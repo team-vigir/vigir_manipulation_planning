@@ -360,7 +360,7 @@
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>200</width>
+                   <width>104</width>
                    <height>78</height>
                   </rect>
                  </property>
@@ -1688,18 +1688,21 @@
         </spacer>
        </item>
        <item row="3" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_12" stretch="0,0,1,0">
+        <layout class="QHBoxLayout" name="horizontalLayout_12" stretch="0,0,1,0,0">
          <item>
-          <widget class="QPushButton" name="load_cartesian_trajectory_button">
+          <widget class="QPushButton" name="plan_cartesian_trajectory_button">
            <property name="text">
-            <string>Load</string>
+            <string>Plan</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="save_cartesian_trajectory_button">
+          <widget class="QPushButton" name="execute_cartesian_trajectory_button">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="text">
-            <string>Save</string>
+            <string>Execute</string>
            </property>
           </widget>
          </item>
@@ -1711,9 +1714,16 @@
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="plan_cartesian_trajectory_button">
+          <widget class="QPushButton" name="load_cartesian_trajectory_button">
            <property name="text">
-            <string>Plan</string>
+            <string>Load</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="save_cartesian_trajectory_button">
+           <property name="text">
+            <string>Save</string>
            </property>
           </widget>
          </item>

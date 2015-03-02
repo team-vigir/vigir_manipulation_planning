@@ -26,12 +26,12 @@ void MotionPlanningFrame::initCartesianTrajectoryTab()
 
 void MotionPlanningFrame::addWaypointButtonClicked()
 {
-    QList<QTreeWidgetItem*> selectedItems = ui_->waypoints_treewidget->selectedItems();
-    if ( selectedItems.size() == 1 ) { // exactly one item => copy it
+    QList<QTreeWidgetItem*> selected_items = ui_->waypoints_treewidget->selectedItems();
+    if ( selected_items.size() == 1 ) { // exactly one item => copy it
       // check if item is toplevel-item
-      if ( ui_->waypoints_treewidget->indexOfTopLevelItem((selectedItems[0])) != -1)
+      if ( ui_->waypoints_treewidget->indexOfTopLevelItem((selected_items[0])) != -1)
       {
-            addWaypoint(selectedItems[0]);
+            addWaypoint(selected_items[0]);
       }
       else {
           addWaypoint();
@@ -46,17 +46,17 @@ void MotionPlanningFrame::addWaypointButtonClicked()
 
 void MotionPlanningFrame::removeWaypointButtonClicked()
 {
-  QTreeWidgetItem *currentItem = ui_->waypoints_treewidget->currentItem();
+  QTreeWidgetItem *current_item = ui_->waypoints_treewidget->currentItem();
   
-  if ( currentItem == NULL)
+  if ( current_item == NULL)
       return;
 
   // find top-level item
-  while( currentItem->parent() ) {
-    currentItem = currentItem->parent();
+  while( current_item->parent() ) {
+    current_item = current_item->parent();
   }
   
-  removeWaypoint(currentItem); 
+  removeWaypoint(current_item);
 }
 
 void MotionPlanningFrame::clearWaypointsButtonClicked()
@@ -71,52 +71,52 @@ void MotionPlanningFrame::loadCartesianTrajectoryButtonClicked()
   if ( filename.isEmpty() )
     return;
 
-  vigir_planning_msgs::ExtendedPlanningOptionsPtr extendedPlanningOptions = loadExtendedPlanningOptions(filename);
+  vigir_planning_msgs::ExtendedPlanningOptionsPtr extended_planning_options = loadExtendedPlanningOptions(filename);
   clearWaypoints();
   
-  QDoubleSpinBox *currentSpinBox = NULL;
-  QLineEdit *currentLineEdit = NULL;
-  for ( int i = 0; i < extendedPlanningOptions->target_poses.size(); i++ ) {
-    QTreeWidgetItem *waypointItem = addWaypoint();
-    waypointItem->setText(0, QString::fromStdString(extendedPlanningOptions->target_pose_names[i]));
+  QDoubleSpinBox *current_spin_box = NULL;
+  QLineEdit *current_line_edit = NULL;
+  for ( int i = 0; i < extended_planning_options->target_poses.size(); i++ ) {
+    QTreeWidgetItem *waypoint_item = addWaypoint();
+    waypoint_item->setText(0, QString::fromStdString(extended_planning_options->target_pose_names[i]));
 
     // set position values
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypointItem->child(0)->child(0), 1));
-    currentSpinBox->setValue( extendedPlanningOptions->target_poses[i].position.x );
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypointItem->child(0)->child(1), 1));
-    currentSpinBox->setValue( extendedPlanningOptions->target_poses[i].position.y );
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypointItem->child(0)->child(2), 1));
-    currentSpinBox->setValue( extendedPlanningOptions->target_poses[i].position.z );
+    current_spin_box = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypoint_item->child(0)->child(0), 1));
+    current_spin_box->setValue( extended_planning_options->target_poses[i].position.x );
+    current_spin_box = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypoint_item->child(0)->child(1), 1));
+    current_spin_box->setValue( extended_planning_options->target_poses[i].position.y );
+    current_spin_box = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypoint_item->child(0)->child(2), 1));
+    current_spin_box->setValue( extended_planning_options->target_poses[i].position.z );
 
     // set orientation values
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypointItem->child(1)->child(0), 1));
-    currentSpinBox->setValue( extendedPlanningOptions->target_poses[i].orientation.w );
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypointItem->child(1)->child(1), 1));
-    currentSpinBox->setValue( extendedPlanningOptions->target_poses[i].orientation.x );
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypointItem->child(1)->child(2), 1));
-    currentSpinBox->setValue( extendedPlanningOptions->target_poses[i].orientation.y );
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypointItem->child(1)->child(3), 1));
-    currentSpinBox->setValue( extendedPlanningOptions->target_poses[i].orientation.z );
+    current_spin_box = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypoint_item->child(1)->child(0), 1));
+    current_spin_box->setValue( extended_planning_options->target_poses[i].orientation.w );
+    current_spin_box = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypoint_item->child(1)->child(1), 1));
+    current_spin_box->setValue( extended_planning_options->target_poses[i].orientation.x );
+    current_spin_box = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypoint_item->child(1)->child(2), 1));
+    current_spin_box->setValue( extended_planning_options->target_poses[i].orientation.y );
+    current_spin_box = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypoint_item->child(1)->child(3), 1));
+    current_spin_box->setValue( extended_planning_options->target_poses[i].orientation.z );
 
     // set target link names
-    currentLineEdit = (QLineEdit*)(ui_->waypoints_treewidget->itemWidget(waypointItem->child(2), 1));
-    currentLineEdit->setText( QString::fromStdString(extendedPlanningOptions->target_link_names[i]));
+    current_line_edit = (QLineEdit*)(ui_->waypoints_treewidget->itemWidget(waypoint_item->child(2), 1));
+    current_line_edit->setText( QString::fromStdString(extended_planning_options->target_link_names[i]));
 
     // set target pose times
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypointItem->child(3), 1));
-    currentSpinBox->setValue( extendedPlanningOptions->target_pose_times[i]);
+    current_spin_box = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(waypoint_item->child(3), 1));
+    current_spin_box->setValue( extended_planning_options->target_pose_times[i]);
   }
 
   // read orientation mode
-  int orientationMode = extendedPlanningOptions->target_orientation_type;
-  cartesian_trajectory_orientation_group_.button(orientationMode)->setChecked(true);
+  int orientation_mode = extended_planning_options->target_orientation_type;
+  cartesian_trajectory_orientation_group_.button(orientation_mode)->setChecked(true);
 
   // read sample rate
-  ui_->sample_rate_spin->setValue( extendedPlanningOptions->trajectory_sample_rate );
+  ui_->sample_rate_spin->setValue( extended_planning_options->trajectory_sample_rate );
 
   // read check self-collisions flag
-  bool checkSelfCollisions = extendedPlanningOptions->check_self_collisions;
-  ui_->check_self_collisions_checkbox->setChecked(checkSelfCollisions);
+  bool check_self_collisions = extended_planning_options->check_self_collisions;
+  ui_->check_self_collisions_checkbox->setChecked(check_self_collisions);
   
 }
 
@@ -135,57 +135,54 @@ vigir_planning_msgs::ExtendedPlanningOptionsPtr MotionPlanningFrame::loadExtende
        return vigir_planning_msgs::ExtendedPlanningOptionsPtr();
     }
 
-    vigir_planning_msgs::ExtendedPlanningOptionsPtr extendedPlanningOptions(new vigir_planning_msgs::ExtendedPlanningOptions());
+    vigir_planning_msgs::ExtendedPlanningOptionsPtr extended_planning_options(new vigir_planning_msgs::ExtendedPlanningOptions());
 
     // read waypoints
-    QDoubleSpinBox *currentSpinBox = NULL;
-    QLineEdit *currentLineEdit = NULL;
     QDomNodeList waypointsList = doc.elementsByTagName ( "Waypoint" );
     for ( int i = 0; i < waypointsList.size(); i++ ) {
-      QDomNode currentNode = waypointsList.at(i);
+      QDomNode current_node = waypointsList.at(i);
 
-      QString targetPoseName = currentNode.toElement().attribute("name");
-      extendedPlanningOptions->target_pose_names.push_back(targetPoseName.toStdString() );
+      QString target_pose_name = current_node.toElement().attribute("name");
+      extended_planning_options->target_pose_names.push_back(target_pose_name.toStdString() );
 
-      geometry_msgs::Pose targetPose;
-      QDomNodeList waypointChildren = currentNode.childNodes();
-      QDomElement positionElement = currentNode.namedItem("Position").toElement();
-      targetPose.position.x = positionElement.attribute("x").toDouble();
-      targetPose.position.y = positionElement.attribute("y").toDouble();
-      targetPose.position.z = positionElement.attribute("z").toDouble();
+      geometry_msgs::Pose target_pose;
+      QDomElement position_element = current_node.namedItem("Position").toElement();
+      target_pose.position.x = position_element.attribute("x").toDouble();
+      target_pose.position.y = position_element.attribute("y").toDouble();
+      target_pose.position.z = position_element.attribute("z").toDouble();
 
-      QDomElement orientationElement = currentNode.namedItem("Orientation").toElement();
-      targetPose.orientation.w = orientationElement.attribute("w").toDouble();
-      targetPose.orientation.x = orientationElement.attribute("x").toDouble();
-      targetPose.orientation.y = orientationElement.attribute("y").toDouble();
-      targetPose.orientation.z = orientationElement.attribute("z").toDouble();
-      extendedPlanningOptions->target_poses.push_back(targetPose);
+      QDomElement orientation_element = current_node.namedItem("Orientation").toElement();
+      target_pose.orientation.w = orientation_element.attribute("w").toDouble();
+      target_pose.orientation.x = orientation_element.attribute("x").toDouble();
+      target_pose.orientation.y = orientation_element.attribute("y").toDouble();
+      target_pose.orientation.z = orientation_element.attribute("z").toDouble();
+      extended_planning_options->target_poses.push_back(target_pose);
 
-      QDomElement targetLinkNameElement = currentNode.namedItem("TargetLinkName").toElement();
-      QString targetLinkName = targetLinkNameElement.attribute("value");
-      extendedPlanningOptions->target_link_names.push_back(targetLinkName.toStdString());
+      QDomElement target_link_name_element = current_node.namedItem("TargetLinkName").toElement();
+      QString target_link_name = target_link_name_element.attribute("value");
+      extended_planning_options->target_link_names.push_back(target_link_name.toStdString());
 
-      QDomElement timeElement = currentNode.namedItem("Time").toElement();
-      double targetPoseTime = timeElement.attribute("value").toDouble();
-      extendedPlanningOptions->target_pose_times.push_back(targetPoseTime);
+      QDomElement time_element = current_node.namedItem("Time").toElement();
+      double target_pose_time = time_element.attribute("value").toDouble();
+      extended_planning_options->target_pose_times.push_back(target_pose_time);
     }
 
     // read orientation mode
-    QDomElement orientationElement = doc.elementsByTagName("OrientationMode").at(0).toElement();
-    int orientationMode = orientationElement.attribute("value").toInt();
-    extendedPlanningOptions->target_orientation_type = orientationMode;
+    QDomElement orientation_element = doc.elementsByTagName("OrientationMode").at(0).toElement();
+    int orientation_mode = orientation_element.attribute("value").toInt();
+    extended_planning_options->target_orientation_type = orientation_mode;
 
     // read sample rate
-    QDomElement sampleRateElement = doc.elementsByTagName("SampleRate").at(0).toElement();
-    double sampleRate = sampleRateElement.attribute("value").toDouble();
-    extendedPlanningOptions->trajectory_sample_rate = sampleRate;
+    QDomElement sample_rate_element = doc.elementsByTagName("SampleRate").at(0).toElement();
+    double sample_rate = sample_rate_element.attribute("value").toDouble();
+    extended_planning_options->trajectory_sample_rate = sample_rate;
 
     // read check self-collisions flag
-    QDomElement checkSelfCollisionsElement = doc.elementsByTagName("CheckSelfCollisions").at(0).toElement();
-    bool checkSelfCollisions = (checkSelfCollisionsElement.attribute("value").toInt() == 1);
-    extendedPlanningOptions->check_self_collisions = checkSelfCollisions;
+    QDomElement check_self_collisions_element = doc.elementsByTagName("CheckSelfCollisions").at(0).toElement();
+    bool check_self_collisions = (check_self_collisions_element.attribute("value").toInt() == 1);
+    extended_planning_options->check_self_collisions = check_self_collisions;
 
-    return extendedPlanningOptions;
+    return extended_planning_options;
 }
 
 void MotionPlanningFrame::saveCartesianTrajectoryButtonClicked()
@@ -195,11 +192,11 @@ void MotionPlanningFrame::saveCartesianTrajectoryButtonClicked()
   if ( filename.isEmpty() )
     return;
 
-  vigir_planning_msgs::ExtendedPlanningOptionsPtr extendedPlanningOptions = buildExtendedPlanningOptions();
-  saveExtendedPlanningOptions(extendedPlanningOptions, filename);
+  vigir_planning_msgs::ExtendedPlanningOptionsPtr extended_planning_options = buildExtendedPlanningOptions();
+  saveExtendedPlanningOptions(extended_planning_options, filename);
 }
 
-bool MotionPlanningFrame::saveExtendedPlanningOptions(vigir_planning_msgs::ExtendedPlanningOptionsPtr extendedPlanningOptions, QString filename)
+bool MotionPlanningFrame::saveExtendedPlanningOptions(vigir_planning_msgs::ExtendedPlanningOptionsPtr extended_planning_options, QString filename)
 {
   QDomDocument doc("CartesianTrajectoryOptions");
   QDomElement root = doc.createElement("CartesianTrajectoryOptions");
@@ -208,11 +205,11 @@ bool MotionPlanningFrame::saveExtendedPlanningOptions(vigir_planning_msgs::Exten
   QDomElement waypoints = doc.createElement("Waypoints");
   root.appendChild(waypoints);
 
-  for ( int i = 0; i < extendedPlanningOptions->target_poses.size(); i++ ) {
+  for ( int i = 0; i < extended_planning_options->target_poses.size(); i++ ) {
     QTreeWidgetItem *rootItem = ui_->waypoints_treewidget->topLevelItem(i);
-    geometry_msgs::Pose currentPose = extendedPlanningOptions->target_poses[i];
-    std::string currentLinkName = extendedPlanningOptions->target_link_names[i];
-    double currentTime = extendedPlanningOptions->target_pose_times[i];
+    geometry_msgs::Pose currentPose = extended_planning_options->target_poses[i];
+    std::string currentLinkName = extended_planning_options->target_link_names[i];
+    double currentTime = extended_planning_options->target_pose_times[i];
 
     QDomElement currentWaypoint = doc.createElement("Waypoint");
     currentWaypoint.setAttribute("name", rootItem->text(0) );
@@ -250,17 +247,17 @@ bool MotionPlanningFrame::saveExtendedPlanningOptions(vigir_planning_msgs::Exten
   
   // set orientation mode
   QDomElement orientationMode = doc.createElement("OrientationMode");
-  orientationMode.setAttribute("value", extendedPlanningOptions->target_orientation_type);
+  orientationMode.setAttribute("value", extended_planning_options->target_orientation_type);
   options.appendChild(orientationMode);
   
   // set sample rate
   QDomElement sampleRate = doc.createElement("SampleRate");
-  sampleRate.setAttribute("value", extendedPlanningOptions->trajectory_sample_rate );
+  sampleRate.setAttribute("value", extended_planning_options->trajectory_sample_rate );
   options.appendChild(sampleRate);
   
   // set self-collision check
   QDomElement checkSelfCollisions = doc.createElement("CheckSelfCollisions");
-  checkSelfCollisions.setAttribute("value", extendedPlanningOptions->check_self_collisions );
+  checkSelfCollisions.setAttribute("value", extended_planning_options->check_self_collisions );
   options.appendChild(checkSelfCollisions);  
   
   // save to file
@@ -357,44 +354,44 @@ QTreeWidgetItem *MotionPlanningFrame::addWaypoint(QTreeWidgetItem *copy) {
   position_value_item[2] = new QTreeWidgetItem(position_item, QStringList() << tr("Z:"));
 
   ui_->waypoints_treewidget->addTopLevelItem(waypoint_item);
-  QDoubleSpinBox *orientationSpinBox[4];
+  QDoubleSpinBox *orientation_spinbox[4];
   for ( int i = 0; i < 4; i++ ) {
-      orientationSpinBox[i] = createItemSpinBox(orientation_value_item[i]);
-      ui_->waypoints_treewidget->setItemWidget(orientation_value_item[i], 1, orientationSpinBox[i]);
+      orientation_spinbox[i] = createItemSpinBox(orientation_value_item[i]);
+      ui_->waypoints_treewidget->setItemWidget(orientation_value_item[i], 1, orientation_spinbox[i]);
   }
 
-  QDoubleSpinBox *positionSpinBox[3];
+  QDoubleSpinBox *position_spinbox[3];
   for ( int i = 0; i < 3; i++ ) {
-      positionSpinBox[i] = createItemSpinBox(position_value_item[i]);
-      ui_->waypoints_treewidget->setItemWidget(position_value_item[i], 1, positionSpinBox[i]);
+      position_spinbox[i] = createItemSpinBox(position_value_item[i]);
+      ui_->waypoints_treewidget->setItemWidget(position_value_item[i], 1, position_spinbox[i]);
   }
 
   QLineEdit *target_link_name_edit = new QLineEdit("");
   ui_->waypoints_treewidget->setItemWidget(target_link_name_item, 1, target_link_name_edit);
 
-  QDoubleSpinBox *timeSpinBox = createItemSpinBox(time_item);
-  ui_->waypoints_treewidget->setItemWidget(time_item, 1, timeSpinBox);
+  QDoubleSpinBox *time_spinbox = createItemSpinBox(time_item);
+  ui_->waypoints_treewidget->setItemWidget(time_item, 1, time_spinbox);
   
   if ( copy ) {
-      QString targetPoseName;
-      QString targetLinkName;
-      geometry_msgs::Pose targetPose;
-      double targetPoseTime;
+      QString target_pose_name;
+      QString target_link_name;
+      geometry_msgs::Pose target_pose;
+      double target_pose_time;
 
-      getContentFromItem(copy, targetPoseName, targetPose, targetLinkName, targetPoseTime);
-      waypoint_item->setText(0, targetPoseName);
+      getContentFromItem(copy, target_pose_name, target_pose, target_link_name, target_pose_time);
+      waypoint_item->setText(0, target_pose_name);
 
-      positionSpinBox[0]->setValue( targetPose.position.x);
-      positionSpinBox[1]->setValue( targetPose.position.y);
-      positionSpinBox[2]->setValue( targetPose.position.z);
+      position_spinbox[0]->setValue( target_pose.position.x);
+      position_spinbox[1]->setValue( target_pose.position.y);
+      position_spinbox[2]->setValue( target_pose.position.z);
 
-      orientationSpinBox[0]->setValue( targetPose.orientation.w);
-      orientationSpinBox[1]->setValue( targetPose.orientation.x);
-      orientationSpinBox[2]->setValue( targetPose.orientation.y);
-      orientationSpinBox[3]->setValue( targetPose.orientation.z);
+      orientation_spinbox[0]->setValue( target_pose.orientation.w);
+      orientation_spinbox[1]->setValue( target_pose.orientation.x);
+      orientation_spinbox[2]->setValue( target_pose.orientation.y);
+      orientation_spinbox[3]->setValue( target_pose.orientation.z);
 
-      target_link_name_edit->setText(targetLinkName);
-      timeSpinBox->setValue(targetPoseTime);
+      target_link_name_edit->setText(target_link_name);
+      time_spinbox->setValue(target_pose_time);
 
 
   }
@@ -406,55 +403,55 @@ QTreeWidgetItem *MotionPlanningFrame::addWaypoint(QTreeWidgetItem *copy) {
   return waypoint_item;
 }
 
-bool MotionPlanningFrame::getContentFromItem(QTreeWidgetItem *waypointItem, QString &name, geometry_msgs::Pose &targetPose, QString &targetLinkName, double &targetPoseTime) {
-    if ( ui_->waypoints_treewidget->indexOfTopLevelItem(waypointItem) == -1)
+bool MotionPlanningFrame::getContentFromItem(QTreeWidgetItem *waypoint_item, QString &name, geometry_msgs::Pose &target_pose, QString &target_link_name, double &target_pose_time) {
+    if ( ui_->waypoints_treewidget->indexOfTopLevelItem(waypoint_item) == -1)
         return false;
 
-    name = waypointItem->text(0);
+    name = waypoint_item->text(0);
 
-    QTreeWidgetItem *currentItem = NULL;
-    QLineEdit *currentLineEdit = NULL;
-    QDoubleSpinBox *currentSpinBox = NULL;
+    QTreeWidgetItem *current_item = NULL;
+    QLineEdit *current_lineedit = NULL;
+    QDoubleSpinBox *current_spinbox = NULL;
 
     // set position
-    currentItem = waypointItem->child(0)->child(0);
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(currentItem, 1));
-    targetPose.position.x = currentSpinBox->value();
+    current_item = waypoint_item->child(0)->child(0);
+    current_spinbox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(current_item, 1));
+    target_pose.position.x = current_spinbox->value();
 
-    currentItem = waypointItem->child(0)->child(1);
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(currentItem, 1));
-    targetPose.position.y = currentSpinBox->value();
+    current_item = waypoint_item->child(0)->child(1);
+    current_spinbox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(current_item, 1));
+    target_pose.position.y = current_spinbox->value();
 
-    currentItem = waypointItem->child(0)->child(2);
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(currentItem, 1));
-    targetPose.position.z = currentSpinBox->value();
+    current_item = waypoint_item->child(0)->child(2);
+    current_spinbox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(current_item, 1));
+    target_pose.position.z = current_spinbox->value();
 
     // set orientation
-    currentItem = waypointItem->child(1)->child(0);
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(currentItem, 1));
-    targetPose.orientation.w = currentSpinBox->value();
+    current_item = waypoint_item->child(1)->child(0);
+    current_spinbox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(current_item, 1));
+    target_pose.orientation.w = current_spinbox->value();
 
-    currentItem = waypointItem->child(1)->child(1);
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(currentItem, 1));
-    targetPose.orientation.x = currentSpinBox->value();
+    current_item = waypoint_item->child(1)->child(1);
+    current_spinbox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(current_item, 1));
+    target_pose.orientation.x = current_spinbox->value();
 
-    currentItem = waypointItem->child(1)->child(2);
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(currentItem, 1));
-    targetPose.orientation.y = currentSpinBox->value();
+    current_item = waypoint_item->child(1)->child(2);
+    current_spinbox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(current_item, 1));
+    target_pose.orientation.y = current_spinbox->value();
 
-    currentItem = waypointItem->child(1)->child(3);
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(currentItem, 1));
-    targetPose.orientation.z = currentSpinBox->value();
+    current_item = waypoint_item->child(1)->child(3);
+    current_spinbox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(current_item, 1));
+    target_pose.orientation.z = current_spinbox->value();
 
     // set target link name
-    currentItem = waypointItem->child(2);
-    currentLineEdit = (QLineEdit*)(ui_->waypoints_treewidget->itemWidget(currentItem, 1));
-    targetLinkName = currentLineEdit->text();
+    current_item = waypoint_item->child(2);
+    current_lineedit = (QLineEdit*)(ui_->waypoints_treewidget->itemWidget(current_item, 1));
+    target_link_name = current_lineedit->text();
 
     // set time
-    currentItem = waypointItem->child(3);
-    currentSpinBox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(currentItem, 1));
-    targetPoseTime = currentSpinBox->value();
+    current_item = waypoint_item->child(3);
+    current_spinbox = (QDoubleSpinBox*)(ui_->waypoints_treewidget->itemWidget(current_item, 1));
+    target_pose_time = current_spinbox->value();
 
     return true;
 }
@@ -479,31 +476,31 @@ void MotionPlanningFrame::clearWaypoints()
 }
 
 vigir_planning_msgs::ExtendedPlanningOptionsPtr MotionPlanningFrame::buildExtendedPlanningOptions() {
-    vigir_planning_msgs::ExtendedPlanningOptionsPtr extendedOptions(new vigir_planning_msgs::ExtendedPlanningOptions());
-    extendedOptions->target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_MOTION;
-    extendedOptions->target_frame = "world";
-    extendedOptions->continuous_replanning = false;
+    vigir_planning_msgs::ExtendedPlanningOptionsPtr extended_options(new vigir_planning_msgs::ExtendedPlanningOptions());
+    extended_options->target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_MOTION;
+    extended_options->target_frame = "world";
+    extended_options->continuous_replanning = false;
 
-    extendedOptions->check_self_collisions = ui_->check_self_collisions_checkbox->isChecked();
-    extendedOptions->target_orientation_type = cartesian_trajectory_orientation_group_.checkedId();
-    extendedOptions->trajectory_sample_rate = ui_->sample_rate_spin->value();
+    extended_options->check_self_collisions = ui_->check_self_collisions_checkbox->isChecked();
+    extended_options->target_orientation_type = cartesian_trajectory_orientation_group_.checkedId();
+    extended_options->trajectory_sample_rate = ui_->sample_rate_spin->value();
 
     for ( int i = 0; i < ui_->waypoints_treewidget->topLevelItemCount(); i++ ) {
-      geometry_msgs::Pose currentPose;
-      QString targetLinkName;
-      double waypointTime;
-      QString targetPoseName;
+      geometry_msgs::Pose current_pose;
+      QString target_link_name;
+      double waypoint_time;
+      QString target_pose_name;
 
-      getContentFromItem(ui_->waypoints_treewidget->topLevelItem(i), targetPoseName, currentPose, targetLinkName, waypointTime);
+      getContentFromItem(ui_->waypoints_treewidget->topLevelItem(i), target_pose_name, current_pose, target_link_name, waypoint_time);
 
       // add to vector
-      extendedOptions->target_pose_names.push_back(targetPoseName.toStdString());
-      extendedOptions->target_poses.push_back(currentPose);
-      extendedOptions->target_pose_times.push_back(waypointTime);
-      extendedOptions->target_link_names.push_back(targetLinkName.toStdString());
+      extended_options->target_pose_names.push_back(target_pose_name.toStdString());
+      extended_options->target_poses.push_back(current_pose);
+      extended_options->target_pose_times.push_back(waypoint_time);
+      extended_options->target_link_names.push_back(target_link_name.toStdString());
     }
 
-    return extendedOptions;
+    return extended_options;
 }
 
 void MotionPlanningFrame::computeCartesianPlanButtonClicked()
@@ -522,6 +519,7 @@ void MotionPlanningFrame::computeCartesianPlanButtonClicked()
   if (move_group_->plan(*current_plan_, extendedOptions))
   {
     ui_->execute_button->setEnabled(true);
+    ui_->execute_cartesian_trajectory_button->setEnabled(true);
 
     // Success
     ui_->cartesian_trajectory_status_label->setText(QString("Time: ").append(
@@ -529,6 +527,7 @@ void MotionPlanningFrame::computeCartesianPlanButtonClicked()
   }
   else
   {
+    ui_->execute_cartesian_trajectory_button->setEnabled(true);
     current_plan_.reset();
 
     // Failure
