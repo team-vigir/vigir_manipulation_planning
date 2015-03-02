@@ -568,7 +568,7 @@ public:
     }
   }
 
-  MoveItErrorCode plan(Plan &plan)
+  MoveItErrorCode plan(Plan &plan, vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extendedOptions)
   {
     if (!move_action_client_)
     {
@@ -579,13 +579,18 @@ public:
       return MoveItErrorCode(moveit_msgs::MoveItErrorCodes::FAILURE);
     }
 
-    vigir_planning_msgs::MoveGoal goal;
+    vigir_planning_msgs::MoveGoal goal;    
     constructGoal(goal);
     goal.planning_options.plan_only = true;
     goal.planning_options.look_around = false;
     goal.planning_options.replan = false;
     goal.planning_options.planning_scene_diff.is_diff = true;
     goal.planning_options.planning_scene_diff.robot_state.is_diff = true;
+
+    if ( extendedOptions )
+    {
+        goal.extended_planning_options = *extendedOptions;
+    }
 
     move_action_client_->sendGoal(goal);
     if (!move_action_client_->waitForResult())
@@ -649,17 +654,19 @@ public:
   }
 
   MoveItErrorCode execute(const Plan &plan, bool wait)
-  {
+  {    
     moveit_msgs::ExecuteKnownTrajectory::Request req;
     moveit_msgs::ExecuteKnownTrajectory::Response res;
     req.trajectory = plan.trajectory_;
     req.wait_for_execution = wait;
     if (execute_service_.call(req, res))
     {      
+        ROS_WARN("Execute service call successful, error_code = %d", res.error_code.val);
       return MoveItErrorCode(res.error_code);
     }    
     else
     {
+        ROS_WARN("Execute service call failed");
       return MoveItErrorCode(moveit_msgs::MoveItErrorCodes::FAILURE);
     }    
   }
@@ -1112,9 +1119,9 @@ moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMov
   return impl_->execute(plan, true);
 }
 
-moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMoveGroup::plan(Plan &plan)
+moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMoveGroup::plan(Plan &plan, vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extendedOptions)
 {
-  return impl_->plan(plan);
+  return impl_->plan(plan, extendedOptions);
 }
 
 moveit::planning_interface::MoveItErrorCode moveit::planning_interface::VigirMoveGroup::pick(const std::string &object)

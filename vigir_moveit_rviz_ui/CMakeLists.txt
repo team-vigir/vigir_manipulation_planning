@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(vigir_moveit_rviz_ui)
-
+set(CMAKE_BUILD_TYPE Debug)
 find_package(Boost REQUIRED thread date_time system filesystem)
 
 find_package(PkgConfig REQUIRED)

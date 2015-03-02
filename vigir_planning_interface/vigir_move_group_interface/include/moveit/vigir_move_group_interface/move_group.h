@@ -45,6 +45,7 @@
 #include <moveit_msgs/Constraints.h>
 #include <moveit_msgs/Grasp.h>
 #include <moveit_msgs/PlaceLocation.h>
+#include <vigir_planning_msgs/ExtendedPlanningOptions.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <boost/shared_ptr.hpp>
 #include <tf/tf.h>
@@ -579,7 +580,7 @@ public:
 
   /** \brief Compute a motion plan that takes the group declared in the constructor from the current state to the specified
       target. No execution is performed. The resulting plan is stored in \e plan*/
-  MoveItErrorCode plan(Plan &plan);
+  MoveItErrorCode plan(Plan &plan, vigir_planning_msgs::ExtendedPlanningOptionsConstPtr extendedOptions = vigir_planning_msgs::ExtendedPlanningOptionsConstPtr());
 
   /** \brief Given a \e plan, execute it without waiting for completion. Return true on success. */
   MoveItErrorCode asyncExecute(const Plan &plan);

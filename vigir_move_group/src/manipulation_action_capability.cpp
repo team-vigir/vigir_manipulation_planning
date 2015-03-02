@@ -36,12 +36,19 @@
 
 #include <vigir_move_group/manipulation_action_capability.h>
 
+#include <ctime>
+
 #include <moveit/planning_pipeline/planning_pipeline.h>
 #include <moveit/plan_execution/plan_execution.h>
 #include <moveit/plan_execution/plan_with_sensing.h>
 #include <moveit/trajectory_processing/trajectory_tools.h>
 #include <moveit/kinematic_constraints/utils.h>
 #include <moveit/move_group/capability_names.h>
+#include <moveit/robot_state/conversions.h>
+#include <moveit_msgs/DisplayTrajectory.h>
+
+#include <flor_drake_bridge/RequestWholeBodyTrajectory.h>
+#include <flor_drake_bridge/RequestWholeBodyCartesianTrajectory.h>
 
 move_group::MoveGroupManipulationAction::MoveGroupManipulationAction() :
   MoveGroupCapability("VigirManipulationAction"),
@@ -62,6 +69,10 @@ void move_group::MoveGroupManipulationAction::initialize()
                                                                                             boost::bind(&MoveGroupManipulationAction::executeMoveCallback, this, _1), false));
   move_action_server_->registerPreemptCallback(boost::bind(&MoveGroupManipulationAction::preemptMoveCallback, this));
   move_action_server_->start();
+
+  drake_trajectory_srv_client_ = root_node_handle_.serviceClient<flor_drake_bridge::RequestWholeBodyTrajectory>("flor_drake_bridge/request_whole_body_trajectory");
+  drake_cartesian_trajectory_srv_client_ = root_node_handle_.serviceClient<flor_drake_bridge::RequestWholeBodyCartesianTrajectory>("flor_drake_bridge/request_whole_body_cartesian_trajectory");
+  drake_trajectory_result_pub_ = root_node_handle_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10);
 }
 
 void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal)
@@ -75,6 +86,27 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
   if (goal->request.planner_id == "drake"){
     // @DRAKE Plan using Drake here. Alternatively, could also implement alternative callback below where @DRAKE is marked
     ROS_WARN("Planning using Drake requested, but not implemented yet!");
+
+    if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
+    {
+      if (!goal->planning_options.plan_only)
+        ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
+
+      // check for cartesian motion request
+      if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_MOTION)
+      {
+        executeMoveCallback_DrakeCartesianPlanOnly(goal, action_res);
+      }
+      else
+      {
+        executeMoveCallback_DrakePlanOnly(goal, action_res);
+      }
+    }
+    else
+    {
+      executeMoveCallback_PlanAndExecute(goal, action_res);
+    }
+
     action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
   }else if (goal->extended_planning_options.target_poses.size() != 0){
 
@@ -148,9 +180,22 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
 
   if (goal->extended_planning_options.continuous_replanning){
     ROS_WARN("Continuous replanning not integrated yet!");
-  }else{
-    // @DRAKE: Could implement callback for Drake and use here
-    opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
+  }else{    
+    if (goal->request.planner_id == "drake") // plan using drake
+    {
+        // check if it is a cartesian request
+        if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_MOTION)
+        {
+            opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planCartesianUsingDrake, this, boost::cref(goal), _1);
+        }
+        else { // normal joint-level planning
+            opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingDrake, this, boost::cref(motion_plan_request), _1);
+        }
+    }
+    else {
+        opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
+    }
+
     if (goal->planning_options.look_around && context_->plan_with_sensing_)
     {
       opt.plan_callback_ = boost::bind(&plan_execution::PlanWithSensing::computePlan, context_->plan_with_sensing_.get(), _1, opt.plan_callback_,
@@ -209,16 +254,52 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanOnly(const
   action_res.planning_time = res.planning_time_;
 }
 
-bool move_group::MoveGroupManipulationAction::planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan)
+void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakePlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
 {
-  setMoveState(PLANNING);
+  ROS_INFO("Planning request received for MoveGroup action. Forwarding to Drake.");
 
-  planning_scene_monitor::LockedPlanningSceneRO lscene(plan.planning_scene_monitor_);
-  bool solved = false;
+  planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
+  const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
+    static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
   planning_interface::MotionPlanResponse res;
+
+  const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
+
   try
   {
-    solved = context_->planning_pipeline_->generatePlan(plan.planning_scene_, req, res);
+      //Everything OK in the beginning, this will be changed below if we encounter problems
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+
+      // build request message
+      const planning_scene::PlanningScenePtr& planning_scene = context_->planning_scene_monitor_->getPlanningScene();
+      robot_state::RobotState current_robot_state = planning_scene->getCurrentState();
+      moveit_msgs::RobotState current_state_msg;
+      moveit::core::robotStateToRobotStateMsg(current_robot_state, current_state_msg);
+
+      flor_drake_bridge::RequestWholeBodyTrajectory::Request request_msg;
+      request_msg.trajectory_request.current_state = current_state_msg;
+      request_msg.trajectory_request.duration = 5.0;
+      request_msg.trajectory_request.num_time_steps = 10.0;
+      request_msg.trajectory_request.motion_plan_request = goal->request;
+
+      // call service and process response
+      struct timeval start_time;
+      gettimeofday(&start_time, NULL);
+
+      flor_drake_bridge::RequestWholeBodyTrajectory::Response response_msg;
+      bool solved = drake_trajectory_srv_client_.call(request_msg, response_msg);
+
+      if ( solved ) {
+        res.trajectory_ = robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(robot_model, goal->request.group_name));
+        res.trajectory_->setRobotTrajectoryMsg(current_robot_state, response_msg.trajectory_result.result_trajectory);
+
+        struct timeval end_time, diff;
+        gettimeofday(&end_time, NULL);
+        timersub(&end_time, &start_time, &diff);
+      }
+      else {
+          res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+      }
   }
   catch(std::runtime_error &ex)
   {
@@ -230,16 +311,301 @@ bool move_group::MoveGroupManipulationAction::planUsingPlanningPipeline(const pl
     ROS_ERROR("Planning pipeline threw an exception");
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
   }
-  if (res.trajectory_)
-  {
-    plan.plan_components_.resize(1);
-    plan.plan_components_[0].trajectory_ = res.trajectory_;
-    plan.plan_components_[0].description_ = "plan";
 
-    planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
+  convertToMsg(res.trajectory_, action_res.trajectory_start, action_res.planned_trajectory);
+
+  if (res.trajectory_) {
+    planned_traj_vis_->publishTrajectoryEndeffectorVis(*res.trajectory_);
+
+    moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+    result_trajectory_display_msg.trajectory.push_back( action_res.planned_trajectory );
+    result_trajectory_display_msg.trajectory_start = action_res.trajectory_start;
+    result_trajectory_display_msg.model_id = robot_model->getName();
+    drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
   }
-  plan.error_code_ = res.error_code_;
-  return solved;
+
+  action_res.error_code = res.error_code_;
+  action_res.planning_time = res.planning_time_;
+}
+
+
+void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesianPlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
+{
+  ROS_INFO("Planning request received for MoveGroup action. Forwarding to Drake.");
+
+  planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
+  const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
+    static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
+  planning_interface::MotionPlanResponse res;
+
+  const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
+  flor_drake_bridge::RequestWholeBodyCartesianTrajectory::Response response_msg;
+  const planning_scene::PlanningScenePtr& planning_scene = context_->planning_scene_monitor_->getPlanningScene();
+
+  robot_state::RobotState current_robot_state = planning_scene->getCurrentState();
+  moveit_msgs::RobotState current_state_msg;
+  moveit::core::robotStateToRobotStateMsg(current_robot_state, current_state_msg);
+
+  try
+  {
+      //Everything OK in the beginning, this will be changed below if we encounter problems
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+
+      const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
+
+      // build request message
+      const moveit::core::JointModelGroup *joint_model_group = current_robot_state.getJointModelGroup(goal->request.group_name);
+
+      flor_drake_bridge::RequestWholeBodyCartesianTrajectory::Request request_msg;
+      request_msg.trajectory_request.current_state = current_state_msg;
+      request_msg.trajectory_request.waypoints = goal->extended_planning_options.target_poses;
+      request_msg.trajectory_request.waypoint_times = goal->extended_planning_options.target_pose_times;
+      request_msg.trajectory_request.target_link_names = goal->extended_planning_options.target_link_names;
+      request_msg.trajectory_request.free_joint_names = joint_model_group->getJointModelNames();
+      request_msg.trajectory_request.target_orientation_type = goal->extended_planning_options.target_orientation_type;
+      request_msg.trajectory_request.trajectory_sample_rate = goal->extended_planning_options.trajectory_sample_rate;
+      request_msg.trajectory_request.check_self_collisions = goal->extended_planning_options.check_self_collisions;
+
+      // call service and process response
+      struct timeval start_time;
+      gettimeofday(&start_time, NULL);
+
+      bool solved = drake_cartesian_trajectory_srv_client_.call(request_msg, response_msg);
+
+      if ( solved ) {
+        res.trajectory_ = robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(robot_model, goal->request.group_name));
+        res.trajectory_->setRobotTrajectoryMsg(current_robot_state, response_msg.trajectory_result.result_trajectory);
+
+        struct timeval end_time, diff;
+        gettimeofday(&end_time, NULL);
+        timersub(&end_time, &start_time, &diff);
+        res.planning_time_ = (double)diff.tv_sec + (double)diff.tv_usec/1000000.0;
+      }
+      else {
+          res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+      }
+  }
+  catch(std::runtime_error &ex)
+  {
+    ROS_ERROR("Planning pipeline threw an exception: %s", ex.what());
+    res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+  }
+  catch(...)
+  {
+    ROS_ERROR("Planning pipeline threw an exception");
+    res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+  }
+
+  convertToMsg(res.trajectory_, action_res.trajectory_start, action_res.planned_trajectory);
+
+  if (res.trajectory_) {
+    planned_traj_vis_->publishTrajectoryEndeffectorVis(*res.trajectory_);
+
+    moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+    result_trajectory_display_msg.trajectory.push_back( response_msg.trajectory_result.result_trajectory );
+    result_trajectory_display_msg.trajectory_start = current_state_msg;
+    result_trajectory_display_msg.model_id = robot_model->getName();
+    drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+  }
+
+  action_res.error_code = res.error_code_;
+  action_res.planning_time = res.planning_time_;
+}
+
+bool move_group::MoveGroupManipulationAction::planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan)
+{
+
+    setMoveState(PLANNING);
+
+    planning_scene_monitor::LockedPlanningSceneRO lscene(plan.planning_scene_monitor_);
+    bool solved = false;
+    planning_interface::MotionPlanResponse res;
+    try
+    {
+      solved = context_->planning_pipeline_->generatePlan(plan.planning_scene_, req, res);
+    }
+    catch(std::runtime_error &ex)
+    {
+      ROS_ERROR("Planning pipeline threw an exception: %s", ex.what());
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    }
+    catch(...)
+    {
+      ROS_ERROR("Planning pipeline threw an exception");
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    }
+    if (res.trajectory_)
+    {
+      plan.plan_components_.resize(1);
+      plan.plan_components_[0].trajectory_ = res.trajectory_;
+      plan.plan_components_[0].description_ = "plan";
+
+      planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
+    }
+    plan.error_code_ = res.error_code_;
+    return solved;
+}
+
+
+bool move_group::MoveGroupManipulationAction::planUsingDrake(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan)
+{
+    setMoveState(PLANNING);
+
+    planning_scene_monitor::LockedPlanningSceneRO lscene(plan.planning_scene_monitor_);
+    bool solved = false;
+    planning_interface::MotionPlanResponse res;
+    const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
+    try
+    {
+        //Everything OK in the beginning, this will be changed below if we encounter problems
+        res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+
+        // build request message
+        const planning_scene::PlanningScenePtr& planning_scene = context_->planning_scene_monitor_->getPlanningScene();
+        robot_state::RobotState current_robot_state = planning_scene->getCurrentState();
+        moveit_msgs::RobotState current_state_msg;
+        moveit::core::robotStateToRobotStateMsg(current_robot_state, current_state_msg);
+
+        flor_drake_bridge::RequestWholeBodyTrajectory::Request request_msg;
+        request_msg.trajectory_request.current_state = current_state_msg;
+        request_msg.trajectory_request.duration = 5.0;
+        request_msg.trajectory_request.num_time_steps = 10.0;
+        request_msg.trajectory_request.motion_plan_request = req;
+
+        // call service and process response
+        struct timeval start_time;
+        gettimeofday(&start_time, NULL);
+
+        flor_drake_bridge::RequestWholeBodyTrajectory::Response response_msg;
+        bool solved = drake_trajectory_srv_client_.call(request_msg, response_msg);
+
+        if ( solved ) {
+          res.trajectory_ = robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(robot_model, req.group_name));
+          res.trajectory_->setRobotTrajectoryMsg(current_robot_state, response_msg.trajectory_result.result_trajectory);
+
+          struct timeval end_time, diff;
+          gettimeofday(&end_time, NULL);
+          timersub(&end_time, &start_time, &diff);
+          res.planning_time_ = (double)diff.tv_sec + (double)diff.tv_usec/1000000.0;
+        }
+        else {
+            res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        }
+    }
+    catch(std::runtime_error &ex)
+    {
+      ROS_ERROR("Planning pipeline threw an exception: %s", ex.what());
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    }
+    catch(...)
+    {
+      ROS_ERROR("Planning pipeline threw an exception");
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    }
+    if (res.trajectory_)
+    {
+      plan.plan_components_.resize(1);
+      plan.plan_components_[0].trajectory_ = res.trajectory_;
+      plan.plan_components_[0].description_ = "plan";
+
+      planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
+
+      moveit_msgs::RobotState trajectory_start;
+      moveit_msgs::RobotTrajectory planned_trajectory;
+      convertToMsg(res.trajectory_, trajectory_start, planned_trajectory);
+
+      moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+      result_trajectory_display_msg.trajectory.push_back( planned_trajectory );
+      result_trajectory_display_msg.trajectory_start = trajectory_start;
+      result_trajectory_display_msg.model_id = robot_model->getName();
+      drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+    }
+    plan.error_code_ = res.error_code_;
+    return solved;
+}
+
+bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan)
+{
+    setMoveState(PLANNING);
+
+    planning_scene_monitor::LockedPlanningSceneRO lscene(plan.planning_scene_monitor_);
+    bool solved = false;
+    planning_interface::MotionPlanResponse res;
+    const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
+    try
+    {
+        //Everything OK in the beginning, this will be changed below if we encounter problems
+        res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+
+        // build request message
+        const planning_scene::PlanningScenePtr& planning_scene = context_->planning_scene_monitor_->getPlanningScene();
+        robot_state::RobotState current_robot_state = planning_scene->getCurrentState();
+        const moveit::core::JointModelGroup *joint_model_group = current_robot_state.getJointModelGroup(goal->request.group_name);
+
+        moveit_msgs::RobotState current_state_msg;
+        moveit::core::robotStateToRobotStateMsg(current_robot_state, current_state_msg);
+
+        flor_drake_bridge::RequestWholeBodyCartesianTrajectory::Request request_msg;
+        request_msg.trajectory_request.current_state = current_state_msg;
+        request_msg.trajectory_request.waypoints = goal->extended_planning_options.target_poses;
+        request_msg.trajectory_request.waypoint_times = goal->extended_planning_options.target_pose_times;
+        request_msg.trajectory_request.target_link_names = goal->extended_planning_options.target_link_names;
+        request_msg.trajectory_request.free_joint_names = joint_model_group->getJointModelNames();
+        request_msg.trajectory_request.target_orientation_type = goal->extended_planning_options.target_orientation_type;
+        request_msg.trajectory_request.trajectory_sample_rate = goal->extended_planning_options.trajectory_sample_rate;
+        request_msg.trajectory_request.check_self_collisions = goal->extended_planning_options.check_self_collisions;
+
+        // call service and process response
+        struct timeval start_time;
+        gettimeofday(&start_time, NULL);
+
+        flor_drake_bridge::RequestWholeBodyTrajectory::Response response_msg;
+        bool solved = drake_cartesian_trajectory_srv_client_.call(request_msg, response_msg);
+
+        if ( solved ) {
+
+          res.trajectory_ = robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(robot_model, goal->request.group_name));
+          res.trajectory_->setRobotTrajectoryMsg(current_robot_state, response_msg.trajectory_result.result_trajectory);
+
+          struct timeval end_time, diff;
+          gettimeofday(&end_time, NULL);
+          timersub(&end_time, &start_time, &diff);
+          res.planning_time_ = (double)diff.tv_sec + (double)diff.tv_usec/1000000.0;
+        }
+        else {
+            res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        }
+    }
+    catch(std::runtime_error &ex)
+    {
+      ROS_ERROR("Planning pipeline threw an exception: %s", ex.what());
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    }
+    catch(...)
+    {
+      ROS_ERROR("Planning pipeline threw an exception");
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    }
+    if (res.trajectory_)
+    {
+      plan.plan_components_.resize(1);
+      plan.plan_components_[0].trajectory_ = res.trajectory_;
+      plan.plan_components_[0].description_ = "plan";
+
+      planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
+
+      moveit_msgs::RobotState trajectory_start;
+      moveit_msgs::RobotTrajectory planned_trajectory;
+      convertToMsg(res.trajectory_, trajectory_start, planned_trajectory);
+
+      moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+      result_trajectory_display_msg.trajectory.push_back( planned_trajectory );
+      result_trajectory_display_msg.trajectory_start = trajectory_start;
+      result_trajectory_display_msg.model_id = robot_model->getName();
+      drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+    }
+    plan.error_code_ = res.error_code_;
+    return solved;
 }
 
 void move_group::MoveGroupManipulationAction::startMoveExecutionCallback()

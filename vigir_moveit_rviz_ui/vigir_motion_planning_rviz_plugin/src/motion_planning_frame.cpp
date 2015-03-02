@@ -36,7 +36,6 @@
 
 #include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_frame.h>
 #include <moveit/vigir_motion_planning_rviz_plugin/motion_planning_display.h>
-#include <moveit/vigir_motion_planning_rviz_plugin/manual_cartesian_trajectory_dialog.h>
 #include <moveit/move_group/capability_names.h>
 
 #include <geometric_shapes/shape_operations.h>
@@ -61,11 +60,12 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay *pdisplay, rviz::
   context_(context),
   ui_(new Ui::MotionPlanningUI()),
   first_time_(true),
-  manual_cartesian_trajectory_dialog_(NULL),
+
   clear_octomap_service_client_(nh_.serviceClient<std_srvs::Empty>(move_group::CLEAR_OCTOMAP_SERVICE_NAME))
 {
   // set up the GUI
   ui_->setupUi(this);
+  initCartesianTrajectoryTab();
 
   // connect bottons to actions; each action usually registers the function pointer for the actual computation,
   // to keep the GUI more responsive (using the background job processing)
@@ -116,7 +116,6 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay *pdisplay, rviz::
   connect( ui_->remove_state_button, SIGNAL( clicked() ), this, SLOT( removeStateButtonClicked() ));
   connect( ui_->clear_states_button, SIGNAL( clicked() ), this, SLOT( clearStatesButtonClicked() ));
   connect( ui_->approximate_ik, SIGNAL( stateChanged(int) ), this, SLOT( approximateIKChanged(int) ));
-  connect( ui_->manual_cartesian_trajectory_button, SIGNAL( clicked() ), this, SLOT( cartesianTrajectoryDialogButtonClicked()));
 
   connect( ui_->detect_objects_button, SIGNAL( clicked() ), this, SLOT( detectObjectsButtonClicked() ));
   connect( ui_->pick_button, SIGNAL( clicked() ), this, SLOT( pickObjectButtonClicked() ));
@@ -124,6 +123,18 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay *pdisplay, rviz::
   connect( ui_->detected_objects_list, SIGNAL( itemSelectionChanged() ), this, SLOT( selectedDetectedObjectChanged() ));
   connect( ui_->detected_objects_list, SIGNAL( itemChanged( QListWidgetItem * ) ), this, SLOT( detectedObjectChanged( QListWidgetItem * ) ));
   connect( ui_->support_surfaces_list, SIGNAL( itemSelectionChanged() ), this, SLOT( selectedSupportSurfaceChanged() ));
+
+  // cartesian trajectory tab
+  connect(ui_->add_waypoint_button, SIGNAL(clicked()), this, SLOT(addWaypointButtonClicked()));
+  connect(ui_->remove_waypoint_button, SIGNAL(clicked()), this, SLOT(removeWaypointButtonClicked()));
+  connect(ui_->clear_waypoints_button, SIGNAL(clicked()), this, SLOT(clearWaypointsButtonClicked()));
+  connect(ui_->load_cartesian_trajectory_button, SIGNAL(clicked()), this, SLOT(loadCartesianTrajectoryButtonClicked()));
+  connect(ui_->save_cartesian_trajectory_button, SIGNAL(clicked()), this, SLOT(saveCartesianTrajectoryButtonClicked()));
+  connect(ui_->plan_cartesian_trajectory_button, SIGNAL(clicked()), this, SLOT(planCartesianTrajectoryButtonClicked()));
+  connect(&cartesian_trajectory_waypoint_change_mapper_, SIGNAL(mapped(QWidget*)), this, SLOT(updateWaypointData(QWidget*)));
+
+
+
 
   connect( ui_->tabWidget, SIGNAL( currentChanged ( int ) ), this, SLOT( tabChanged( int ) ));
 
@@ -192,15 +203,6 @@ MotionPlanningFrame::~MotionPlanningFrame()
 void MotionPlanningFrame::approximateIKChanged(int state)
 {
   planning_display_->useApproximateIK(state == Qt::Checked);
-}
-
-void MotionPlanningFrame::cartesianTrajectoryDialogButtonClicked() 
-{
-  if ( manual_cartesian_trajectory_dialog_ == NULL ) {
-    manual_cartesian_trajectory_dialog_ = new ManualCartesianTrajectoryDialog(this);
-  }
-  
-  manual_cartesian_trajectory_dialog_->show();
 }
 
 void MotionPlanningFrame::setItemSelectionInList(const std::string &item_name, bool selection, QListWidget *list)

@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(vigir_planning_interface)
 
+set(CMAKE_BUILD_TYPE Debug)
+
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
+  set(CMAKE_BUILD_TYPE Debug)
 endif()
 
 find_package(Boost REQUIRED COMPONENTS

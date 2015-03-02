@@ -55,8 +55,6 @@ void move_group::ContinuousReplanningCapability::initialize()
 
   trigger_sub_ = root_node_handle_.subscribe("/trigger_cont", 1, &ContinuousReplanningCapability::triggerCb, this);
   abort_sub_ = root_node_handle_.subscribe("/abort_cont", 1, &ContinuousReplanningCapability::abortCb, this);
-
-
 }
 
 void move_group::ContinuousReplanningCapability::triggerCb(const std_msgs::Empty::ConstPtr& msg)

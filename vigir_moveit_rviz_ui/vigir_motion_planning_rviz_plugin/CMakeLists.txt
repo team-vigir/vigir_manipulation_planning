@@ -1,3 +1,4 @@
+set(QT_USE_QTXML TRUE)
 
 # Header files that need Qt Moc pre-processing for use with Qt signals, etc:
 set( headers
@@ -22,6 +23,7 @@ set(SOURCE_FILES
   src/motion_planning_frame_objects.cpp
   src/motion_planning_frame_scenes.cpp
   src/motion_planning_frame_states.cpp
+  src/motion_planning_frame_cartesian_trajectory.cpp
   src/motion_planning_display.cpp
   src/motion_planning_frame_manipulation.cpp
 )
