@@ -47,6 +47,7 @@
 #include <moveit/point_containment_filter/shape_mask.h>
 #include <laser_geometry/laser_geometry.h>
 #include <filters/filter_chain.h>
+#include <vigir_perception_msgs/FilteredLocalizedLaserScan.h>
 
 namespace occupancy_map_monitor
 {
@@ -104,6 +105,13 @@ private:
   laser_geometry::LaserProjection projector_;
   filters::FilterChain<sensor_msgs::LaserScan> filter_chain_;
   sensor_msgs::LaserScan scan_filtered_;
+  sensor_msgs::LaserScan scan_self_filtered_;
+
+  vigir_perception_msgs::FilteredLocalizedLaserScan filtered_localized_scan_;
+
+  ros::Publisher scan_filtered_publisher_;
+  ros::Publisher scan_self_filtered_publisher_;
+  ros::Publisher filtered_localized_scan_publisher_;
 
   //octomap::KeySet free_cells, occupied_cells, model_cells, clip_cells;
 
