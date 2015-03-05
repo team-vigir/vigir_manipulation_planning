@@ -81,11 +81,12 @@
 #include <moveit_msgs/GripperTranslation.h>
 #include <trajectory_msgs/JointTrajectory.h>
 
-#include <vigir_object_template_msgs/GetTemplateStateAndTypeInfo.h>
+#include <vigir_object_template_msgs/GetInstantiatedGraspInfo.h>
 #include <vigir_object_template_msgs/SetAttachedObjectTemplate.h>
 #include <vigir_object_template_msgs/DetachObjectTemplate.h>
 
-#define FINGER_EFFORTS 4
+#include <moveit/vigir_move_group_interface/move_group.h>
+
 
 namespace vigir_manipulation_controller {
 
@@ -107,7 +108,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
      void  templateStitchCallback(const flor_grasp_msgs::TemplateSelection& template_pose);
 
      /** called to update the latest wrist pose */
-     void  wristPoseCallback(const geometry_msgs::PoseStamped& mode_command);
+     void  wristPoseCallback(const geometry_msgs::PoseStamped& wrist_pose);
 
      void moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp);
 
@@ -184,7 +185,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
 
     // Internal variables used by active controllers
-    vigir_object_template_msgs::GetTemplateStateAndTypeInfoResponse last_template_res_;
+    vigir_object_template_msgs::GetInstantiatedGraspInfoResponse last_grasp_res_;
     geometry_msgs::Pose                     final_wrist_pose_;
     geometry_msgs::Pose                     pregrasp_wrist_pose_;
     tf::Transform                           stitch_template_pose_;
@@ -215,6 +216,8 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     //Trajectory Action
     TrajectoryActionClient*            trajectory_client_;
 
+    moveit::planning_interface::VigirMoveGroup l_arm_group_;
+    moveit::planning_interface::VigirMoveGroup r_arm_group_;
 
   private:
     ros::Publisher wrist_target_pub_ ;
@@ -236,7 +239,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     ros::Subscriber grasp_planning_group_sub_;
 
 
-    ros::ServiceClient template_info_client_;
+    ros::ServiceClient inst_grasp_info_client_;
     ros::ServiceClient attach_object_client_;
     ros::ServiceClient stitch_object_client_;
     ros::ServiceClient detach_object_client_;

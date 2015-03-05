@@ -39,7 +39,9 @@ VigirManipulationController::VigirManipulationController():
     pregrasp_position_error_threshold_(0.05),        // meters
     final_grasp_position_error_threshold_(0.05),     // meters
     pregrasp_orientation_error_threshold_(0.1),      // quaternion mumble
-    final_grasp_orientation_error_threshold_(0.1)    // quaternion mumble
+    final_grasp_orientation_error_threshold_(0.1),    // quaternion mumble
+    l_arm_group_("l_arm_group"),
+    r_arm_group_("r_arm_group")
 {
 
 }
@@ -131,7 +133,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     grasp_planning_group_sub_ = nh.subscribe("planning_group",     1, &VigirManipulationController::graspPlanningGroupCallback, this);
     grasp_selection_sub_      = nh.subscribe("move_to_pose",       1, &VigirManipulationController::moveToPoseCallback,         this);
 
-    template_info_client_     = nh.serviceClient<vigir_object_template_msgs::GetTemplateStateAndTypeInfo>("/template_info");
+    inst_grasp_info_client_     = nh.serviceClient<vigir_object_template_msgs::GetInstantiatedGraspInfo>("/instantiated_grasp_info");
 
     attach_object_client_     = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/attach_object_template");
     stitch_object_client_     = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/stitch_object_template");
@@ -142,7 +144,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
 
     this->hand_offset_pose_.setIdentity();
 
-  }
+}
 
 ///////////////////////////////////////////////////////
 // Class Callback functions for ros subscribers
@@ -172,20 +174,20 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
     if(template_pose.confidence.data >= 0)
     {
         //Calculate static transform to stitch template to hand
-        tf::Transform wTh;
-        tf::Transform wTt;
-        tf::Transform tTg;
+        tf::Transform world_T_hand;
+        tf::Transform world_T_template;
+        tf::Transform template_T_palm;
 
-        wTh.setRotation(tf::Quaternion(this->last_wrist_pose_msg_.pose.orientation.x,this->last_wrist_pose_msg_.pose.orientation.y,this->last_wrist_pose_msg_.pose.orientation.z,this->last_wrist_pose_msg_.pose.orientation.w));
-        wTh.setOrigin(tf::Vector3(this->last_wrist_pose_msg_.pose.position.x,this->last_wrist_pose_msg_.pose.position.y,this->last_wrist_pose_msg_.pose.position.z));
+        world_T_hand.setRotation(tf::Quaternion(this->last_wrist_pose_msg_.pose.orientation.x,this->last_wrist_pose_msg_.pose.orientation.y,this->last_wrist_pose_msg_.pose.orientation.z,this->last_wrist_pose_msg_.pose.orientation.w));
+        world_T_hand.setOrigin(tf::Vector3(this->last_wrist_pose_msg_.pose.position.x,this->last_wrist_pose_msg_.pose.position.y,this->last_wrist_pose_msg_.pose.position.z));
 
-        wTt.setRotation(tf::Quaternion(template_pose.pose.pose.orientation.x,template_pose.pose.pose.orientation.y,template_pose.pose.pose.orientation.z,template_pose.pose.pose.orientation.w));
-        wTt.setOrigin(tf::Vector3(template_pose.pose.pose.position.x,template_pose.pose.pose.position.y,template_pose.pose.pose.position.z));
+        world_T_template.setRotation(tf::Quaternion(template_pose.pose.pose.orientation.x,template_pose.pose.pose.orientation.y,template_pose.pose.pose.orientation.z,template_pose.pose.pose.orientation.w));
+        world_T_template.setOrigin(tf::Vector3(template_pose.pose.pose.position.x,template_pose.pose.pose.position.y,template_pose.pose.pose.position.z));
 
-        tTg.setRotation(tf::Quaternion(this->final_wrist_pose_.orientation.x,this->final_wrist_pose_.orientation.y,this->final_wrist_pose_.orientation.z,this->final_wrist_pose_.orientation.w));
-        tTg.setOrigin(tf::Vector3(this->final_wrist_pose_.position.x,this->final_wrist_pose_.position.y,this->final_wrist_pose_.position.z));
+        template_T_palm.setRotation(tf::Quaternion(this->final_wrist_pose_.orientation.x,this->final_wrist_pose_.orientation.y,this->final_wrist_pose_.orientation.z,this->final_wrist_pose_.orientation.w));
+        template_T_palm.setOrigin(tf::Vector3(this->final_wrist_pose_.position.x,this->final_wrist_pose_.position.y,this->final_wrist_pose_.position.z));
 
-        this->stitch_template_pose_ = hand_T_palm_ * hand_offset_pose_.inverse() * hand_T_palm_.inverse() * tTg.inverse() * wTt.inverse() * wTh;
+        this->stitch_template_pose_ = hand_T_palm_ * hand_offset_pose_.inverse() * hand_T_palm_.inverse() * template_T_palm.inverse() * world_T_template.inverse() * world_T_hand;
     }else
     {
         //Set static transform to identity unstitching the template
@@ -249,11 +251,11 @@ void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::Gras
     // Store the latest grasp command, and update at next calculation loop
     {
         boost::lock_guard<boost::mutex> guard(this->write_data_mutex_);
-        requestTemplateService(grasp.template_type.data);
+        requestTemplateService(grasp.template_id.data);
         geometry_msgs::PoseStamped grasp_pose;
-        moveit_msgs::GripperTranslation trans;
+        geometry_msgs::PoseStamped pre_grasp_pose;
 
-        size_t size = last_template_res_.template_type_information.grasps.size();
+        size_t size = last_grasp_res_.grasp_information.grasps.size();
 
         if(size == 0)
             ROS_ERROR_STREAM("No grasps found for this template");
@@ -261,29 +263,23 @@ void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::Gras
             size_t index = 0;
             for(; index < size; ++index)
             {
-                if(std::atoi(last_template_res_.template_type_information.grasps[index].id.c_str()) == grasp.grasp_id.data){
-                    grasp_pose = last_template_res_.template_type_information.grasps[index].grasp_pose;
-                    trans = last_template_res_.template_type_information.grasps[index].pre_grasp_approach;
+                if(std::atoi(last_grasp_res_.grasp_information.grasps[index].id.c_str()) == grasp.grasp_id.data){
+                    grasp_pose     = last_grasp_res_.grasp_information.grasps[index].grasp_pose;
+                    pre_grasp_pose = last_grasp_res_.pre_grasp_information.grasps[index].grasp_pose;
                     break;
                 }
             }
 
             if(index >= size)
-                ROS_ERROR_STREAM("Template server response id: " << last_template_res_.template_type_information.grasps[index].id << " while searching for id: " << grasp.grasp_id.data);
+                ROS_ERROR_STREAM("Template server response id: " << last_grasp_res_.grasp_information.grasps[index].id << " while searching for id: " << grasp.grasp_id.data);
             else{
-                geometry_msgs::Pose template_T_palm;//geometry_msgs::PoseStamped grasp_transform;
-                template_T_palm = grasp_pose.pose;//grasp_transform.pose = grasp_db_[grasp_index].final_pose;
-
-                if(!grasp.final_pose)  //Pre-Grasp pose
-                    gripperTranslationToPreGraspPose(template_T_palm,trans);
-
-                staticTransform(template_T_palm);
-
                 this->wrist_target_pose_.planning_group.data = planning_group_;
                 this->wrist_target_pose_.use_environment_obstacle_avoidance.data = true;
-                this->wrist_target_pose_.pose = last_template_res_.template_state_information.pose;
+                if(grasp.final_pose)
+                    this->wrist_target_pose_.pose = grasp_pose;
+                else
+                    this->wrist_target_pose_.pose = pre_grasp_pose;
 
-                this->calcWristTarget(template_T_palm,last_template_res_.template_state_information.pose);
 
                 this->updateWristTarget();
 
@@ -1139,15 +1135,15 @@ inline void VigirManipulationController::updateHandMass()
 // END MAIN CONTROL LOOP
 /////////////////////////////////////////////////////////////////////////
 // Helper functions
-void VigirManipulationController::requestTemplateService(const uint16_t& requested_template_type){
+void VigirManipulationController::requestTemplateService(const uint16_t& requested_template_id){
     //CALLING THE TEMPLATE SERVER
-    vigir_object_template_msgs::GetTemplateStateAndTypeInfo srv;
-    srv.request.template_type = requested_template_type;
-    if (!template_info_client_.call(srv))
+    vigir_object_template_msgs::GetInstantiatedGraspInfo srv;
+    srv.request.template_id = requested_template_id;
+    if (!inst_grasp_info_client_.call(srv))
     {
         ROS_ERROR("Failed to call service request grasp info");
     }
-    last_template_res_ = srv.response;
+    last_grasp_res_ = srv.response;
 }
 
 void VigirManipulationController::setAttachingObject(const flor_grasp_msgs::TemplateSelection& last_template_data){
