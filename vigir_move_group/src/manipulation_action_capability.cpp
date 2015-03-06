@@ -47,8 +47,8 @@
 #include <moveit/robot_state/conversions.h>
 #include <moveit_msgs/DisplayTrajectory.h>
 
-#include <flor_drake_bridge/RequestWholeBodyTrajectory.h>
-#include <flor_drake_bridge/RequestWholeBodyCartesianTrajectory.h>
+#include <vigir_planning_msgs/RequestWholeBodyTrajectory.h>
+#include <vigir_planning_msgs/RequestWholeBodyCartesianTrajectory.h>
 
 move_group::MoveGroupManipulationAction::MoveGroupManipulationAction() :
   MoveGroupCapability("VigirManipulationAction"),
@@ -70,8 +70,8 @@ void move_group::MoveGroupManipulationAction::initialize()
   move_action_server_->registerPreemptCallback(boost::bind(&MoveGroupManipulationAction::preemptMoveCallback, this));
   move_action_server_->start();
 
-  drake_trajectory_srv_client_ = root_node_handle_.serviceClient<flor_drake_bridge::RequestWholeBodyTrajectory>("flor_drake_bridge/request_whole_body_trajectory");
-  drake_cartesian_trajectory_srv_client_ = root_node_handle_.serviceClient<flor_drake_bridge::RequestWholeBodyCartesianTrajectory>("flor_drake_bridge/request_whole_body_cartesian_trajectory");
+  drake_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyTrajectory>("flor_drake_bridge/request_whole_body_trajectory");
+  drake_cartesian_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyCartesianTrajectory>("flor_drake_bridge/request_whole_body_cartesian_trajectory");
   drake_trajectory_result_pub_ = root_node_handle_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10);
 }
 
@@ -268,7 +268,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakePlanOnly(
   moveit_msgs::RobotState current_state_msg;
   moveit::core::robotStateToRobotStateMsg(current_robot_state, current_state_msg);
 
-  flor_drake_bridge::RequestWholeBodyTrajectory::Response drake_response_msg;
+  vigir_planning_msgs::RequestWholeBodyTrajectory::Response drake_response_msg;
 
   try
   {
@@ -276,7 +276,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakePlanOnly(
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
 
       // build request message
-      flor_drake_bridge::RequestWholeBodyTrajectory::Request drake_request_msg;
+      vigir_planning_msgs::RequestWholeBodyTrajectory::Request drake_request_msg;
       drake_request_msg.trajectory_request.current_state = current_state_msg;
 
       if ( goal->extended_planning_options.target_pose_times.size() > 0 ) {
@@ -342,7 +342,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
     static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
   planning_interface::MotionPlanResponse res;
 
-  flor_drake_bridge::RequestWholeBodyCartesianTrajectory::Response drake_response_msg;
+  vigir_planning_msgs::RequestWholeBodyCartesianTrajectory::Response drake_response_msg;
 
   // get current robot state and model
   const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();  
@@ -359,7 +359,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
       // build request message
       const moveit::core::JointModelGroup *joint_model_group = current_robot_state.getJointModelGroup(goal->request.group_name);
 
-      flor_drake_bridge::RequestWholeBodyCartesianTrajectory::Request drake_request_msg;
+      vigir_planning_msgs::RequestWholeBodyCartesianTrajectory::Request drake_request_msg;
       drake_request_msg.trajectory_request.current_state = current_state_msg;
       drake_request_msg.trajectory_request.waypoints = goal->extended_planning_options.target_poses;
       drake_request_msg.trajectory_request.waypoint_times = goal->extended_planning_options.target_pose_times;
@@ -465,7 +465,7 @@ bool move_group::MoveGroupManipulationAction::planUsingDrake(const vigir_plannin
     moveit_msgs::RobotState current_state_msg;
     moveit::core::robotStateToRobotStateMsg(current_robot_state, current_state_msg);
 
-    flor_drake_bridge::RequestWholeBodyTrajectory::Response drake_response_msg;
+    vigir_planning_msgs::RequestWholeBodyTrajectory::Response drake_response_msg;
 
     try
     {
@@ -473,7 +473,7 @@ bool move_group::MoveGroupManipulationAction::planUsingDrake(const vigir_plannin
         res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
 
         // build request message
-        flor_drake_bridge::RequestWholeBodyTrajectory::Request drake_request_msg;
+        vigir_planning_msgs::RequestWholeBodyTrajectory::Request drake_request_msg;
         drake_request_msg.trajectory_request.current_state = current_state_msg;
 
         if ( goal->extended_planning_options.target_pose_times.size() > 0 )
@@ -538,7 +538,7 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
     planning_scene_monitor::LockedPlanningSceneRO lscene(plan.planning_scene_monitor_);
     bool solved = false;
     planning_interface::MotionPlanResponse res;
-    flor_drake_bridge::RequestWholeBodyTrajectory::Response drake_response_msg;
+    vigir_planning_msgs::RequestWholeBodyTrajectory::Response drake_response_msg;
 
     const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
 
@@ -555,7 +555,7 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
         res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
 
         // build request message
-        flor_drake_bridge::RequestWholeBodyCartesianTrajectory::Request drake_request_msg;
+        vigir_planning_msgs::RequestWholeBodyCartesianTrajectory::Request drake_request_msg;
         drake_request_msg.trajectory_request.current_state = current_state_msg;
         drake_request_msg.trajectory_request.waypoints = goal->extended_planning_options.target_poses;
         drake_request_msg.trajectory_request.waypoint_times = goal->extended_planning_options.target_pose_times;

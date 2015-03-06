@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   vigir_plan_execution
   vigir_moveit_utils
+  vigir_planning_msgs
 )
 
 catkin_package(
