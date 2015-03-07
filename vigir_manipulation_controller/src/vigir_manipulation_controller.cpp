@@ -39,9 +39,9 @@ VigirManipulationController::VigirManipulationController():
     pregrasp_position_error_threshold_(0.05),        // meters
     final_grasp_position_error_threshold_(0.05),     // meters
     pregrasp_orientation_error_threshold_(0.1),      // quaternion mumble
-    final_grasp_orientation_error_threshold_(0.1),    // quaternion mumble
+    final_grasp_orientation_error_threshold_(0.1)/*,    // quaternion mumble
     l_arm_group_("l_arm_group"),
-    r_arm_group_("r_arm_group")
+    r_arm_group_("r_arm_group")*/
 {
 
 }
@@ -126,7 +126,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     hand_mass_pub_            = nh.advertise<flor_atlas_msgs::AtlasHandMass>("hand_mass",         1, true);
 
     // These publishers should be remapped in launch file
-    release_grasp_sub_        = nh.subscribe("release_grasp",      1, &VigirManipulationController::releaseGraspCallback,       this);
+    grasp_command_sub_        = nh.subscribe("grasp_command",      1, &VigirManipulationController::graspCommandCallback,       this);
     hand_offset_sub_          = nh.subscribe("hand_offset",        1, &VigirManipulationController::handOffsetCallback,         this);
     template_stitch_sub_      = nh.subscribe("template_stitch",    1, &VigirManipulationController::templateStitchCallback,     this);
     current_wrist_sub_        = nh.subscribe("wrist_pose",         1, &VigirManipulationController::wristPoseCallback,          this);
@@ -143,6 +143,10 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     this->stitch_template_pose_.setIdentity();
 
     this->hand_offset_pose_.setIdentity();
+
+    trajectory_client_ = new  TrajectoryActionClient("/"+this->hand_side_+"_robotiq/"+this->hand_side_+"_hand_traj_controller/follow_joint_trajectory", true);
+    while(!trajectory_client_->waitForServer(ros::Duration(5.0)))
+       ROS_INFO("Waititing for %s TrajectoryActionServer", this->hand_side_.c_str());
 
 }
 
@@ -236,15 +240,76 @@ void  VigirManipulationController::wristPoseCallback(const geometry_msgs::PoseSt
 }
 
 
-void VigirManipulationController::releaseGraspCallback(const flor_grasp_msgs::GraspSelection& grasp)
+void VigirManipulationController::graspCommandCallback(const flor_grasp_msgs::GraspState& grasp)
 {
     // Store the latest grasp command, and update at next calculation loop
     {
         boost::lock_guard<boost::mutex> guard(this->write_data_mutex_);
+
+        control_msgs::FollowJointTrajectoryGoal trajectory_action;
+        trajectory_action.goal_time_tolerance = ros::Duration(5.0);
+        trajectory_action.trajectory.joint_names.resize(11);
+        trajectory_action.trajectory.joint_names[0]  = this->hand_side_+"_f0_j1";
+        trajectory_action.trajectory.joint_names[1]  = this->hand_side_+"_f1_j1";
+        trajectory_action.trajectory.joint_names[2]  = this->hand_side_+"_f2_j1";
+        trajectory_action.trajectory.joint_names[3]  = this->hand_side_+"_f1_j0";
+        trajectory_action.trajectory.joint_names[4]  = this->hand_side_+"_f2_j0";
+        trajectory_action.trajectory.joint_names[5]  = this->hand_side_+"_f0_j2";
+        trajectory_action.trajectory.joint_names[6]  = this->hand_side_+"_f1_j2";
+        trajectory_action.trajectory.joint_names[7]  = this->hand_side_+"_f2_j2";
+        trajectory_action.trajectory.joint_names[8]  = this->hand_side_+"_f0_j3";
+        trajectory_action.trajectory.joint_names[9]  = this->hand_side_+"_f1_j3";
+        trajectory_action.trajectory.joint_names[10] = this->hand_side_+"_f2_j3";
+        trajectory_action.trajectory.points.resize(1);
+        trajectory_action.trajectory.points[0].positions.resize(11);
+        trajectory_action.trajectory.points[0].positions[0]  = float(grasp.grip.data > 100 ? 100 : grasp.grip.data)*0.0122+float(grasp.finger_effort[0].data)*0.0122;
+        trajectory_action.trajectory.points[0].positions[1]  = float(grasp.grip.data > 100 ? 100 : grasp.grip.data)*0.0113+float(grasp.finger_effort[1].data)*0.0113;
+        trajectory_action.trajectory.points[0].positions[2]  = float(grasp.grip.data > 100 ? 100 : grasp.grip.data)*0.0113+float(grasp.finger_effort[2].data)*0.0113;
+        trajectory_action.trajectory.points[0].positions[3]  = float(grasp.finger_effort[3].data)*0.0028;
+        trajectory_action.trajectory.points[0].positions[4]  = 0.0;
+        trajectory_action.trajectory.points[0].positions[5]  = 0.0;
+        trajectory_action.trajectory.points[0].positions[6]  = 0.0;
+        trajectory_action.trajectory.points[0].positions[7]  = 0.0;
+        trajectory_action.trajectory.points[0].positions[8]  = 0.0;
+        trajectory_action.trajectory.points[0].positions[9]  = 0.0;
+        trajectory_action.trajectory.points[0].positions[10] = 0.0;
+        trajectory_action.trajectory.points[0].time_from_start = ros::Duration(0.05);
+
+        //Create ROS trajectory and publish
+        if(trajectory_client_->isServerConnected())
+        {
+            trajectory_action.trajectory.header.stamp = ros::Time::now();
+            trajectory_client_->sendGoal(trajectory_action,
+                                         //function that inside updates if(hand_id_>0)
+                                         //this->setGraspStatus(RobotStatusCodes::GRASP_R_CLOSURE_FAILURE, RobotStatusCodes::WARNING);
+                                         boost::bind(&VigirManipulationController::trajectoryDoneCb, this, _1, _2),
+                                         boost::bind(&VigirManipulationController::trajectoryActiveCB, this),
+                                         boost::bind(&VigirManipulationController::trajectoryFeedbackCB, this, _1));
+        }
+        else
+        {
+            ROS_ERROR("TrajectoryActionClient: Server not connected!");
+        }
     }
 
      return;
 }
+
+    void VigirManipulationController::trajectoryActiveCB()
+    {
+        //ROS_INFO("TrajectoryActionClient: Status changed to active.");
+    }
+
+    void VigirManipulationController::trajectoryFeedbackCB(const control_msgs::FollowJointTrajectoryFeedbackConstPtr& feedback)
+    {
+        ROS_INFO("TrajectoryActionClient: Feedback received.");// pos[0]= %f", feedback->actual.positions[0]);
+    }
+
+    void VigirManipulationController::trajectoryDoneCb(const actionlib::SimpleClientGoalState& state,
+                                                      const control_msgs::FollowJointTrajectoryResultConstPtr& result)
+    {
+        ROS_INFO("Fingers Trajectory finished in state [%s]", state.toString().c_str());
+    }
 
 void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp)
 {
@@ -1178,43 +1243,6 @@ void VigirManipulationController::setDetachingObject(const flor_grasp_msgs::Temp
     srv.request.template_id          = int16_t(last_template_data.template_id.data);
     if (!detach_object_client_.call(srv))
         ROS_ERROR("Failed to call service request DetachObjectTemplate");
-}
-
-void VigirManipulationController::gripperTranslationToPreGraspPose(geometry_msgs::Pose& pose, moveit_msgs::GripperTranslation& trans){
-    geometry_msgs::Vector3Stamped direction = trans.direction;
-    tf::Transform template_T_hand, vec_in, vec_out;
-    ROS_INFO("receiving trans distance: %f; dx: %f, dy: %f, dz: %f", trans.desired_distance, direction.vector.x, direction.vector.y, direction.vector.z);
-    float norm = sqrt((direction.vector.x * direction.vector.x) +(direction.vector.y * direction.vector.y) +(direction.vector.z * direction.vector.z));
-    if(norm != 0){
-        direction.vector.x /= norm;
-        direction.vector.y /= norm;
-        direction.vector.z /= norm;
-    }else{
-        ROS_INFO("Norm is ZERO!");
-        direction.vector.x = 0 ;
-        direction.vector.y = -1;
-        direction.vector.z = 0 ;
-    }
-
-    direction.vector.x *= hand_side_ == "left" ? -trans.desired_distance : trans.desired_distance;  //Change due to Atlas specifics, hand axis are reflected
-    direction.vector.y *= hand_side_ == "left" ? -trans.desired_distance : trans.desired_distance;  //Change due to Atlas specifics, hand axis are reflected
-    direction.vector.z *= -trans.desired_distance;
-
-    ROS_INFO("setting trans; dx: %f, dy: %f, dz: %f", direction.vector.x, direction.vector.y, direction.vector.z);
-
-    template_T_hand.setRotation(tf::Quaternion(pose.orientation.x,pose.orientation.y,pose.orientation.z,pose.orientation.w));
-    template_T_hand.setOrigin(tf::Vector3(0,0,0));
-
-    vec_in.setOrigin(tf::Vector3(direction.vector.x,direction.vector.y,direction.vector.z));
-    vec_in.setRotation(tf::Quaternion(0,0,0,1));
-
-    vec_out = template_T_hand * vec_in;
-
-    ROS_INFO("setting result; dx: %f, dy: %f, dz: %f", vec_out.getOrigin().getX(), vec_out.getOrigin().getY(), vec_out.getOrigin().getZ());
-
-    pose.position.x += vec_out.getOrigin().getX();
-    pose.position.y += vec_out.getOrigin().getY();
-    pose.position.z += vec_out.getOrigin().getZ();
 }
 
 int VigirManipulationController::staticTransform(geometry_msgs::Pose& palm_pose)

@@ -126,7 +126,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     /** Release any currently active grasp, and return to the NONE state after opening.
      *  This requires a new grasp selection to restart.
      */
-     void  releaseGraspCallback(const flor_grasp_msgs::GraspSelection& grasp);
+     void  graspCommandCallback(const flor_grasp_msgs::GraspState &grasp);
 
     /**
      * This function must be called to publish the updated wrist target after the template is updated.
@@ -137,13 +137,15 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
      void updateHandMass(); // call to publish latest grasp data
 
-     void gripperTranslationToPreGraspPose(geometry_msgs::Pose& pose, moveit_msgs::GripperTranslation& trans);
-
      void requestTemplateService(const uint16_t& requested_template_type);
 
      void setAttachingObject(const flor_grasp_msgs::TemplateSelection& last_template_data);
      void setDetachingObject(const flor_grasp_msgs::TemplateSelection& last_template_data);
      void setStitchingObject(const flor_grasp_msgs::TemplateSelection& last_template_data);
+
+     void trajectoryActiveCB();
+     void trajectoryFeedbackCB(const control_msgs::FollowJointTrajectoryFeedbackConstPtr& feedback);
+     void trajectoryDoneCb(const actionlib::SimpleClientGoalState& state, const control_msgs::FollowJointTrajectoryResultConstPtr &result);
 
 
   protected:
@@ -216,8 +218,8 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     //Trajectory Action
     TrajectoryActionClient*            trajectory_client_;
 
-    moveit::planning_interface::VigirMoveGroup l_arm_group_;
-    moveit::planning_interface::VigirMoveGroup r_arm_group_;
+    //moveit::planning_interface::VigirMoveGroup l_arm_group_;
+    //moveit::planning_interface::VigirMoveGroup r_arm_group_;
 
   private:
     ros::Publisher wrist_target_pub_ ;
@@ -227,7 +229,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     ros::Publisher hand_mass_pub_ ;
 
     ros::Subscriber grasp_selection_sub_;       ///< Current template and grasp selection message
-    ros::Subscriber release_grasp_sub_;         ///< Releasgrasp_joint_controller.e grasp and reset the initial finger positions
+    ros::Subscriber grasp_command_sub_;         ///< Releasgrasp_joint_controller.e grasp and reset the initial finger positions
     ros::Subscriber template_selection_sub_;    ///< Current template pose update
     ros::Subscriber hand_offset_sub_;           ///< Current hand offset pose update
     ros::Subscriber template_stitch_sub_;       ///< Current template pose to be stitched
