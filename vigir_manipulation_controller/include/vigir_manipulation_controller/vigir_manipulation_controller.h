@@ -233,6 +233,8 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     ros::Subscriber template_selection_sub_;    ///< Current template pose update
     ros::Subscriber hand_offset_sub_;           ///< Current hand offset pose update
     ros::Subscriber template_stitch_sub_;       ///< Current template pose to be stitched
+    ros::Subscriber attach_object_sub_;         ///< Attach current template
+    ros::Subscriber detach_object_sub_;         ///< Detach current template
 
     ros::Subscriber force_torque_sub_;          ///< Force torque including wrists
     ros::Subscriber current_wrist_sub_;         ///< Current wrist pose (same frame as target)

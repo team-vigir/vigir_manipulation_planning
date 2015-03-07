@@ -132,6 +132,8 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     current_wrist_sub_        = nh.subscribe("wrist_pose",         1, &VigirManipulationController::wristPoseCallback,          this);
     grasp_planning_group_sub_ = nh.subscribe("planning_group",     1, &VigirManipulationController::graspPlanningGroupCallback, this);
     grasp_selection_sub_      = nh.subscribe("move_to_pose",       1, &VigirManipulationController::moveToPoseCallback,         this);
+    attach_object_sub_        = nh.subscribe("attach_object",      1, &VigirManipulationController::setAttachingObject,         this);
+    detach_object_sub_        = nh.subscribe("detach_object",      1, &VigirManipulationController::setDetachingObject,         this);
 
     inst_grasp_info_client_     = nh.serviceClient<vigir_object_template_msgs::GetInstantiatedGraspInfo>("/instantiated_grasp_info");
 
