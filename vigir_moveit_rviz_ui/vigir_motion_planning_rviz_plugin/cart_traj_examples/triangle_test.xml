@@ -1,0 +1,34 @@
+<!DOCTYPE CartesianTrajectoryOptions>
+<CartesianTrajectoryOptions>
+ <Waypoints>
+  <Waypoint name="Lower Right">
+   <Position x="0.95" y="-0.25" z="1"/>
+   <Orientation w="0" x="1" y="0" z="0"/>
+   <TargetLinkName value="l_hand"/>
+   <Time value="5"/>
+  </Waypoint>
+  <Waypoint name="Lower Left">
+   <Position x="0.95" y="0.25" z="1"/>
+   <Orientation w="0" x="1" y="0" z="0"/>
+   <TargetLinkName value="l_hand"/>
+   <Time value="9.999999999999982"/>
+  </Waypoint>
+  <Waypoint name="Top">
+   <Position x="0.95" y="0" z="1.5"/>
+   <Orientation w="0" x="1" y="0" z="0"/>
+   <TargetLinkName value="l_hand"/>
+   <Time value="14.99999999999998"/>
+  </Waypoint>
+  <Waypoint name="Lower Right">
+   <Position x="0.95" y="-0.25" z="1"/>
+   <Orientation w="0" x="1" y="0" z="0"/>
+   <TargetLinkName value="l_hand"/>
+   <Time value="20"/>
+  </Waypoint>
+ </Waypoints>
+ <Options>
+  <OrientationMode value="1"/>
+  <SampleRate value="4"/>
+  <CheckSelfCollisions value="0"/>
+ </Options>
+</CartesianTrajectoryOptions>
