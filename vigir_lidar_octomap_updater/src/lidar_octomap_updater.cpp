@@ -221,38 +221,42 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   /* get transform for cloud into map frame */
   tf::StampedTransform map_H_sensor;
   tf::StampedTransform map_H_sensor_last_ray;
-  if (monitor_->getMapFrame() == scan_filtered_.header.frame_id)
-    map_H_sensor.setIdentity();
-  else
-  {
-    if (tf_)
-    {
-      try
-      {
-        ros::Time end_time   = scan_filtered_.header.stamp + ros::Duration().fromSec((scan_filtered_.ranges.size() -1)*scan_filtered_.time_increment) ;
 
-        if(tf_->waitForTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, scan_filtered_.header.stamp, wait_duration_) &&
-           tf_->waitForTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, end_time, wait_duration_)){
-          tf_->lookupTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, scan_filtered_.header.stamp, map_H_sensor);
-          tf_->lookupTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, end_time, map_H_sensor_last_ray);
-        }
-      }
-      catch (tf::TransformException& ex)
-      {
-        ROS_ERROR_STREAM("Transform error of sensor data: " << ex.what() << "; quitting callback");
-        return;
+
+  if (tf_)
+  {
+    try
+    {
+      ros::Time end_time   = scan_filtered_.header.stamp + ros::Duration().fromSec((scan_filtered_.ranges.size() -1)*scan_filtered_.time_increment) ;
+
+      if(tf_->waitForTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, scan_filtered_.header.stamp, wait_duration_) &&
+         tf_->waitForTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, end_time, wait_duration_)){
+        tf_->lookupTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, scan_filtered_.header.stamp, map_H_sensor);
+        tf_->lookupTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, end_time, map_H_sensor_last_ray);
       }
     }
-    else
+    catch (tf::TransformException& ex)
+    {
+      ROS_ERROR_STREAM("Transform error of sensor data: " << ex.what() << "; quitting callback");
       return;
+    }
   }
+  else
+  {
+    return;
+  }
+
 
   /* compute sensor origin in map frame */
   const tf::Vector3 &sensor_origin_tf = map_H_sensor.getOrigin();
   octomap::point3d sensor_origin(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
   Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
 
-  projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), scan_filtered_, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity|laser_geometry::channel_option::Index);
+  transformer_.clear();
+  transformer_.setTransform(map_H_sensor);
+  transformer_.setTransform(map_H_sensor_last_ray);
+
+  projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), scan_filtered_, *cloud_msg, transformer_, max_range_, laser_geometry::channel_option::Intensity|laser_geometry::channel_option::Index);
 
   if (!updateTransformCache(cloud_msg->header.frame_id, cloud_msg->header.stamp))
   {

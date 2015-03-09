@@ -113,6 +113,8 @@ private:
   ros::Publisher scan_self_filtered_publisher_;
   ros::Publisher filtered_localized_scan_publisher_;
 
+  tf::Transformer transformer_;
+
   //octomap::KeySet free_cells, occupied_cells, model_cells, clip_cells;
 
 };
