@@ -238,7 +238,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     ros::ServiceClient detach_object_client_;
 
     // Calculate the wrist target in world frame given wrist pose in template frame
-    int calcWristTarget(const geometry_msgs::Pose& wrist_pose,const geometry_msgs::PoseStamped& template_pose);
+    int calcWristTarget(const geometry_msgs::Pose& wrist_pose);
 
     int staticTransform(geometry_msgs::Pose& palm_pose);
 

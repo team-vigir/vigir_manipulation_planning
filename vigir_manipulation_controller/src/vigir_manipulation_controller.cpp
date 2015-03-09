@@ -179,11 +179,11 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
         //Calculate static transform to stitch template to hand
         tf::Transform world_T_hand;
         tf::Transform world_T_template;
-        tf::Transform template_T_palm;
+        tf::Transform world_T_palm;
 
         world_T_hand.setIdentity();
         world_T_template.setIdentity();
-        template_T_palm.setIdentity();
+        world_T_palm.setIdentity();
 
         //Call service for template info
         vigir_object_template_msgs::GetTemplateStateAndTypeInfo template_srv_;
@@ -198,11 +198,11 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
         {
             if(std::atoi(template_srv_.response.template_type_information.grasps[index].id.c_str()) == grasp_msg.grasp_id.data){
                 //Grasp pose in template frame
-                template_T_palm.setRotation(tf::Quaternion(template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.x,
+                world_T_palm.setRotation(tf::Quaternion(template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.x,
                                                            template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.y,
                                                            template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.z,
                                                            template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.w));
-                template_T_palm.setOrigin(tf::Vector3(template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.x,
+                world_T_palm.setOrigin(tf::Vector3(template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.x,
                                                       template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.y,
                                                       template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.z));
             }
@@ -226,8 +226,7 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
                                                template_srv_.response.template_state_information.pose.pose.position.y,
                                                template_srv_.response.template_state_information.pose.pose.position.z));
 
-
-        this->palm_T_hand_ = template_T_palm.inverse() * world_T_template.inverse() * world_T_hand;
+        this->palm_T_hand_ = (world_T_template.inverse() * world_T_palm).inverse() * world_T_template.inverse() * world_T_hand;
 
 
         stitch_template_pose.header.frame_id = template_srv_.response.template_state_information.pose.header.frame_id;
@@ -249,6 +248,7 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
         stitch_template_pose.pose.orientation.x = this->palm_T_hand_.getRotation().getX();
         stitch_template_pose.pose.orientation.y = this->palm_T_hand_.getRotation().getY();
         stitch_template_pose.pose.orientation.z = this->palm_T_hand_.getRotation().getZ();
+
         template_stitch_pose_pub_.publish(stitch_template_pose);
     }
     else
@@ -365,12 +365,15 @@ void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::Gras
             if(index >= size)
                 ROS_ERROR_STREAM("Template server response id: " << last_grasp_res_.grasp_information.grasps[index].id << " while searching for id: " << grasp.grasp_id.data);
             else{
-                this->wrist_target_pose_.planning_group.data = planning_group_;
+                this->wrist_target_pose_.planning_group.data                     = planning_group_;
                 this->wrist_target_pose_.use_environment_obstacle_avoidance.data = true;
-                if(grasp.final_pose)
+                if(grasp.final_pose){
                     this->wrist_target_pose_.pose = grasp_pose;
-                else
+                    calcWristTarget(grasp_pose.pose);
+                }else{
                     this->wrist_target_pose_.pose = pre_grasp_pose;
+                    calcWristTarget(pre_grasp_pose.pose);
+                }
 
 
                 this->updateWristTarget();
@@ -382,7 +385,7 @@ void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::Gras
 }
 
 // assume this function is called within mutex block
-int VigirManipulationController::calcWristTarget(const geometry_msgs::Pose& wrist_pose,const geometry_msgs::PoseStamped& template_pose)
+int VigirManipulationController::calcWristTarget(const geometry_msgs::Pose& wrist_pose)
 {
     // Transform wrist_pose into the template pose frame
     //   @TODO        "wrist_target_pose.pose   = T(template_pose)*wrist_pose";
