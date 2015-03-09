@@ -169,90 +169,96 @@ void VigirManipulationController::graspPlanningGroupCallback(const flor_ocs_msgs
 
 void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::GraspSelection& grasp_msg)
 {
-    geometry_msgs::PoseStamped stitch_template_pose;
 
-    //Set static transform to identity unstitching the template
-    this->palm_T_hand_.setIdentity();
 
-    if(grasp_msg.final_pose) //using final pose as is_stitched?
+    //Call service for template info
+    vigir_object_template_msgs::GetTemplateStateAndTypeInfo template_srv_;
+    template_srv_.request.template_id = grasp_msg.template_id.data;
+    if (!template_info_client_.call(template_srv_))
     {
-        //Calculate static transform to stitch template to hand
-        tf::Transform world_T_hand;
-        tf::Transform world_T_template;
-        tf::Transform world_T_palm;
+        ROS_ERROR("Failed to call service request grasp info");
+    }else{
 
-        world_T_hand.setIdentity();
-        world_T_template.setIdentity();
-        world_T_palm.setIdentity();
+        geometry_msgs::PoseStamped stitch_template_pose;
 
-        //Call service for template info
-        vigir_object_template_msgs::GetTemplateStateAndTypeInfo template_srv_;
-        template_srv_.request.template_id = grasp_msg.template_id.data;
-        if (!template_info_client_.call(template_srv_))
+        //Set static transform to identity unstitching the template
+        this->palm_T_hand_.setIdentity();
+
+        if(grasp_msg.final_pose && template_srv_.response.template_state_information.pose.header.frame_id == "/world") //using final pose as is_stitched?
         {
-            ROS_ERROR("Failed to call service request grasp info");
-        }
-        int index;
+            //Calculate static transform to stitch template to hand
+            tf::Transform world_T_hand;
+            tf::Transform world_T_template;
+            tf::Transform world_T_palm;
 
-        for(index = 0; index < template_srv_.response.template_type_information.grasps.size(); index++)
-        {
-            if(std::atoi(template_srv_.response.template_type_information.grasps[index].id.c_str()) == grasp_msg.grasp_id.data){
-                //Grasp pose in template frame
-                world_T_palm.setRotation(tf::Quaternion(template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.x,
-                                                           template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.y,
-                                                           template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.z,
-                                                           template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.w));
-                world_T_palm.setOrigin(tf::Vector3(template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.x,
-                                                      template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.y,
-                                                      template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.z));
+            world_T_hand.setIdentity();
+            world_T_template.setIdentity();
+            world_T_palm.setIdentity();
+
+
+            int index;
+
+            for(index = 0; index < template_srv_.response.template_type_information.grasps.size(); index++)
+            {
+                if(std::atoi(template_srv_.response.template_type_information.grasps[index].id.c_str()) == grasp_msg.grasp_id.data){
+                    //Grasp pose in template frame
+                    world_T_palm.setRotation(tf::Quaternion(template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.x,
+                                                               template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.y,
+                                                               template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.z,
+                                                               template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.orientation.w));
+                    world_T_palm.setOrigin(tf::Vector3(template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.x,
+                                                          template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.y,
+                                                          template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.z));
+                }
             }
+
+            //Wrist pose in world frame
+            world_T_hand.setRotation(tf::Quaternion(this->last_wrist_pose_msg_.pose.orientation.x,
+                                                    this->last_wrist_pose_msg_.pose.orientation.y,
+                                                    this->last_wrist_pose_msg_.pose.orientation.z,
+                                                    this->last_wrist_pose_msg_.pose.orientation.w));
+            world_T_hand.setOrigin(tf::Vector3(this->last_wrist_pose_msg_.pose.position.x,
+                                               this->last_wrist_pose_msg_.pose.position.y,
+                                               this->last_wrist_pose_msg_.pose.position.z));
+
+            //Template pose in world frame
+            world_T_template.setRotation(tf::Quaternion(template_srv_.response.template_state_information.pose.pose.orientation.x,
+                                                        template_srv_.response.template_state_information.pose.pose.orientation.y,
+                                                        template_srv_.response.template_state_information.pose.pose.orientation.z,
+                                                        template_srv_.response.template_state_information.pose.pose.orientation.w));
+            world_T_template.setOrigin(tf::Vector3(template_srv_.response.template_state_information.pose.pose.position.x,
+                                                   template_srv_.response.template_state_information.pose.pose.position.y,
+                                                   template_srv_.response.template_state_information.pose.pose.position.z));
+
+            this->palm_T_hand_ = (world_T_template.inverse() * world_T_palm).inverse() * world_T_template.inverse() * world_T_hand;
+
+
+            stitch_template_pose.header.frame_id = template_srv_.response.template_state_information.pose.header.frame_id;
+            stitch_template_pose.header.seq++;
+            stitch_template_pose.header.stamp = template_srv_.response.template_state_information.pose.header.stamp;
         }
 
-        //Wrist pose in world frame
-        world_T_hand.setRotation(tf::Quaternion(this->last_wrist_pose_msg_.pose.orientation.x,
-                                                this->last_wrist_pose_msg_.pose.orientation.y,
-                                                this->last_wrist_pose_msg_.pose.orientation.z,
-                                                this->last_wrist_pose_msg_.pose.orientation.w));
-        world_T_hand.setOrigin(tf::Vector3(this->last_wrist_pose_msg_.pose.position.x,
-                                           this->last_wrist_pose_msg_.pose.position.y,
-                                           this->last_wrist_pose_msg_.pose.position.z));
+        //Publish to OCS
+        if (template_stitch_pose_pub_)
+        {
+            flor_grasp_msgs::TemplateSelection last_template_data;
+            last_template_data.template_id = grasp_msg.template_id;
+            this->setStitchingObject(last_template_data); //Stitching collision object to robot
 
-        //Template pose in world frame
-        world_T_template.setRotation(tf::Quaternion(template_srv_.response.template_state_information.pose.pose.orientation.x,
-                                                    template_srv_.response.template_state_information.pose.pose.orientation.y,
-                                                    template_srv_.response.template_state_information.pose.pose.orientation.z,
-                                                    template_srv_.response.template_state_information.pose.pose.orientation.w));
-        world_T_template.setOrigin(tf::Vector3(template_srv_.response.template_state_information.pose.pose.position.x,
-                                               template_srv_.response.template_state_information.pose.pose.position.y,
-                                               template_srv_.response.template_state_information.pose.pose.position.z));
+            stitch_template_pose.pose.position.x = this->palm_T_hand_.getOrigin().getX();
+            stitch_template_pose.pose.position.y = this->palm_T_hand_.getOrigin().getY();
+            stitch_template_pose.pose.position.z = this->palm_T_hand_.getOrigin().getZ();
+            stitch_template_pose.pose.orientation.w = this->palm_T_hand_.getRotation().getW();
+            stitch_template_pose.pose.orientation.x = this->palm_T_hand_.getRotation().getX();
+            stitch_template_pose.pose.orientation.y = this->palm_T_hand_.getRotation().getY();
+            stitch_template_pose.pose.orientation.z = this->palm_T_hand_.getRotation().getZ();
 
-        this->palm_T_hand_ = (world_T_template.inverse() * world_T_palm).inverse() * world_T_template.inverse() * world_T_hand;
+            template_stitch_pose_pub_.publish(stitch_template_pose);
+        }
+        else
+            ROS_WARN("Invalid template stitch pose publisher");
 
-
-        stitch_template_pose.header.frame_id = template_srv_.response.template_state_information.pose.header.frame_id;
-        stitch_template_pose.header.seq++;
-        stitch_template_pose.header.stamp = template_srv_.response.template_state_information.pose.header.stamp;
     }
-
-    //Publish to OCS
-    if (template_stitch_pose_pub_)
-    {
-        flor_grasp_msgs::TemplateSelection last_template_data;
-        last_template_data.template_id = grasp_msg.template_id;
-        this->setStitchingObject(last_template_data); //Stitching collision object to robot
-
-        stitch_template_pose.pose.position.x = this->palm_T_hand_.getOrigin().getX();
-        stitch_template_pose.pose.position.y = this->palm_T_hand_.getOrigin().getY();
-        stitch_template_pose.pose.position.z = this->palm_T_hand_.getOrigin().getZ();
-        stitch_template_pose.pose.orientation.w = this->palm_T_hand_.getRotation().getW();
-        stitch_template_pose.pose.orientation.x = this->palm_T_hand_.getRotation().getX();
-        stitch_template_pose.pose.orientation.y = this->palm_T_hand_.getRotation().getY();
-        stitch_template_pose.pose.orientation.z = this->palm_T_hand_.getRotation().getZ();
-
-        template_stitch_pose_pub_.publish(stitch_template_pose);
-    }
-    else
-        ROS_WARN("Invalid template stitch pose publisher");
 }
 
 /** called to update the latest wrist pose */
