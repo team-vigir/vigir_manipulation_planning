@@ -82,6 +82,7 @@
 #include <trajectory_msgs/JointTrajectory.h>
 
 #include <vigir_object_template_msgs/GetInstantiatedGraspInfo.h>
+#include <vigir_object_template_msgs/GetTemplateStateAndTypeInfo.h>
 #include <vigir_object_template_msgs/SetAttachedObjectTemplate.h>
 #include <vigir_object_template_msgs/DetachObjectTemplate.h>
 
@@ -105,15 +106,12 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
      /** This function is called whenever the template needs to be stitched to the real object.
       * assump template pose is given in world frame
       */
-     void  templateStitchCallback(const flor_grasp_msgs::TemplateSelection& template_pose);
+     void  templateStitchCallback(const flor_grasp_msgs::GraspSelection& grasp_msg);
 
      /** called to update the latest wrist pose */
      void  wristPoseCallback(const geometry_msgs::PoseStamped& wrist_pose);
 
      void moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp);
-
-     /** called to update the latest hand offset pose */
-     void handOffsetCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
      /** called whenever a new template/grasp pair is selected.
       *  Reset grasping state machine, and wait for updated matching template data with new pose.
@@ -137,7 +135,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
      void updateHandMass(); // call to publish latest grasp data
 
-     void requestTemplateService(const uint16_t& requested_template_type);
+     void requestInstantiatedGraspService(const uint16_t& requested_template_type);
 
      void setAttachingObject(const flor_grasp_msgs::TemplateSelection& last_template_data);
      void setDetachingObject(const flor_grasp_msgs::TemplateSelection& last_template_data);
@@ -190,10 +188,8 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     vigir_object_template_msgs::GetInstantiatedGraspInfoResponse last_grasp_res_;
     geometry_msgs::Pose                     final_wrist_pose_;
     geometry_msgs::Pose                     pregrasp_wrist_pose_;
-    tf::Transform                           stitch_template_pose_;
-    tf::Transform                           hand_offset_pose_;
+    tf::Transform                           palm_T_hand_;
     tf::Transform                           gp_T_hand_;
-    tf::Transform                           hand_T_template_;
     tf::Transform                           hand_T_palm_;
 //    tf::TransformListener                   listener_;
     flor_planning_msgs::PlanRequest         wrist_target_pose_;
@@ -204,14 +200,6 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     flor_ocs_msgs::OCSRobotStatus      grasp_status_;
     RobotStatusCodes::StatusCode       grasp_status_code_;      // Using RobotStatusCodes with severity
     RobotStatusCodes::StatusLevel      grasp_status_severity_;
-
-    double                             within_range_timer_threshold_;
-
-    // Need to define error limits in terms of position and orientation error separately
-    double                             pregrasp_position_error_threshold_;
-    double                             final_grasp_position_error_threshold_;
-    double                             pregrasp_orientation_error_threshold_;
-    double                             final_grasp_orientation_error_threshold_;
 
     boost::mutex                       write_data_mutex_;
 
@@ -244,11 +232,10 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
 
     ros::ServiceClient inst_grasp_info_client_;
+    ros::ServiceClient template_info_client_;
     ros::ServiceClient attach_object_client_;
     ros::ServiceClient stitch_object_client_;
     ros::ServiceClient detach_object_client_;
-
-    bool evaluateWristError(const uint8_t& current_state);       // true if within limits
 
     // Calculate the wrist target in world frame given wrist pose in template frame
     int calcWristTarget(const geometry_msgs::Pose& wrist_pose,const geometry_msgs::PoseStamped& template_pose);
