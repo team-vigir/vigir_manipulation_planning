@@ -34,9 +34,9 @@ namespace vigir_manipulation_controller{
 VigirManipulationController::VigirManipulationController():
     update_error_calc(false),
     hand_name_( "unknown"), hand_side_( "unknown"), hand_id_(0), grasp_type_(0),
-    template_updated_(false),stitch_updated_(true)/*,
+    template_updated_(false),stitch_updated_(true),
     l_arm_group_("l_arm_group"),
-    r_arm_group_("r_arm_group")*/
+    r_arm_group_("r_arm_group")
 {
 
 }

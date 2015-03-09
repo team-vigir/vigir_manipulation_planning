@@ -86,7 +86,11 @@
 #include <vigir_object_template_msgs/SetAttachedObjectTemplate.h>
 #include <vigir_object_template_msgs/DetachObjectTemplate.h>
 
+//#include <vigir_manipulation_planning/vigir_planning_interface/vigir_move_group_interface/include/moveit/vigir_move_group_interface/move_group.h>
 #include <moveit/vigir_move_group_interface/move_group.h>
+
+//#include <moveit/move_group_interface/move_group.h>
+
 
 
 namespace vigir_manipulation_controller {
@@ -206,8 +210,8 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     //Trajectory Action
     TrajectoryActionClient*            trajectory_client_;
 
-    //moveit::planning_interface::VigirMoveGroup l_arm_group_;
-    //moveit::planning_interface::VigirMoveGroup r_arm_group_;
+    moveit::planning_interface::VigirMoveGroup l_arm_group_;
+    moveit::planning_interface::VigirMoveGroup r_arm_group_;
 
   private:
     ros::Publisher wrist_target_pub_ ;
