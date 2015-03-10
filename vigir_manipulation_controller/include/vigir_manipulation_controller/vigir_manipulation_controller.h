@@ -29,25 +29,22 @@
 #define VIGIR_MANIPULATION_CONTROLLER_H__
 
 #include <ros/ros.h>
-#include <ros/subscribe_options.h>
-#include <boost/algorithm/string.hpp>
-#include <vector>
 
 #include <math.h>
 #include <iostream>
-#include <boost/thread/locks.hpp>
+#include <vector>
 #include <fstream>
 
-#include <geometry_msgs/PoseStamped.h>
+#include <boost/algorithm/string.hpp>
+#include <boost/thread/locks.hpp>
+#include <boost/thread.hpp>
+
 #include <std_msgs/Int8.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt8.h>
 
-#include <sensor_msgs/JointState.h>
-#include <sensor_msgs/Imu.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/WrenchStamped.h>
-#include <sandia_hand_msgs/RawTactile.h>
 
 #include <flor_grasp_msgs/GraspSelection.h>
 #include <flor_grasp_msgs/TemplateSelection.h>
@@ -61,25 +58,14 @@
 #include <flor_atlas_msgs/AtlasHandMass.h>
 #include <flor_control_msgs/FlorControlModeCommand.h>
 
-#include <boost/thread.hpp>
-#include <vector>
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
-
 
 #include <trajectory_msgs/JointTrajectory.h>
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
 #include <control_msgs/FollowJointTrajectoryAction.h>
 #include <control_msgs/FollowJointTrajectoryGoal.h>
-
-#include "geometric_shapes/mesh_operations.h"
-#include "shape_msgs/Mesh.h"
-#include "geometric_shapes/shapes.h"
-#include "geometric_shapes/shape_messages.h"
-#include "geometric_shapes/shape_operations.h"
-#include <moveit_msgs/GripperTranslation.h>
-#include <trajectory_msgs/JointTrajectory.h>
 
 #include <vigir_object_template_msgs/GetInstantiatedGraspInfo.h>
 #include <vigir_object_template_msgs/GetTemplateStateAndTypeInfo.h>
@@ -89,13 +75,28 @@
 //#include <vigir_manipulation_planning/vigir_planning_interface/vigir_move_group_interface/include/moveit/vigir_move_group_interface/move_group.h>
 #include <moveit/vigir_move_group_interface/move_group.h>
 
-//#include <moveit/move_group_interface/move_group.h>
-
-
+#include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit/robot_model/robot_model.h>
+#include <moveit/robot_model/link_model.h>
 
 namespace vigir_manipulation_controller {
 
 typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> TrajectoryActionClient;
+
+    typedef enum
+    {
+        NO_GRASP_QUALITY            = 0,
+        PALM_AND_ALL_FINGERS        ,  // palm contact with all fingers including thumb
+        PALM_AND_THUMB_PLUS_ONE     ,
+        PALM_AND_THUMB_PLUS_TWO     ,  // only relevant on Sandia (use ALL for iRobot)
+        PALM_AND_NO_THUMB           ,  // all other fingers except thumb
+        PALM_AND_NO_THUMB_LESS_ONE  ,  // no thumb and not all fingers
+        NO_PALM_AND_ALL_FINGERS     ,  // No palm contact, but otherwise all fingers (including thumb) in contact
+        NO_PALM_AND_NO_THUMB        ,  // all fingers except thumb
+        NO_PALM_AND_THUMB_PLUS_ONE  ,
+        NO_PALM_AND_THUMB_PLUS_TWO  ,  // only relevant on Sandia (use ALL for iRobot)
+        NUM_GRASP_QUALITIES
+    } GraspQuality;
 
   // This is the generic grasp controller
   class VigirManipulationController
@@ -117,11 +118,6 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
      void moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp);
 
-     /** called whenever a new template/grasp pair is selected.
-      *  Reset grasping state machine, and wait for updated matching template data with new pose.
-      */
-     void  graspSelectionCallback(const flor_grasp_msgs::GraspSelection& grasp);
-
      /** Set the current planning group to "arm only" or "arm + torso"           */
      void  graspPlanningGroupCallback(const flor_ocs_msgs::OCSGhostControl& planning_group);
 
@@ -139,6 +135,10 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
      void updateHandMass(); // call to publish latest grasp data
 
+     void handStatusCallback(const flor_grasp_msgs::HandStatus msg);
+
+     GraspQuality processHandTactileData();
+
      void requestInstantiatedGraspService(const uint16_t& requested_template_type);
 
      void setAttachingObject(const flor_grasp_msgs::TemplateSelection& last_template_data);
@@ -155,84 +155,68 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
    inline int16_t  getGraspStatus() { return RobotStatusCodes::status(grasp_status_code_, grasp_status_severity_);}
    void            setGraspStatus(const RobotStatusCodes::StatusCode& status, const RobotStatusCodes::StatusLevel& severity);
 
+    flor_grasp_msgs::HandStatus                local_hand_status_msg_;
+    flor_grasp_msgs::LinkState                 link_tactile_;
 
-
-    // Variables to store sensor data received from ROS interface
-    flor_grasp_msgs::GraspSelection         last_grasp_msg_;
-    flor_grasp_msgs::TemplateSelection      last_template_msg_;
-    flor_grasp_msgs::GraspState             last_mode_msg_;
-    flor_ocs_msgs::OCSRobotStatus           last_planner_status_msg_;
-    flor_control_msgs::FlorControlMode      last_controller_mode_msg_;
-    geometry_msgs::PoseStamped              last_wrist_pose_msg_;
-    geometry_msgs::PoseStamped              last_wrist_error;
-    double                                  last_position_error;
-    double                                  last_orientation_error;
-    bool                                    update_error_calc;
+    flor_ocs_msgs::OCSRobotStatus              last_planner_status_msg_;
+    flor_control_msgs::FlorControlMode         last_controller_mode_msg_;
+    geometry_msgs::PoseStamped                 last_wrist_pose_msg_;
 
     // Variables to store locally sensor data recieved from ROS interface
-    geometry_msgs::WrenchStamped            local_force_torque_msg_;
-
+    geometry_msgs::WrenchStamped               local_force_torque_msg_;
 
     // Internal data set by the controller (specifies right or left hand)
-    std::string                             hand_name_;       // l_hand or r_hand
-    std::string                             hand_side_;       // left or right
-    int                                     hand_id_;         // -1=left, 1=right
-    std::string                             planning_group_;
-
-    // Active data specified by graspSelection/templateSelection commands
-    int16_t                                 grasp_id_;
-    int16_t                                 template_id_;
-    int16_t                                 template_type_;
-    uint8_t                                 grasp_type_;
-    bool                                    template_updated_;
-    bool                                    stitch_updated_;
-
+    std::string                                hand_name_;       // l_hand or r_hand
+    std::string                                hand_side_;       // left or right
+    int                                        hand_id_;         // -1=left, 1=right
+    std::string                                planning_group_;
 
     // Internal variables used by active controllers
     vigir_object_template_msgs::GetInstantiatedGraspInfoResponse last_grasp_res_;
-    geometry_msgs::Pose                     final_wrist_pose_;
-    geometry_msgs::Pose                     pregrasp_wrist_pose_;
-    tf::Transform                           palm_T_hand_;
-    tf::Transform                           gp_T_hand_;
-    tf::Transform                           hand_T_palm_;
-//    tf::TransformListener                   listener_;
-    flor_planning_msgs::PlanRequest         wrist_target_pose_;
-    flor_atlas_msgs::AtlasHandMass          hand_mass_msg_;
-    geometry_msgs::PoseStamped              com_;
+    tf::Transform                              palm_T_hand_;
+//    tf::TransformListener                      listener_;
+    flor_planning_msgs::PlanRequest            wrist_target_pose_;
+    flor_atlas_msgs::AtlasHandMass             hand_mass_msg_;
+    geometry_msgs::PoseStamped                 com_;
 
     //Grasp status message
-    flor_ocs_msgs::OCSRobotStatus      grasp_status_;
-    RobotStatusCodes::StatusCode       grasp_status_code_;      // Using RobotStatusCodes with severity
-    RobotStatusCodes::StatusLevel      grasp_status_severity_;
+    flor_ocs_msgs::OCSRobotStatus              grasp_status_;
+    RobotStatusCodes::StatusCode               grasp_status_code_;      // Using RobotStatusCodes with severity
+    RobotStatusCodes::StatusLevel              grasp_status_severity_;
 
-    boost::mutex                       write_data_mutex_;
+    boost::mutex                               write_data_mutex_;
 
     //Trajectory Action
-    TrajectoryActionClient*            trajectory_client_;
+    TrajectoryActionClient*                    trajectory_client_;
+    control_msgs::FollowJointTrajectoryGoal    trajectory_action_;
+
 
     moveit::planning_interface::VigirMoveGroup l_arm_group_;
     moveit::planning_interface::VigirMoveGroup r_arm_group_;
 
+    robot_model_loader::RobotModelLoaderPtr    robot_model_loader_;
+    robot_model::RobotModelPtr                 robot_model_;
+    std::vector<std::string>                   hand_joint_names_;
+
   private:
-    ros::Publisher wrist_target_pub_ ;
-    ros::Publisher template_stitch_pose_pub_ ;
-    ros::Publisher wrist_plan_pub_   ;
-    ros::Publisher grasp_status_pub_ ;
-    ros::Publisher hand_mass_pub_ ;
+    ros::Publisher     wrist_target_pub_ ;
+    ros::Publisher     template_stitch_pose_pub_ ;
+    ros::Publisher     wrist_plan_pub_   ;
+    ros::Publisher     grasp_status_pub_ ;
+    ros::Publisher     hand_mass_pub_ ;
+    ros::Publisher     tactile_feedback_pub_;
 
-    ros::Subscriber grasp_selection_sub_;       ///< Current template and grasp selection message
-    ros::Subscriber grasp_command_sub_;         ///< Releasgrasp_joint_controller.e grasp and reset the initial finger positions
-    ros::Subscriber template_selection_sub_;    ///< Current template pose update
-    ros::Subscriber hand_offset_sub_;           ///< Current hand offset pose update
-    ros::Subscriber template_stitch_sub_;       ///< Current template pose to be stitched
-    ros::Subscriber attach_object_sub_;         ///< Attach current template
-    ros::Subscriber detach_object_sub_;         ///< Detach current template
+    ros::Subscriber    hand_status_sub_;
+    ros::Subscriber    moveToPose_sub_;       ///< Current template and grasp selection message
+    ros::Subscriber    grasp_command_sub_;         ///< Releasgrasp_joint_controller.e grasp and reset the initial finger positions
+    ros::Subscriber    template_stitch_sub_;       ///< Current template pose to be stitched
+    ros::Subscriber    attach_object_sub_;         ///< Attach current template
+    ros::Subscriber    detach_object_sub_;         ///< Detach current template
 
-    ros::Subscriber force_torque_sub_;          ///< Force torque including wrists
-    ros::Subscriber current_wrist_sub_;         ///< Current wrist pose (same frame as target)
-    ros::Subscriber planner_status_sub_;        ///< Planner status (for reporting bundled error messages)
-    ros::Subscriber controller_mode_sub_;       ///< Controller mode (verify we can control appendages)
-    ros::Subscriber grasp_planning_group_sub_;
+    ros::Subscriber    force_torque_sub_;          ///< Force torque including wrists
+    ros::Subscriber    current_wrist_sub_;         ///< Current wrist pose (same frame as target)
+    ros::Subscriber    planner_status_sub_;        ///< Planner status (for reporting bundled error messages)
+    ros::Subscriber    grasp_planning_group_sub_;
 
 
     ros::ServiceClient inst_grasp_info_client_;
@@ -243,8 +227,6 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
     // Calculate the wrist target in world frame given wrist pose in template frame
     int calcWristTarget(const geometry_msgs::Pose& wrist_pose);
-
-    int staticTransform(geometry_msgs::Pose& palm_pose);
 
 
   };

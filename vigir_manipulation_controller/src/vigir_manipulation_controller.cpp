@@ -32,13 +32,14 @@ namespace vigir_manipulation_controller{
 
 
 VigirManipulationController::VigirManipulationController():
-    update_error_calc(false),
-    hand_name_( "unknown"), hand_side_( "unknown"), hand_id_(0), grasp_type_(0),
-    template_updated_(false),stitch_updated_(true),
+    hand_name_( "unknown"),
+    hand_side_( "unknown"),
+    hand_id_(0),
     l_arm_group_("l_arm_group"),
     r_arm_group_("r_arm_group")
 {
-
+    //Stitch template to hand transformation initialization
+    this->palm_T_hand_.setIdentity();
 }
 
 VigirManipulationController::~VigirManipulationController()
@@ -61,45 +62,14 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
 
     ROS_INFO("Hand parameters received, hand: %s", this->hand_name_.c_str());
 
-    this->hand_id_   = 1;
-    this->hand_side_ = "right";
+    this->hand_id_            = 1;
+    this->hand_side_          = "right";
+    this->planning_group_     = "r_arm_group";
     if ("l_hand" == this->hand_name_){
-        this->hand_id_   = -1;
-        this->hand_side_ = "left";
+        this->hand_id_        = -1;
+        this->hand_side_      = "left";
+        this->planning_group_ = "l_arm_group";
     }
-
-    XmlRpc::XmlRpcValue   gp_T_hand;
-    XmlRpc::XmlRpcValue   hand_T_palm;
-
-    ROS_INFO("Selecting L/R Transformations");
-
-    if (hand_id_>0)
-    {
-        planning_group_ = "r_arm_group";
-        nh.getParam("/r_hand_tf/gp_T_hand", gp_T_hand);
-        ROS_ASSERT(gp_T_hand.getType() == XmlRpc::XmlRpcValue::TypeArray);
-        nh.getParam("/r_hand_tf/hand_T_palm", hand_T_palm);
-        ROS_INFO("Transformations selected for right");
-
-    }
-    else
-    {
-        planning_group_ = "l_arm_group";
-        nh.getParam("/l_hand_tf/gp_T_hand", gp_T_hand);
-        ROS_ASSERT(gp_T_hand.getType() == XmlRpc::XmlRpcValue::TypeArray);
-        nh.getParam("/l_hand_tf/hand_T_palm", hand_T_palm);
-        ROS_INFO("Transformations selected for left");
-    }
-
-    gp_T_hand_.setOrigin(tf::Vector3(static_cast<double>(gp_T_hand[0]),static_cast<double>(gp_T_hand[1]),static_cast<double>(gp_T_hand[2])));
-    gp_T_hand_.setRotation(tf::Quaternion(static_cast<double>(gp_T_hand[3]),static_cast<double>(gp_T_hand[4]),static_cast<double>(gp_T_hand[5]),static_cast<double>(gp_T_hand[6])));
-
-    ROS_INFO("Graspit Transformations set");
-
-    hand_T_palm_.setOrigin(tf::Vector3(static_cast<double>(hand_T_palm[0]),static_cast<double>(hand_T_palm[1]),static_cast<double>(hand_T_palm[2])));
-    hand_T_palm_.setRotation(tf::Quaternion(static_cast<double>(hand_T_palm[3]),static_cast<double>(hand_T_palm[4]),static_cast<double>(hand_T_palm[5]),static_cast<double>(hand_T_palm[6])));
-
-    ROS_INFO("Initialize manipulation controller for the %s ...", this->hand_name_.c_str());
 
     // Not sure why this waiting is performed in the original joint control tutorial
     // Maybe related to setting transport to UDP and waiting before Publishers are online?
@@ -119,13 +89,14 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     wrist_plan_pub_           = nh.advertise<flor_planning_msgs::PlanRequest>("wrist_plan",       1, true);
     grasp_status_pub_         = nh.advertise<flor_ocs_msgs::OCSRobotStatus>("grasp_status",       1, true);
     hand_mass_pub_            = nh.advertise<flor_atlas_msgs::AtlasHandMass>("hand_mass",         1, true);
+    tactile_feedback_pub_     = nh.advertise<flor_grasp_msgs::LinkState>("link_states",           1, true);
 
-    // These publishers should be remapped in launch file
+    hand_status_sub_          = nh.subscribe("hand_status",        1, &VigirManipulationController::handStatusCallback,         this);
     grasp_command_sub_        = nh.subscribe("grasp_command",      1, &VigirManipulationController::graspCommandCallback,       this);
     template_stitch_sub_      = nh.subscribe("template_stitch",    1, &VigirManipulationController::templateStitchCallback,     this);
     current_wrist_sub_        = nh.subscribe("wrist_pose",         1, &VigirManipulationController::wristPoseCallback,          this);
     grasp_planning_group_sub_ = nh.subscribe("planning_group",     1, &VigirManipulationController::graspPlanningGroupCallback, this);
-    grasp_selection_sub_      = nh.subscribe("move_to_pose",       1, &VigirManipulationController::moveToPoseCallback,         this);
+    moveToPose_sub_           = nh.subscribe("move_to_pose",       1, &VigirManipulationController::moveToPoseCallback,         this);
     attach_object_sub_        = nh.subscribe("attach_object",      1, &VigirManipulationController::setAttachingObject,         this);
     detach_object_sub_        = nh.subscribe("detach_object",      1, &VigirManipulationController::setDetachingObject,         this);
 
@@ -136,12 +107,56 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     stitch_object_client_     = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/stitch_object_template");
     detach_object_client_     = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/detach_object_template");
 
-    //Stitch template to hand transformation initialization
-    this->palm_T_hand_.setIdentity();
+    //LOADING ROBOT MODEL FOR JOINT NAMES
+    robot_model_loader_.reset(new robot_model_loader::RobotModelLoader("robot_description"));
+    robot_model_ = robot_model_loader_->getModel();
+
+    if(robot_model_->hasJointModelGroup(hand_side_+"_hand"))
+    {
+        hand_joint_names_.clear();
+        hand_joint_names_ = robot_model_->getJointModelGroup(hand_side_+"_hand")->getActiveJointModelNames();
+    }else{
+        ROS_WARN("NO JOINTS FOUND FOR %s HAND",hand_side_.c_str());
+    }
+
+    ROS_INFO("%s %s hand model gotten, #actuated joints: %ld ",hand_side_.c_str(), robot_model_->getName().c_str(),hand_joint_names_.size() );
+
+    //Initializing Trajectory action for fingers
+    trajectory_action_.trajectory.joint_names.resize(hand_joint_names_.size());
+    trajectory_action_.trajectory.points.resize(1);
+    trajectory_action_.trajectory.points[0].positions.resize(hand_joint_names_.size());
+    trajectory_action_.trajectory.points[0].time_from_start = ros::Duration(0.05);
+    trajectory_action_.goal_time_tolerance                  = ros::Duration(5.0);
+
+    for(int i = 0; i < hand_joint_names_.size(); i++){
+        ROS_INFO("Joint %d: %s",i,hand_joint_names_[i].c_str());
+        trajectory_action_.trajectory.joint_names[i]         = hand_joint_names_[i];
+        //trajectory_action_.trajectory.points[0].positions[i] = getURDFMaxLimitForJoint[hand_joint_names_[i]];  SHOULD SET MAX LIMIT FROM URDF
+
+        //THIS ARE SPECIFIC FROM ROBOTIQ HAND, SHOULD CHANGE TO USE URDF
+        trajectory_action_.trajectory.points[0].positions[0]  = 1.22;
+        trajectory_action_.trajectory.points[0].positions[1]  = 1.13;
+        trajectory_action_.trajectory.points[0].positions[2]  = 1.13;
+        trajectory_action_.trajectory.points[0].positions[3]  = 0.28;
+    }
 
     trajectory_client_ = new  TrajectoryActionClient("/"+this->hand_side_+"_robotiq/"+this->hand_side_+"_hand_traj_controller/follow_joint_trajectory", true);
     while(!trajectory_client_->waitForServer(ros::Duration(5.0)))
        ROS_INFO("Waititing for %s TrajectoryActionServer", this->hand_side_.c_str());
+
+    //Sending Initial finger postions, MAX joint limit (CLOSE) from URDF
+    if(trajectory_client_->isServerConnected())
+    {
+        trajectory_action_.trajectory.header.stamp = ros::Time::now();
+        trajectory_client_->sendGoal(trajectory_action_,
+                                     boost::bind(&VigirManipulationController::trajectoryDoneCb, this, _1, _2),
+                                     boost::bind(&VigirManipulationController::trajectoryActiveCB, this),
+                                     boost::bind(&VigirManipulationController::trajectoryFeedbackCB, this, _1));
+    }
+    else
+    {
+        ROS_ERROR("TrajectoryActionClient: Server not yet connected!");
+    }
 
 }
 
@@ -272,47 +287,30 @@ void  VigirManipulationController::wristPoseCallback(const geometry_msgs::PoseSt
      return;
 }
 
-
+//SHOULD PROBABLY BE SPECIFIC FOR EACH HAND
 void VigirManipulationController::graspCommandCallback(const flor_grasp_msgs::GraspState& grasp)
 {
     // Store the latest grasp command, and update at next calculation loop
     {
         boost::lock_guard<boost::mutex> guard(this->write_data_mutex_);
 
-        control_msgs::FollowJointTrajectoryGoal trajectory_action;
-        trajectory_action.goal_time_tolerance = ros::Duration(5.0);
-        trajectory_action.trajectory.joint_names.resize(11);
-        trajectory_action.trajectory.joint_names[0]  = this->hand_side_+"_f0_j1";
-        trajectory_action.trajectory.joint_names[1]  = this->hand_side_+"_f1_j1";
-        trajectory_action.trajectory.joint_names[2]  = this->hand_side_+"_f2_j1";
-        trajectory_action.trajectory.joint_names[3]  = this->hand_side_+"_f1_j0";
-        trajectory_action.trajectory.joint_names[4]  = this->hand_side_+"_f2_j0";
-        trajectory_action.trajectory.joint_names[5]  = this->hand_side_+"_f0_j2";
-        trajectory_action.trajectory.joint_names[6]  = this->hand_side_+"_f1_j2";
-        trajectory_action.trajectory.joint_names[7]  = this->hand_side_+"_f2_j2";
-        trajectory_action.trajectory.joint_names[8]  = this->hand_side_+"_f0_j3";
-        trajectory_action.trajectory.joint_names[9]  = this->hand_side_+"_f1_j3";
-        trajectory_action.trajectory.joint_names[10] = this->hand_side_+"_f2_j3";
-        trajectory_action.trajectory.points.resize(1);
-        trajectory_action.trajectory.points[0].positions.resize(11);
-        trajectory_action.trajectory.points[0].positions[0]  = float(grasp.grip.data > 100 ? 100 : grasp.grip.data)*0.0122+float(grasp.finger_effort[0].data)*0.0122;
-        trajectory_action.trajectory.points[0].positions[1]  = float(grasp.grip.data > 100 ? 100 : grasp.grip.data)*0.0113+float(grasp.finger_effort[1].data)*0.0113;
-        trajectory_action.trajectory.points[0].positions[2]  = float(grasp.grip.data > 100 ? 100 : grasp.grip.data)*0.0113+float(grasp.finger_effort[2].data)*0.0113;
-        trajectory_action.trajectory.points[0].positions[3]  = float(grasp.finger_effort[3].data)*0.0028;
-        trajectory_action.trajectory.points[0].positions[4]  = 0.0;
-        trajectory_action.trajectory.points[0].positions[5]  = 0.0;
-        trajectory_action.trajectory.points[0].positions[6]  = 0.0;
-        trajectory_action.trajectory.points[0].positions[7]  = 0.0;
-        trajectory_action.trajectory.points[0].positions[8]  = 0.0;
-        trajectory_action.trajectory.points[0].positions[9]  = 0.0;
-        trajectory_action.trajectory.points[0].positions[10] = 0.0;
-        trajectory_action.trajectory.points[0].time_from_start = ros::Duration(0.05);
+        trajectory_action_.trajectory.points[0].positions[0]  = float(grasp.grip.data > 100 ? 100 : grasp.grip.data)*0.0122+float(grasp.finger_effort[0].data)*0.0122;
+        trajectory_action_.trajectory.points[0].positions[1]  = float(grasp.grip.data > 100 ? 100 : grasp.grip.data)*0.0113+float(grasp.finger_effort[1].data)*0.0113;
+        trajectory_action_.trajectory.points[0].positions[2]  = float(grasp.grip.data > 100 ? 100 : grasp.grip.data)*0.0113+float(grasp.finger_effort[2].data)*0.0113;
+        trajectory_action_.trajectory.points[0].positions[3]  = float(grasp.finger_effort[3].data)*0.0028;  //This joint behaves differentlly, spreads, not used for close
+        trajectory_action_.trajectory.points[0].positions[4]  = 0.0;
+        trajectory_action_.trajectory.points[0].positions[5]  = 0.0;
+        trajectory_action_.trajectory.points[0].positions[6]  = 0.0;
+        trajectory_action_.trajectory.points[0].positions[7]  = 0.0;
+        trajectory_action_.trajectory.points[0].positions[8]  = 0.0;
+        trajectory_action_.trajectory.points[0].positions[9]  = 0.0;
+        trajectory_action_.trajectory.points[0].positions[10] = 0.0;
 
         //Create ROS trajectory and publish
         if(trajectory_client_->isServerConnected())
         {
-            trajectory_action.trajectory.header.stamp = ros::Time::now();
-            trajectory_client_->sendGoal(trajectory_action,
+            trajectory_action_.trajectory.header.stamp = ros::Time::now();
+            trajectory_client_->sendGoal(trajectory_action_,
                                          //function that inside updates if(hand_id_>0)
                                          //this->setGraspStatus(RobotStatusCodes::GRASP_R_CLOSURE_FAILURE, RobotStatusCodes::WARNING);
                                          boost::bind(&VigirManipulationController::trajectoryDoneCb, this, _1, _2),
@@ -390,11 +388,9 @@ void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::Gras
      return;
 }
 
-// assume this function is called within mutex block
+// Called because of stitching functionality
 int VigirManipulationController::calcWristTarget(const geometry_msgs::Pose& wrist_pose)
 {
-    // Transform wrist_pose into the template pose frame
-    //   @TODO        "wrist_target_pose.pose   = T(template_pose)*wrist_pose";
     tf::Transform world_T_hand;
     tf::Transform world_T_hand_target;
     world_T_hand.setRotation(tf::Quaternion(wrist_pose.orientation.x,wrist_pose.orientation.y,wrist_pose.orientation.z,wrist_pose.orientation.w));
@@ -440,15 +436,15 @@ void VigirManipulationController::setGraspStatus(const RobotStatusCodes::StatusC
 }
 
 void VigirManipulationController::updateWristTarget()
+{
+    if (wrist_target_pub_ && wrist_plan_pub_)
     {
-        if (wrist_target_pub_ && wrist_plan_pub_)
-        {
-            wrist_target_pub_.publish(wrist_target_pose_.pose);
-            wrist_plan_pub_.publish(wrist_target_pose_);
-        }
-        else
-            ROS_WARN("Invalid wrist target publisher");
+        wrist_target_pub_.publish(wrist_target_pose_.pose);
+        wrist_plan_pub_.publish(wrist_target_pose_);
     }
+    else
+        ROS_WARN("Invalid wrist target publisher");
+}
 
 /**
  * This function must be called to publish the grasp state machine status.
@@ -483,6 +479,84 @@ inline void VigirManipulationController::updateHandMass()
         hand_mass_pub_.publish(this->hand_mass_msg_);
     else
         ROS_WARN("Invalid hand_mass_pub_");
+}
+
+void VigirManipulationController::handStatusCallback(const flor_grasp_msgs::HandStatus msg)
+{
+    {
+        boost::lock_guard<boost::mutex> guard(this->write_data_mutex_);
+        local_hand_status_msg_ = msg;
+    }
+
+    this->processHandTactileData();
+
+    if(tactile_feedback_pub_)
+        tactile_feedback_pub_.publish(link_tactile_);
+}
+
+GraspQuality VigirManipulationController::processHandTactileData()
+{
+    bool thumb      = false,
+         index      = false,
+         pinky      = false,
+         palm = false;
+
+    this->link_tactile_.name.resize(local_hand_status_msg_.link_states.name.size());
+    this->link_tactile_.tactile_array.resize(local_hand_status_msg_.link_states.tactile_array.size());
+
+    for (unsigned i = 0; i < this->link_tactile_.tactile_array.size(); ++i)
+    {
+      this->link_tactile_.tactile_array[i].pressure.resize(1); //Setting only one pressure contact for OCS visualization
+    }
+
+    for(unsigned int link_idx=0; link_idx<local_hand_status_msg_.link_states.tactile_array.size(); ++link_idx)  //Cycles through links with tactile arrays
+    {
+        float average_filter = 0.0;
+        unsigned int count      = 0;
+        for(unsigned int array_idx=0; array_idx<local_hand_status_msg_.link_states.tactile_array[link_idx].pressure.size(); array_idx++){ //Cycles through the array in this link
+            if(local_hand_status_msg_.link_states.tactile_array[link_idx].pressure[array_idx] > 0.1){
+                average_filter+=local_hand_status_msg_.link_states.tactile_array[link_idx].pressure[array_idx];
+                count++;
+            }
+        }
+        this->link_tactile_.name[link_idx] = local_hand_status_msg_.link_states.name[link_idx]; //Sets the name of this link
+        if(count>0){
+            this->link_tactile_.tactile_array[link_idx].pressure[0] = average_filter/count;
+
+            //This is only to set a basic grasp quality
+            switch (link_idx) {
+            case 0:
+                thumb = true;
+                break;
+            case 1:
+                index = true;
+                break;
+            case 2:
+                pinky = true;
+                break;
+            case 3:
+                palm = true;
+                break;
+            default:
+                break;
+            }
+        }else
+            this->link_tactile_.tactile_array[link_idx].pressure[0] = 0;
+
+    }
+
+    if (palm && index && pinky && thumb)
+        return PALM_AND_ALL_FINGERS;
+    else if (palm && index && pinky)
+        return PALM_AND_NO_THUMB;
+    else if (palm &&  (index || pinky))
+        return PALM_AND_NO_THUMB_LESS_ONE;
+    else if (thumb && index && pinky)
+        return NO_PALM_AND_ALL_FINGERS;
+    else if (thumb && (index || pinky))
+        return NO_PALM_AND_THUMB_PLUS_TWO;
+    else
+        return NO_GRASP_QUALITY;
 }
 
 void VigirManipulationController::requestInstantiatedGraspService(const uint16_t& requested_template_id){
@@ -530,32 +604,6 @@ void VigirManipulationController::setDetachingObject(const flor_grasp_msgs::Temp
     srv.request.pose.header.frame_id = this->hand_name_;
     if (!detach_object_client_.call(srv))
         ROS_ERROR("Failed to call service request DetachObjectTemplate");
-}
-
-int VigirManipulationController::staticTransform(geometry_msgs::Pose& palm_pose)
-{
-    tf::Transform o_T_palm;    //describes palm in object's frame
-    tf::Transform o_T_pg;       //describes palm_from_graspit in object's frame
-
-    o_T_pg.setRotation(tf::Quaternion(palm_pose.orientation.x,palm_pose.orientation.y,palm_pose.orientation.z,palm_pose.orientation.w));
-    o_T_pg.setOrigin(tf::Vector3(palm_pose.position.x,palm_pose.position.y,palm_pose.position.z) );
-
-    o_T_palm = o_T_pg * gp_T_hand_;
-
-    tf::Quaternion hand_quat;
-    tf::Vector3    hand_vector;
-    hand_quat   = o_T_palm.getRotation();
-    hand_vector = o_T_palm.getOrigin();
-
-    palm_pose.position.x = hand_vector.getX();
-    palm_pose.position.y = hand_vector.getY();
-    palm_pose.position.z = hand_vector.getZ();
-    palm_pose.orientation.x = hand_quat.getX();
-    palm_pose.orientation.y = hand_quat.getY();
-    palm_pose.orientation.z = hand_quat.getZ();
-    palm_pose.orientation.w = hand_quat.getW();
-
-    return 0;
 }
 
 
