@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!-- This launch file uses the basic manipulation controller plugin. -->
+
+<launch>
+<!--
+<include file="$(find vigir_robotiq_ros_control)/launch/l_robotiq_ros_controller.launch"/>
+ -->
+<node name="right_vigir_manipulation_controller" pkg="vigir_manipulation_controller" type="vigir_manipulation_controller_node" respawn="true" output="screen"><!--  launch-prefix="xterm -e gdb -ex r"-->
+
+    <param name="hand" value="r_hand" />
+
+    <remap from="template_selection"   to="/template/r_hand_template_match_request" />
+    <remap from="hand_offset"          to="/template/r_hand_template_offset" />
+    <remap from="move_to_pose"         to="/manipulation_control/r_hand/move_to_pose" />
+    <remap from="attach_object"        to="/manipulation_control/r_hand/attach_object" />
+    <remap from="detach_object"        to="/manipulation_control/r_hand/detach_object" />
+    <remap from="grasp_command"        to="/grasp_control/r_hand/grasp_command" />
+    <remap from="release_grasp"        to="/manipulation_control/r_hand/release_grasp" />
+
+    <remap from="grasp_status"         to="/manipulation_control/r_hand/grasp_status" />
+    <remap from="hand_mass"            to="/manipulation_control/r_hand/hand_mass" />
+    <remap from="robotiq_states"       to="/manipulation_control/r_hand/tactile_feedback" />
+    <remap from="wrist_target"         to="/grasp_control/r_hand/target_pose" />
+    <remap from="template_stitch_pose" to="/manipulation_control/r_hand/template_stitch_pose" />
+
+    <remap from="wrist_plan"           to="/grasp_control/r_hand/plan_request" />
+    <remap from="template_stitch"      to="/manipulation_control/r_hand/template_stitch_request" />
+    <remap from="wrist_pose"           to="/flor/r_arm_current_pose" />
+    <remap from="planner_status"       to="/grasp_planning/r_hand/status" />
+    <remap from="planning_group"       to="/flor/ocs/ghost_ui_state" />
+</node>
+</launch>
