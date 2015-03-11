@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_msgs
   roscpp
   tf
+  tf_conversions
   trajectory_msgs
   vigir_object_template_msgs
   vigir_planning_interface
@@ -92,7 +93,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES vigir_manipulation_controller
-  CATKIN_DEPENDS actionlib control_msgs flor_control_msgs flor_grasp_msgs flor_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp tf trajectory_msgs vigir_object_template_msgs vigir_planning_interface
+  CATKIN_DEPENDS actionlib control_msgs flor_control_msgs flor_grasp_msgs flor_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface
 #  DEPENDS system_lib
 )
 

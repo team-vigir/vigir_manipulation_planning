@@ -55,11 +55,14 @@
 #include "flor_ocs_msgs/RobotStatusCodes.h"
 #include "flor_control_msgs/FlorControlMode.h"
 #include <flor_planning_msgs/PlanRequest.h>
+#include <flor_planning_msgs/CircularMotionRequest.h>
+#include <flor_planning_msgs/CartesianMotionRequest.h>
 #include <flor_atlas_msgs/AtlasHandMass.h>
 #include <flor_control_msgs/FlorControlModeCommand.h>
 
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
 
 #include <trajectory_msgs/JointTrajectory.h>
 #include <actionlib/client/simple_action_client.h>
@@ -71,6 +74,7 @@
 #include <vigir_object_template_msgs/GetTemplateStateAndTypeInfo.h>
 #include <vigir_object_template_msgs/SetAttachedObjectTemplate.h>
 #include <vigir_object_template_msgs/DetachObjectTemplate.h>
+#include <vigir_object_template_msgs/Affordance.h>
 
 //#include <vigir_manipulation_planning/vigir_planning_interface/vigir_move_group_interface/include/moveit/vigir_move_group_interface/move_group.h>
 #include <moveit/vigir_move_group_interface/move_group.h>
@@ -125,6 +129,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
      *  This requires a new grasp selection to restart.
      */
      void  graspCommandCallback(const flor_grasp_msgs::GraspState &grasp);
+     void  affordanceCommandCallback(const vigir_object_template_msgs::Affordance &affordance);
 
     /**
      * This function must be called to publish the updated wrist target after the template is updated.
@@ -141,9 +146,12 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
      void requestInstantiatedGraspService(const uint16_t& requested_template_type);
 
-     void setAttachingObject(const flor_grasp_msgs::TemplateSelection& last_template_data);
-     void setDetachingObject(const flor_grasp_msgs::TemplateSelection& last_template_data);
-     void setStitchingObject(const flor_grasp_msgs::TemplateSelection& last_template_data);
+     void setAttachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
+     void setDetachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
+     void setStitchingObject(const flor_grasp_msgs::TemplateSelection& template_data);
+
+     void sendCircularAffordance(vigir_object_template_msgs::Affordance affordance);
+     void sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance);
 
      void trajectoryActiveCB();
      void trajectoryFeedbackCB(const control_msgs::FollowJointTrajectoryFeedbackConstPtr& feedback);
@@ -173,6 +181,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
     // Internal variables used by active controllers
     vigir_object_template_msgs::GetInstantiatedGraspInfoResponse last_grasp_res_;
+    tf::Transform                              palmStitch_T_hand_;
     tf::Transform                              palm_T_hand_;
 //    tf::TransformListener                      listener_;
     flor_planning_msgs::PlanRequest            wrist_target_pose_;
@@ -205,6 +214,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     ros::Publisher     grasp_status_pub_ ;
     ros::Publisher     hand_mass_pub_ ;
     ros::Publisher     tactile_feedback_pub_;
+    ros::Publisher     circular_plan_request_pub_;
 
     ros::Subscriber    hand_status_sub_;
     ros::Subscriber    moveToPose_sub_;       ///< Current template and grasp selection message
@@ -212,6 +222,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     ros::Subscriber    template_stitch_sub_;       ///< Current template pose to be stitched
     ros::Subscriber    attach_object_sub_;         ///< Attach current template
     ros::Subscriber    detach_object_sub_;         ///< Detach current template
+    ros::Subscriber    affordance_command_sub_;    ///< Releasgrasp_joint_controller.e grasp and reset the initial finger positions
 
     ros::Subscriber    force_torque_sub_;          ///< Force torque including wrists
     ros::Subscriber    current_wrist_sub_;         ///< Current wrist pose (same frame as target)
@@ -227,7 +238,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
     // Calculate the wrist target in world frame given wrist pose in template frame
     int calcWristTarget(const geometry_msgs::Pose& wrist_pose);
-
+    int poseTransform(geometry_msgs::Pose& input_pose, tf::Transform transform);
 
   };
 

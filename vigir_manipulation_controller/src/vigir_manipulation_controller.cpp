@@ -39,7 +39,7 @@ VigirManipulationController::VigirManipulationController():
     r_arm_group_("r_arm_group")
 {
     //Stitch template to hand transformation initialization
-    this->palm_T_hand_.setIdentity();
+    this->palmStitch_T_hand_.setIdentity();
 }
 
 VigirManipulationController::~VigirManipulationController()
@@ -84,28 +84,30 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
 
     ROS_INFO("Setup communications for the %s manipulation controller ... ", hand_name_.c_str());
 
-    wrist_target_pub_         = nh.advertise<geometry_msgs::PoseStamped>("wrist_target",          1, true);
-    template_stitch_pose_pub_ = nh.advertise<geometry_msgs::PoseStamped>("template_stitch_pose",  1, true);
-    wrist_plan_pub_           = nh.advertise<flor_planning_msgs::PlanRequest>("wrist_plan",       1, true);
-    grasp_status_pub_         = nh.advertise<flor_ocs_msgs::OCSRobotStatus>("grasp_status",       1, true);
-    hand_mass_pub_            = nh.advertise<flor_atlas_msgs::AtlasHandMass>("hand_mass",         1, true);
-    tactile_feedback_pub_     = nh.advertise<flor_grasp_msgs::LinkState>("link_states",           1, true);
+    wrist_target_pub_          = nh.advertise<geometry_msgs::PoseStamped>("wrist_target",          1, true);
+    template_stitch_pose_pub_  = nh.advertise<geometry_msgs::PoseStamped>("template_stitch_pose",  1, true);
+    wrist_plan_pub_            = nh.advertise<flor_planning_msgs::PlanRequest>("wrist_plan",       1, true);
+    grasp_status_pub_          = nh.advertise<flor_ocs_msgs::OCSRobotStatus>("grasp_status",       1, true);
+    hand_mass_pub_             = nh.advertise<flor_atlas_msgs::AtlasHandMass>("hand_mass",         1, true);
+    tactile_feedback_pub_      = nh.advertise<flor_grasp_msgs::LinkState>("link_states",           1, true);
+    circular_plan_request_pub_ = nh.advertise<flor_planning_msgs::CircularMotionRequest>( "/flor/planning/upper_body/plan_circular_request", 1, false );
 
-    hand_status_sub_          = nh.subscribe("hand_status",        1, &VigirManipulationController::handStatusCallback,         this);
-    grasp_command_sub_        = nh.subscribe("grasp_command",      1, &VigirManipulationController::graspCommandCallback,       this);
-    template_stitch_sub_      = nh.subscribe("template_stitch",    1, &VigirManipulationController::templateStitchCallback,     this);
-    current_wrist_sub_        = nh.subscribe("wrist_pose",         1, &VigirManipulationController::wristPoseCallback,          this);
-    grasp_planning_group_sub_ = nh.subscribe("planning_group",     1, &VigirManipulationController::graspPlanningGroupCallback, this);
-    moveToPose_sub_           = nh.subscribe("move_to_pose",       1, &VigirManipulationController::moveToPoseCallback,         this);
-    attach_object_sub_        = nh.subscribe("attach_object",      1, &VigirManipulationController::setAttachingObject,         this);
-    detach_object_sub_        = nh.subscribe("detach_object",      1, &VigirManipulationController::setDetachingObject,         this);
+    hand_status_sub_           = nh.subscribe("hand_status",        1, &VigirManipulationController::handStatusCallback,         this);
+    grasp_command_sub_         = nh.subscribe("grasp_command",      1, &VigirManipulationController::graspCommandCallback,       this);
+    template_stitch_sub_       = nh.subscribe("template_stitch",    1, &VigirManipulationController::templateStitchCallback,     this);
+    current_wrist_sub_         = nh.subscribe("wrist_pose",         1, &VigirManipulationController::wristPoseCallback,          this);
+    grasp_planning_group_sub_  = nh.subscribe("planning_group",     1, &VigirManipulationController::graspPlanningGroupCallback, this);
+    moveToPose_sub_            = nh.subscribe("move_to_pose",       1, &VigirManipulationController::moveToPoseCallback,         this);
+    attach_object_sub_         = nh.subscribe("attach_object",      1, &VigirManipulationController::setAttachingObject,         this);
+    detach_object_sub_         = nh.subscribe("detach_object",      1, &VigirManipulationController::setDetachingObject,         this);
+    affordance_command_sub_    = nh.subscribe("affordance_command", 1, &VigirManipulationController::affordanceCommandCallback,  this);
 
-    inst_grasp_info_client_   = nh.serviceClient<vigir_object_template_msgs::GetInstantiatedGraspInfo>("/instantiated_grasp_info");
-    template_info_client_     = nh.serviceClient<vigir_object_template_msgs::GetTemplateStateAndTypeInfo>("/template_info");
+    inst_grasp_info_client_    = nh.serviceClient<vigir_object_template_msgs::GetInstantiatedGraspInfo>("/instantiated_grasp_info");
+    template_info_client_      = nh.serviceClient<vigir_object_template_msgs::GetTemplateStateAndTypeInfo>("/template_info");
 
-    attach_object_client_     = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/attach_object_template");
-    stitch_object_client_     = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/stitch_object_template");
-    detach_object_client_     = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/detach_object_template");
+    attach_object_client_      = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/attach_object_template");
+    stitch_object_client_      = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/stitch_object_template");
+    detach_object_client_      = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/detach_object_template");
 
     //LOADING ROBOT MODEL FOR JOINT NAMES
     robot_model_loader_.reset(new robot_model_loader::RobotModelLoader("robot_description"));
@@ -120,6 +122,35 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     }
 
     ROS_INFO("%s %s hand model gotten, #actuated joints: %ld ",hand_side_.c_str(), robot_model_->getName().c_str(),hand_joint_names_.size() );
+
+
+    if(!robot_model_->hasLinkModel(hand_side_+"_palm")){
+        ROS_WARN("Hand model does not contain %s_palm",hand_side_.c_str());
+    }else{
+        robot_model::LinkTransformMap hand_palm_tf_map = robot_model_->getLinkModel(hand_side_+"_palm")->getAssociatedFixedTransforms();
+        ROS_INFO("Requested linktransform for %s_palm",hand_side_.c_str());
+
+        Eigen::Affine3d hand_palm_aff;
+        bool found = false;
+
+        for(robot_model::LinkTransformMap::iterator it = hand_palm_tf_map.begin(); it != hand_palm_tf_map.end(); ++it){
+            ROS_INFO("Getting links in map: %s and comparing to: %s", it->first->getName().c_str(), (hand_side_.substr(0,1)+std::string("_hand")).c_str());
+            if(it->first->getName() == hand_side_.substr(0,1)+std::string("_hand")){
+                ROS_INFO("Wrist %c_hand found!!!",hand_side_[0]);
+                hand_palm_aff = it->second;
+                found = true;
+                break;
+            }
+        }
+
+        if(!found){
+            ROS_WARN("Wrist %c_hand NOT found!!!, setting to identity",hand_side_[0]);
+            palm_T_hand_.setIdentity();
+        }else{
+            tf::transformEigenToTF( hand_palm_aff,palm_T_hand_);
+        }
+    }
+
 
     //Initializing Trajectory action for fingers
     trajectory_action_.trajectory.joint_names.resize(hand_joint_names_.size());
@@ -197,7 +228,7 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
         geometry_msgs::PoseStamped stitch_template_pose;
 
         //Set static transform to identity unstitching the template
-        this->palm_T_hand_.setIdentity();
+        this->palmStitch_T_hand_.setIdentity();
 
         if(grasp_msg.final_pose && template_srv_.response.template_state_information.pose.header.frame_id == "/world") //using final pose as is_stitched?
         {
@@ -245,7 +276,7 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
                                                    template_srv_.response.template_state_information.pose.pose.position.y,
                                                    template_srv_.response.template_state_information.pose.pose.position.z));
 
-            this->palm_T_hand_ = (world_T_template.inverse() * world_T_palm).inverse() * world_T_template.inverse() * world_T_hand;
+            this->palmStitch_T_hand_ = (world_T_template.inverse() * world_T_palm).inverse() * world_T_template.inverse() * world_T_hand;
 
 
             stitch_template_pose.header.frame_id = template_srv_.response.template_state_information.pose.header.frame_id;
@@ -260,13 +291,13 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
             last_template_data.template_id = grasp_msg.template_id;
             this->setStitchingObject(last_template_data); //Stitching collision object to robot
 
-            stitch_template_pose.pose.position.x = this->palm_T_hand_.getOrigin().getX();
-            stitch_template_pose.pose.position.y = this->palm_T_hand_.getOrigin().getY();
-            stitch_template_pose.pose.position.z = this->palm_T_hand_.getOrigin().getZ();
-            stitch_template_pose.pose.orientation.w = this->palm_T_hand_.getRotation().getW();
-            stitch_template_pose.pose.orientation.x = this->palm_T_hand_.getRotation().getX();
-            stitch_template_pose.pose.orientation.y = this->palm_T_hand_.getRotation().getY();
-            stitch_template_pose.pose.orientation.z = this->palm_T_hand_.getRotation().getZ();
+            stitch_template_pose.pose.position.x = this->palmStitch_T_hand_.getOrigin().getX();
+            stitch_template_pose.pose.position.y = this->palmStitch_T_hand_.getOrigin().getY();
+            stitch_template_pose.pose.position.z = this->palmStitch_T_hand_.getOrigin().getZ();
+            stitch_template_pose.pose.orientation.w = this->palmStitch_T_hand_.getRotation().getW();
+            stitch_template_pose.pose.orientation.x = this->palmStitch_T_hand_.getRotation().getX();
+            stitch_template_pose.pose.orientation.y = this->palmStitch_T_hand_.getRotation().getY();
+            stitch_template_pose.pose.orientation.z = this->palmStitch_T_hand_.getRotation().getZ();
 
             template_stitch_pose_pub_.publish(stitch_template_pose);
         }
@@ -388,6 +419,17 @@ void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::Gras
      return;
 }
 
+void VigirManipulationController::affordanceCommandCallback(const vigir_object_template_msgs::Affordance& affordance)
+{
+    //Need to get latest affordance pose
+
+
+    if(affordance.type == "circular")
+        sendCircularAffordance(affordance);
+    else
+        sendCartesianAffordance(affordance);
+}
+
 // Called because of stitching functionality
 int VigirManipulationController::calcWristTarget(const geometry_msgs::Pose& wrist_pose)
 {
@@ -395,7 +437,7 @@ int VigirManipulationController::calcWristTarget(const geometry_msgs::Pose& wris
     tf::Transform world_T_hand_target;
     world_T_hand.setRotation(tf::Quaternion(wrist_pose.orientation.x,wrist_pose.orientation.y,wrist_pose.orientation.z,wrist_pose.orientation.w));
     world_T_hand.setOrigin(tf::Vector3(wrist_pose.position.x,wrist_pose.position.y,wrist_pose.position.z) );
-    world_T_hand_target =  world_T_hand * this->palm_T_hand_;  //palm_T_hand is identity when no stitching
+    world_T_hand_target =  world_T_hand * this->palmStitch_T_hand_;  //palm_T_hand is identity when no stitching
     tf::Quaternion tg_quat;
     tf::Vector3    tg_vector;
     tg_quat   = world_T_hand_target.getRotation();
@@ -410,6 +452,31 @@ int VigirManipulationController::calcWristTarget(const geometry_msgs::Pose& wris
     this->wrist_target_pose_.pose.pose.position.y = tg_vector.getY();
     this->wrist_target_pose_.pose.pose.position.z = tg_vector.getZ();
 
+    return 0;
+}
+
+int VigirManipulationController::poseTransform(geometry_msgs::Pose& input_pose, tf::Transform transform)
+{
+    tf::Transform output_transform;    //describes hand in object's frame
+    tf::Transform input_transform;       //describes palm_from_graspit in object's frame
+
+    input_transform.setRotation(tf::Quaternion(input_pose.orientation.x,input_pose.orientation.y,input_pose.orientation.z,input_pose.orientation.w));
+    input_transform.setOrigin(tf::Vector3(input_pose.position.x,input_pose.position.y,input_pose.position.z) );
+
+    output_transform = input_transform * transform;
+
+    tf::Quaternion output_quat;
+    tf::Vector3    output_vector;
+    output_quat   = output_transform.getRotation();
+    output_vector = output_transform.getOrigin();
+
+    input_pose.position.x    = output_vector.getX();
+    input_pose.position.y    = output_vector.getY();
+    input_pose.position.z    = output_vector.getZ();
+    input_pose.orientation.x = output_quat.getX();
+    input_pose.orientation.y = output_quat.getY();
+    input_pose.orientation.z = output_quat.getZ();
+    input_pose.orientation.w = output_quat.getW();
     return 0;
 }
 
@@ -570,40 +637,82 @@ void VigirManipulationController::requestInstantiatedGraspService(const uint16_t
     last_grasp_res_ = srv.response;
 }
 
-void VigirManipulationController::setAttachingObject(const flor_grasp_msgs::TemplateSelection& last_template_data){
+void VigirManipulationController::setAttachingObject(const flor_grasp_msgs::TemplateSelection& template_data){
     //Add collision object with template pose and bounding box
 
-    ROS_INFO("Attaching collision object :%s started",(boost::to_string(int16_t(last_template_data.template_id.data))).c_str());
+    ROS_INFO("Attaching collision object :%s started",(boost::to_string(int16_t(template_data.template_id.data))).c_str());
     vigir_object_template_msgs::SetAttachedObjectTemplate srv;
-    srv.request.template_id          = int16_t(last_template_data.template_id.data);
+    srv.request.template_id          = int16_t(template_data.template_id.data);
     srv.request.pose                 = last_wrist_pose_msg_;
     srv.request.pose.header.frame_id = this->hand_name_;
     if (!attach_object_client_.call(srv))
         ROS_ERROR("Failed to call service request SetAttachedObjectTemplate");
 }
 
-void VigirManipulationController::setStitchingObject(const flor_grasp_msgs::TemplateSelection& last_template_data){
+void VigirManipulationController::setStitchingObject(const flor_grasp_msgs::TemplateSelection& template_data){
     //Add collision object with template pose and bounding box
 
-    ROS_INFO("Stitching collision object :%s started",(boost::to_string(int16_t(last_template_data.template_id.data))).c_str());
+    ROS_INFO("Stitching collision object :%s started",(boost::to_string(int16_t(template_data.template_id.data))).c_str());
     vigir_object_template_msgs::SetAttachedObjectTemplate srv;
-    srv.request.template_id          = int16_t(last_template_data.template_id.data);
+    srv.request.template_id          = int16_t(template_data.template_id.data);
     srv.request.pose                 = last_wrist_pose_msg_;
     srv.request.pose.header.frame_id = this->hand_name_;
     if (!stitch_object_client_.call(srv))
         ROS_ERROR("Failed to call service request SetStitchedObjectTemplate");
 }
 
-void VigirManipulationController::setDetachingObject(const flor_grasp_msgs::TemplateSelection& last_template_data){
+void VigirManipulationController::setDetachingObject(const flor_grasp_msgs::TemplateSelection& template_data){
     //Add collision object with template pose and bounding box
 
-    ROS_INFO("Removing collision object :%s started",(boost::to_string(int16_t(last_template_data.template_id.data))).c_str());
+    ROS_INFO("Removing collision object :%s started",(boost::to_string(int16_t(template_data.template_id.data))).c_str());
     vigir_object_template_msgs::SetAttachedObjectTemplate srv;
-    srv.request.template_id          = int16_t(last_template_data.template_id.data);
+    srv.request.template_id          = int16_t(template_data.template_id.data);
     srv.request.pose                 = last_wrist_pose_msg_;
     srv.request.pose.header.frame_id = this->hand_name_;
     if (!detach_object_client_.call(srv))
         ROS_ERROR("Failed to call service request DetachObjectTemplate");
+}
+
+void VigirManipulationController::sendCircularAffordance(vigir_object_template_msgs::Affordance affordance)
+{
+    flor_planning_msgs::CircularMotionRequest cmd;
+
+    // calculating the rotation based on position of the markers
+    if(affordance.keep_orientation)
+    {
+        // get position of the wrist in world coordinates
+        geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
+
+        // get position of the marker in world coordinates
+        poseTransform(hand, palm_T_hand_.inverse());
+
+        // calculate the difference between them
+        tf::Vector3 diff_vector;
+        diff_vector.setX(last_wrist_pose_msg_.pose.position.x - hand.position.x);
+        diff_vector.setY(last_wrist_pose_msg_.pose.position.y - hand.position.y);
+        diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
+
+        // apply the difference to the circular center
+        affordance.pose.pose.position.x += diff_vector.getX();
+        affordance.pose.pose.position.y += diff_vector.getY();
+        affordance.pose.pose.position.z += diff_vector.getZ();
+    }
+
+    cmd.rotation_center_pose = affordance.pose;
+
+    cmd.rotation_angle = affordance.displacement; // UI in deg, msg in rad
+
+    cmd.use_environment_obstacle_avoidance = false;
+
+    cmd.keep_endeffector_orientation = affordance.keep_orientation;
+
+    cmd.planning_group = this->planning_group_;
+
+    circular_plan_request_pub_.publish(cmd);
+}
+
+void VigirManipulationController::sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance){
+
 }
 
 
