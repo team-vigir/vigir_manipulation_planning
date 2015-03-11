@@ -39,10 +39,10 @@
 
 #include <moveit/move_group/move_group_capability.h>
 #include <actionlib/server/simple_action_server.h>
-//#include <moveit_msgs/MoveGroupAction.h>
 #include <vigir_planning_msgs/MoveAction.h>
 
 #include <vigir_moveit_utils/trajectory_utils.h>
+#include <tf/transform_listener.h>
 
 namespace move_group
 {
@@ -83,6 +83,8 @@ private:
   ros::ServiceClient drake_cartesian_trajectory_srv_client_;
 
   ros::Publisher drake_trajectory_result_pub_;
+
+  tf::TransformListener transform_listener_;
 };
 
 

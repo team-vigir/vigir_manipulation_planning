@@ -37,6 +37,7 @@
 #include <vigir_move_group/manipulation_action_capability.h>
 
 #include <ctime>
+#include <algorithm>
 
 #include <moveit/planning_pipeline/planning_pipeline.h>
 #include <moveit/plan_execution/plan_execution.h>
@@ -46,6 +47,7 @@
 #include <moveit/move_group/capability_names.h>
 #include <moveit/robot_state/conversions.h>
 #include <moveit_msgs/DisplayTrajectory.h>
+
 
 #include <vigir_planning_msgs/RequestWholeBodyTrajectory.h>
 #include <vigir_planning_msgs/RequestWholeBodyCartesianTrajectory.h>
@@ -351,6 +353,28 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
   moveit_msgs::RobotState current_state_msg;
   moveit::core::robotStateToRobotStateMsg(current_robot_state, current_state_msg);
 
+
+
+  // if global world position is not set, try to get robot orientation from tf transform (THOR!)
+  bool has_world_virtual_joint = ( std::find( current_state_msg.multi_dof_joint_state.joint_names.begin(), current_state_msg.multi_dof_joint_state.joint_names.end(), "world_virtual_joint" ) != current_state_msg.multi_dof_joint_state.joint_names.end() );
+  if ( has_world_virtual_joint == false )
+  {
+      try{
+        ROS_INFO("No world virtual joint given - using tf-transform");
+        tf::StampedTransform pelvis_tf;        
+        transform_listener_.lookupTransform("/world", "/pelvis", ros::Time(0), pelvis_tf);
+
+        geometry_msgs::Transform pelvis_pose_msg;
+        tf::transformTFToMsg(pelvis_tf, pelvis_pose_msg);
+
+        current_state_msg.multi_dof_joint_state.joint_names.push_back("world_virtual_joint");
+        current_state_msg.multi_dof_joint_state.transforms.push_back(pelvis_pose_msg);
+      }
+      catch (tf::TransformException &ex) {
+        ROS_WARN("%s",ex.what());
+      }
+  }
+
   try
   {
       //Everything OK in the beginning, this will be changed below if we encounter problems
@@ -376,6 +400,13 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
       bool solved = drake_cartesian_trajectory_srv_client_.call(drake_request_msg, drake_response_msg);
 
       if ( solved ) {
+
+        // if the robot model has no world joint, remove info from result trajectory
+        if ( has_world_virtual_joint == false ) {
+            drake_response_msg.trajectory_result.result_trajectory.multi_dof_joint_trajectory.joint_names.clear();
+            drake_response_msg.trajectory_result.result_trajectory.multi_dof_joint_trajectory.points.clear();
+        }
+
         res.trajectory_ = robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(robot_model, goal->request.group_name));
         res.trajectory_->setRobotTrajectoryMsg(current_robot_state, drake_response_msg.trajectory_result.result_trajectory);
 
@@ -549,6 +580,26 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
     moveit_msgs::RobotState current_state_msg;
     moveit::core::robotStateToRobotStateMsg(current_robot_state, current_state_msg);
 
+    // if global world position is not set, try to get robot orientation from tf transform (THOR!)
+    bool has_world_virtual_joint = ( std::find( current_state_msg.multi_dof_joint_state.joint_names.begin(), current_state_msg.multi_dof_joint_state.joint_names.end(), "world_virtual_joint" ) != current_state_msg.multi_dof_joint_state.joint_names.end() );
+    if ( has_world_virtual_joint == false )
+    {
+        try{
+          ROS_INFO("No world virtual joint given - using tf-transform");
+          tf::StampedTransform pelvis_tf;
+          transform_listener_.lookupTransform("/world", "/pelvis", ros::Time(0), pelvis_tf);
+
+          geometry_msgs::Transform pelvis_pose_msg;
+          tf::transformTFToMsg(pelvis_tf, pelvis_pose_msg);
+
+          current_state_msg.multi_dof_joint_state.joint_names.push_back("world_virtual_joint");
+          current_state_msg.multi_dof_joint_state.transforms.push_back(pelvis_pose_msg);
+        }
+        catch (tf::TransformException &ex) {
+          ROS_WARN("%s",ex.what());
+        }
+    }
+
     try
     {
         //Everything OK in the beginning, this will be changed below if we encounter problems
@@ -572,6 +623,11 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
         bool solved = drake_cartesian_trajectory_srv_client_.call(drake_request_msg, drake_response_msg);
 
         if ( solved ) {
+          // if the robot model has no world joint, remove info from result trajectory
+          if ( has_world_virtual_joint == false ) {
+              drake_response_msg.trajectory_result.result_trajectory.multi_dof_joint_trajectory.joint_names.clear();
+              drake_response_msg.trajectory_result.result_trajectory.multi_dof_joint_trajectory.points.clear();
+          }
 
           res.trajectory_ = robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(robot_model, goal->request.group_name));
           res.trajectory_->setRobotTrajectoryMsg(current_robot_state, drake_response_msg.trajectory_result.result_trajectory);
