@@ -210,8 +210,8 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     //Trajectory Action
     TrajectoryActionClient*            trajectory_client_;
 
-    moveit::planning_interface::VigirMoveGroup l_arm_group_;
-    moveit::planning_interface::VigirMoveGroup r_arm_group_;
+    //moveit::planning_interface::VigirMoveGroup l_arm_group_;
+    //moveit::planning_interface::VigirMoveGroup r_arm_group_;
 
   private:
     ros::Publisher wrist_target_pub_ ;
