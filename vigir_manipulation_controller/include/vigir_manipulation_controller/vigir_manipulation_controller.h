@@ -200,8 +200,8 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     control_msgs::FollowJointTrajectoryGoal    trajectory_action_;
 
 
-    //moveit::planning_interface::VigirMoveGroup l_arm_group_;
-    //moveit::planning_interface::VigirMoveGroup r_arm_group_;
+    moveit::planning_interface::VigirMoveGroup l_arm_group_;
+    moveit::planning_interface::VigirMoveGroup r_arm_group_;
 
     robot_model_loader::RobotModelLoaderPtr    robot_model_loader_;
     robot_model::RobotModelPtr                 robot_model_;
