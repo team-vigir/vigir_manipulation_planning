@@ -34,9 +34,9 @@ namespace vigir_manipulation_controller{
 VigirManipulationController::VigirManipulationController():
     hand_name_( "unknown"),
     hand_side_( "unknown"),
-    hand_id_(0),
+    hand_id_(0)/*,
     l_arm_group_("l_arm_group"),
-    r_arm_group_("r_arm_group")
+    r_arm_group_("r_arm_group")*/
 {
     //Stitch template to hand transformation initialization
     this->palmStitch_T_hand_.setIdentity();
