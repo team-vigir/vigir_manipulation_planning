@@ -2,29 +2,28 @@
 <!-- This launch file uses the basic manipulation controller plugin. -->
 
 <launch>
-<!--
+
 <include file="$(find vigir_robotiq_ros_control)/launch/l_robotiq_ros_controller.launch"/>
- -->
-<node ns="left_manipulation_controller" name="vigir_manipulation_controller" pkg="vigir_manipulation_controller" type="vigir_manipulation_controller_node" respawn="true" output="screen"><!--  launch-prefix="xterm -e gdb -ex r"-->
+<!-- -->
+<node name="left_vigir_manipulation_controller" pkg="vigir_manipulation_controller" type="vigir_manipulation_controller_node" respawn="true" output="screen"><!--  launch-prefix="xterm -e gdb -ex r"-->
 
     <param name="hand" value="l_hand" />
 
-    <remap from="template_selection"   to="/template/l_hand_template_match_request" />
-    <remap from="hand_offset"          to="/template/l_hand_template_offset" />
+    <remap from="template_stitch_pose" to="/manipulation_control/l_hand/template_stitch_pose" />
+    <remap from="template_stitch"      to="/manipulation_control/l_hand/template_stitch_request" />
     <remap from="move_to_pose"         to="/manipulation_control/l_hand/move_to_pose" />
     <remap from="attach_object"        to="/manipulation_control/l_hand/attach_object" />
     <remap from="detach_object"        to="/manipulation_control/l_hand/detach_object" />
-    <remap from="grasp_command"        to="/grasp_control/l_hand/grasp_command" />
-    <remap from="release_grasp"        to="/manipulation_control/l_hand/release_grasp" />
+    <remap from="affordance_command"  to="/manipulation_control/l_hand/affordance_command" />
 
-    <remap from="grasp_status"         to="/manipulation_control/l_hand/grasp_status" />
-    <remap from="hand_mass"            to="/manipulation_control/l_hand/hand_mass" />
-    <remap from="robotiq_states"       to="/manipulation_control/l_hand/tactile_feedback" />
+    <remap from="grasp_command"        to="/grasp_control/l_hand/grasp_command" />
+    <remap from="grasp_status"         to="/grasp_control/l_hand/grasp_status" />
+    <remap from="link_states"          to="/grasp_control/l_hand/tactile_feedback" />
+    <remap from="hand_status"          to="/grasp_control/l_hand/hand_status" />
+    <remap from="hand_mass"            to="/grasp_control/l_hand/hand_mass" />
     <remap from="wrist_target"         to="/grasp_control/l_hand/target_pose" />
-    <remap from="template_stitch_pose" to="/manipulation_control/l_hand/template_stitch_pose" />
-    
     <remap from="wrist_plan"           to="/grasp_control/l_hand/plan_request" />
-    <remap from="template_stitch"      to="/manipulation_control/l_hand/template_stitch_request" />
+
     <remap from="wrist_pose"           to="/flor/l_arm_current_pose" />
     <remap from="planner_status"       to="/grasp_planning/l_hand/status" />
     <remap from="planning_group"       to="/flor/ocs/ghost_ui_state" />
