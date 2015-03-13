@@ -215,6 +215,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     ros::Publisher     hand_mass_pub_ ;
     ros::Publisher     tactile_feedback_pub_;
     ros::Publisher     circular_plan_request_pub_;
+    ros::Publisher     cartesian_plan_request_pub_;
 
     ros::Subscriber    hand_status_sub_;
     ros::Subscriber    moveToPose_sub_;       ///< Current template and grasp selection message

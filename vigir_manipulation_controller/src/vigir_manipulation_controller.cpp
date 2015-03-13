@@ -84,13 +84,14 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
 
     ROS_INFO("Setup communications for the %s manipulation controller ... ", hand_name_.c_str());
 
-    wrist_target_pub_          = nh.advertise<geometry_msgs::PoseStamped>("wrist_target",          1, true);
-    template_stitch_pose_pub_  = nh.advertise<geometry_msgs::PoseStamped>("template_stitch_pose",  1, true);
-    wrist_plan_pub_            = nh.advertise<flor_planning_msgs::PlanRequest>("wrist_plan",       1, true);
-    grasp_status_pub_          = nh.advertise<flor_ocs_msgs::OCSRobotStatus>("grasp_status",       1, true);
-    hand_mass_pub_             = nh.advertise<flor_atlas_msgs::AtlasHandMass>("hand_mass",         1, true);
-    tactile_feedback_pub_      = nh.advertise<flor_grasp_msgs::LinkState>("link_states",           1, true);
-    circular_plan_request_pub_ = nh.advertise<flor_planning_msgs::CircularMotionRequest>( "/flor/planning/upper_body/plan_circular_request", 1, false );
+    wrist_target_pub_           = nh.advertise<geometry_msgs::PoseStamped>("wrist_target",          1, true);
+    template_stitch_pose_pub_   = nh.advertise<geometry_msgs::PoseStamped>("template_stitch_pose",  1, true);
+    wrist_plan_pub_             = nh.advertise<flor_planning_msgs::PlanRequest>("wrist_plan",       1, true);
+    grasp_status_pub_           = nh.advertise<flor_ocs_msgs::OCSRobotStatus>("grasp_status",       1, true);
+    hand_mass_pub_              = nh.advertise<flor_atlas_msgs::AtlasHandMass>("hand_mass",         1, true);
+    tactile_feedback_pub_       = nh.advertise<flor_grasp_msgs::LinkState>("link_states",           1, true);
+    circular_plan_request_pub_  = nh.advertise<flor_planning_msgs::CircularMotionRequest>( "/flor/planning/upper_body/plan_circular_request",  1, false );
+    cartesian_plan_request_pub_ = nh.advertise<flor_planning_msgs::CartesianMotionRequest>("/flor/planning/upper_body/plan_cartesian_request", 1, false );
 
     hand_status_sub_           = nh.subscribe("hand_status",        1, &VigirManipulationController::handStatusCallback,         this);
     grasp_command_sub_         = nh.subscribe("grasp_command",      1, &VigirManipulationController::graspCommandCallback,       this);
@@ -694,12 +695,12 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
         diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
 
         // apply the difference to the circular center
-        affordance.pose.pose.position.x += diff_vector.getX();
-        affordance.pose.pose.position.y += diff_vector.getY();
-        affordance.pose.pose.position.z += diff_vector.getZ();
+        affordance.waypoints[0].pose.position.x += diff_vector.getX();
+        affordance.waypoints[0].pose.position.y += diff_vector.getY();
+        affordance.waypoints[0].pose.position.z += diff_vector.getZ();
     }
 
-    cmd.rotation_center_pose = affordance.pose;
+    cmd.rotation_center_pose = affordance.waypoints[0];
 
     cmd.rotation_angle = affordance.displacement; // UI in deg, msg in rad
 
@@ -712,8 +713,64 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
     circular_plan_request_pub_.publish(cmd);
 }
 
-void VigirManipulationController::sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance){
+void VigirManipulationController::sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance)
+{
+    flor_planning_msgs::CartesianMotionRequest cmd;
 
+    cmd.header.frame_id = "/world";
+    cmd.header.stamp = ros::Time::now();
+
+    for(int waypoint=0; waypoint< affordance.waypoints.size(); waypoint++)
+        cmd.waypoints.push_back(affordance.waypoints[waypoint].pose);
+
+    // get position of the wrist in world coordinates
+    geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
+
+    // get position of the marker in world coordinates
+    poseTransform(hand, palm_T_hand_.inverse());
+
+    // calculate the difference between them
+    tf::Vector3 diff_vector;
+    diff_vector.setX(last_wrist_pose_msg_.pose.position.x - hand.position.x);
+    diff_vector.setY(last_wrist_pose_msg_.pose.position.y - hand.position.y);
+    diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
+
+    for(int i = 0; i < cmd.waypoints.size(); i++)
+    {
+        // apply the difference to each one of the waypoints
+        if(affordance.keep_orientation)
+        {
+            cmd.waypoints[i].position.x = cmd.waypoints[i].position.x + diff_vector.getX();
+            cmd.waypoints[i].position.y = cmd.waypoints[i].position.y + diff_vector.getY();
+            cmd.waypoints[i].position.z = cmd.waypoints[i].position.z + diff_vector.getZ();
+            cmd.waypoints[i].orientation.x = last_wrist_pose_msg_.pose.orientation.x;
+            cmd.waypoints[i].orientation.y = last_wrist_pose_msg_.pose.orientation.y;
+            cmd.waypoints[i].orientation.z = last_wrist_pose_msg_.pose.orientation.z;
+            cmd.waypoints[i].orientation.w = last_wrist_pose_msg_.pose.orientation.w;
+        }
+        else
+        {
+            geometry_msgs::Pose waypoint;
+            waypoint.position.x = cmd.waypoints[i].position.x;
+            waypoint.position.y = cmd.waypoints[i].position.y;
+            waypoint.position.z = cmd.waypoints[i].position.z;
+            waypoint.orientation.x = cmd.waypoints[i].orientation.x;
+            waypoint.orientation.y = cmd.waypoints[i].orientation.y;
+            waypoint.orientation.z = cmd.waypoints[i].orientation.z;
+            waypoint.orientation.w = cmd.waypoints[i].orientation.w;
+
+            poseTransform(waypoint, palm_T_hand_.inverse());
+
+            cmd.waypoints[i] = waypoint;
+        }
+
+    }
+
+    cmd.use_environment_obstacle_avoidance = false;
+
+    cmd.planning_group = this->planning_group_;
+
+    cartesian_plan_request_pub_.publish(cmd);
 }
 
 
