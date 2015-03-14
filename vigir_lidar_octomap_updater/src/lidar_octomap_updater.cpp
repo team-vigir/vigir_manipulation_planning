@@ -367,6 +367,8 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
           }
           else if (mask_[col] == point_containment_filter::ShapeMask::CLIP)
           {
+            // CLIP cells are only those outside min to max range. Given we operate in world frame for
+            // containment check and scan is prefiltered for min/max, there are no CLIP cells.
             //clip_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
           }
           else
