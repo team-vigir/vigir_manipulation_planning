@@ -5,7 +5,7 @@
 
 <include file="$(find vigir_robotiq_ros_control)/launch/r_robotiq_ros_controller.launch"/>
 <!-- -->
-<node name="right_vigir_manipulation_controller" pkg="vigir_manipulation_controller" type="vigir_manipulation_controller_node" respawn="true" output="screen"><!--  launch-prefix="xterm -e gdb -ex r"-->
+<node name="right_vigir_manipulation_controller" pkg="vigir_manipulation_controller" type="vigir_manipulation_controller_node" respawn="true" ><!--output="screen"  launch-prefix="xterm -e gdb -ex r"-->
 
     <param name="hand" value="r_hand" />
 
