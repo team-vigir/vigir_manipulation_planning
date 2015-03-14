@@ -290,7 +290,11 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
 
 
   /* mask out points on the robot */
-  shape_mask_->maskContainment(*cloud_msg, sensor_origin_eigen, 0.0, max_range_, mask_);
+  
+  //We are in world frame, so using the scan max range cuts off things in a circle around world origin.
+  //@TODO: Do this in a nicer way.
+  double max_mask_range = 20000.0;
+  shape_mask_->maskContainment(*cloud_msg, sensor_origin_eigen, 0.0, max_mask_range, mask_);
   updateMask(*cloud_msg, sensor_origin_eigen, mask_);
 
   self_filter_finished_time = ros::WallTime::now();
@@ -367,6 +371,8 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
           }
           else if (mask_[col] == point_containment_filter::ShapeMask::CLIP)
           {
+            // CLIP cells are only those outside min to max range. Given we operate in world frame for
+            // containment check and scan is prefiltered for min/max, there are no CLIP cells.
             //clip_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
           }
           else
