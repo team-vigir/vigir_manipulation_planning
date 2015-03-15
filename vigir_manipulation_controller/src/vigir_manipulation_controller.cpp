@@ -759,7 +759,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
             waypoint.orientation.z = cmd.waypoints[i].orientation.z;
             waypoint.orientation.w = cmd.waypoints[i].orientation.w;
 
-            poseTransform(waypoint, palm_T_hand_.inverse());
+            poseTransform(waypoint, palm_T_hand_);
 
             cmd.waypoints[i] = waypoint;
         }
