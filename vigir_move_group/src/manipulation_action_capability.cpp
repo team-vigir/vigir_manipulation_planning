@@ -88,7 +88,6 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
 
   if (goal->request.planner_id == "drake"){
     // @DRAKE Plan using Drake here. Alternatively, could also implement alternative callback below where @DRAKE is marked
-    ROS_WARN("Planning using Drake requested, still work in progress!");
 
     if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
     {
@@ -96,13 +95,16 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
         ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
 
       // check for cartesian motion request
-      if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_MOTION)
+      if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS)
       {
         executeMoveCallback_DrakeCartesianPlanOnly(goal, action_res);
       }
-      else
+      else if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION)
       {
         executeMoveCallback_DrakePlanOnly(goal, action_res);
+      }
+      else {
+        ROS_WARN("Motion request type %d not implemented for Drake!", goal->extended_planning_options.target_motion_type);
       }
     }
     else
@@ -187,12 +189,15 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
     if (goal->request.planner_id == "drake") // plan using drake
     {
         // check if it is a cartesian request
-        if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_MOTION)
+        if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS)
         {
             opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planCartesianUsingDrake, this, boost::cref(goal), _1);
         }
-        else { // normal joint-level planning
+        else if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION) { // normal joint-level planning
             opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingDrake, this, boost::cref(goal), _1);
+        }
+        else {
+            ROS_WARN("Selected motion type %d not implemented for Drake!", goal->extended_planning_options.target_motion_type);
         }
     }
     else {
