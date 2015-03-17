@@ -486,7 +486,7 @@ void MotionPlanningFrame::clearWaypoints()
 
 vigir_planning_msgs::ExtendedPlanningOptionsPtr MotionPlanningFrame::buildExtendedPlanningOptions() {
     vigir_planning_msgs::ExtendedPlanningOptionsPtr extended_options(new vigir_planning_msgs::ExtendedPlanningOptions());
-    extended_options->target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_MOTION;
+    extended_options->target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
     extended_options->target_frame = "world";
     extended_options->continuous_replanning = false;
 
