@@ -46,12 +46,10 @@ namespace flor_visualization_utils {
   void drawPoses(const std::vector<geometry_msgs::Pose> poses,
                      visualization_msgs::MarkerArray& markerArray,
                      std::string frame_id,
-                     ros::Time stamp = ros::Time::now());
+                     ros::Time stamp = ros::Time::now(),
+                     double axis_length = 0.05,
+                     double alpha = 0.15);
 
-  void drawPosesBig(const std::vector<geometry_msgs::Pose> poses,
-                     visualization_msgs::MarkerArray& markerArray,
-                     std::string frame_id,
-                     ros::Time stamp = ros::Time::now());
 
 
 
