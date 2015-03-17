@@ -43,6 +43,8 @@
 #include <vigir_planning_msgs/MoveAction.h>
 
 #include <vigir_moveit_utils/trajectory_utils.h>
+#include <vigir_plan_execution/continuous_plan_execution.h>
+
 
 namespace move_group
 {
@@ -60,6 +62,7 @@ private:
   void executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal);
   void executeMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
   void executeMoveCallback_PlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
+  void executeCartesianMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
   void startMoveExecutionCallback();
   void startMoveLookCallback();
   void preemptMoveCallback();
@@ -70,6 +73,8 @@ private:
   vigir_planning_msgs::MoveFeedback move_feedback_;
 
   MoveGroupState move_state_;
+
+  plan_execution::ContinuousPlanExecutionPtr continuous_plan_execution_;
 
   boost::shared_ptr<trajectory_utils::TrajectoryVisualization> planned_traj_vis_;
   boost::shared_ptr<trajectory_utils::TrajectoryVisualization> executed_traj_vis_;

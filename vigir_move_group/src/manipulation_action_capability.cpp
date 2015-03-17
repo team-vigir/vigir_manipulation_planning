@@ -50,7 +50,9 @@ move_group::MoveGroupManipulationAction::MoveGroupManipulationAction() :
 }
 
 void move_group::MoveGroupManipulationAction::initialize()
-{
+{  
+  continuous_plan_execution_.reset(new plan_execution::ContinuousPlanExecution(context_));
+
   ros::NodeHandle pnh("~/visualization");
 
   planned_traj_vis_.reset(new trajectory_utils::TrajectoryVisualization(pnh));
@@ -151,6 +153,8 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
   }else{
     // @DRAKE: Could implement callback for Drake and use here
     opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
+
+    //We normally don't plan with lookaround so the below can be ignored
     if (goal->planning_options.look_around && context_->plan_with_sensing_)
     {
       opt.plan_callback_ = boost::bind(&plan_execution::PlanWithSensing::computePlan, context_->plan_with_sensing_.get(), _1, opt.plan_callback_,
@@ -207,6 +211,16 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanOnly(const
 
   action_res.error_code = res.error_code_;
   action_res.planning_time = res.planning_time_;
+}
+
+void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
+{
+  if (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS){
+    ROS_WARN("Cartesian waypoints not implemented yet!");
+
+  }else if (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION){
+    ROS_WARN("Circular waypoints not implemented yet!");
+  }
 }
 
 bool move_group::MoveGroupManipulationAction::planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan)
