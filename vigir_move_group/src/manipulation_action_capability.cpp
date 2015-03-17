@@ -105,6 +105,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
       }
       else {
         ROS_WARN("Motion request type %d not implemented for Drake!", goal->extended_planning_options.target_motion_type);
+	action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
       }
     }
     else
@@ -113,7 +114,9 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
     }
 
     action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
-  }else if (goal->extended_planning_options.target_poses.size() != 0){
+  }
+  
+  else if (goal->extended_planning_options.target_poses.size() != 0){
 
     const boost::shared_ptr<tf::Transformer>& tf = context_->planning_scene_monitor_->getTFClient();
     tf->waitForTransform(context_->planning_scene_monitor_->getRobotModel()->getModelFrame(), goal->extended_planning_options.target_frame, ros::Time::now(), ros::Duration(0.5));
