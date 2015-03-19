@@ -62,7 +62,7 @@ namespace trajectory_utils{
   }
   */
 
-static void removeDuplicateStates(const std::vector<robot_state::RobotStatePtr>& in, std::vector<robot_state::RobotStatePtr>& out )
+static void removeDuplicateStates(const std::vector<robot_state::RobotStatePtr>& in, std::vector<robot_state::RobotStatePtr>& out, double threshold = 0.02)
 {
   size_t size = in.size();
 
@@ -75,7 +75,7 @@ static void removeDuplicateStates(const std::vector<robot_state::RobotStatePtr>&
   }
 
   for (int i = 1; i < size; ++i){
-    if (in[i-1]->distance(*in[i]) > 0.02){
+    if (in[i-1]->distance(*in[i]) > threshold){
       out.push_back(in[i]);
     }
   }

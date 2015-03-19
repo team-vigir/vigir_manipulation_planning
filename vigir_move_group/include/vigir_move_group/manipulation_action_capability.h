@@ -44,6 +44,7 @@
 
 #include <vigir_moveit_utils/trajectory_utils.h>
 #include <vigir_plan_execution/continuous_plan_execution.h>
+#include <moveit_msgs/GetCartesianPath.h>
 
 
 namespace move_group
@@ -69,6 +70,9 @@ private:
   void setMoveState(MoveGroupState state);
   bool planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan);
 
+  // Mostly copy of MoveGroup CartesianPath service with modifications
+  bool computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req, moveit_msgs::GetCartesianPath::Response &res);
+
   boost::scoped_ptr<actionlib::SimpleActionServer<vigir_planning_msgs::MoveAction> > move_action_server_;
   vigir_planning_msgs::MoveFeedback move_feedback_;
 
@@ -78,6 +82,8 @@ private:
 
   boost::shared_ptr<trajectory_utils::TrajectoryVisualization> planned_traj_vis_;
   boost::shared_ptr<trajectory_utils::TrajectoryVisualization> executed_traj_vis_;
+
+  trajectory_processing::IterativeParabolicTimeParameterization time_param_;
 };
 
 
