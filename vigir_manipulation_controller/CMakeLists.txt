@@ -14,12 +14,18 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_core
   moveit_msgs
   roscpp
+  urdf
   tf
   tf_conversions
   trajectory_msgs
   vigir_object_template_msgs
   vigir_planning_interface
 )
+
+#set the default path for built executables to the "bin" directory
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+#set the default path for built libraries to the "lib" directory
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -93,7 +99,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES vigir_manipulation_controller
-  CATKIN_DEPENDS actionlib control_msgs flor_control_msgs flor_grasp_msgs flor_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface
+  CATKIN_DEPENDS actionlib control_msgs flor_control_msgs flor_grasp_msgs flor_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp urdf tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface
 #  DEPENDS system_lib
 )
 
@@ -118,18 +124,31 @@ SET(SOURCE
 src/vigir_manipulation_controller.cpp
 )
 
+## Declare a cpp library
+add_library(${PROJECT_NAME} ${SOURCE} ${HEADERS} )
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a cpp executable
-add_executable(vigir_manipulation_controller_node ${SOURCE} ${HEADERS})
-add_dependencies(vigir_manipulation_controller_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(vigir_manipulation_controller_node  ${catkin_LIBRARIES})
+#add_executable(vigir_manipulation_controller_node ${SOURCE} ${HEADERS})
+#add_dependencies(vigir_manipulation_controller_node ${catkin_EXPORTED_TARGETS})
+#target_link_libraries(vigir_manipulation_controller_node  ${catkin_LIBRARIES})
 
+#############
+## Install ##
+#############
 
-## Mark executables and/or libraries for installation
-install(TARGETS
-   vigir_manipulation_controller_node
-   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+install( TARGETS ${PROJECT_NAME}
+   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+### Mark executables and/or libraries for installation
+#install(TARGETS
+#   vigir_manipulation_controller_node
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#)
 
 install ( DIRECTORY launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}

@@ -3,11 +3,13 @@
 
 <launch>
 
-<include file="$(find vigir_robotiq_ros_control)/launch/l_robotiq_ros_controller.launch"/>
+<include file="$(find vigir_robotiq_ros_control)/launch/l_robotiq_ros_controller.launch"/>  <!--Specific ROS controller for hand (if required)-->
 <!-- -->
-<node name="left_vigir_manipulation_controller" pkg="vigir_manipulation_controller" type="vigir_manipulation_controller_node" respawn="true" ><!--output="screen"  launch-prefix="xterm -e gdb -ex r"-->
+<node name="left_vigir_manipulation_controller"  pkg="vigir_robotiq_grasp_controller" type="vigir_robotiq_grasp_controller_node" respawn="true" ><!--output="screen"  launch-prefix="xterm -e gdb -ex r"-->
 
-    <param name="hand" value="l_hand" />
+    <param name="wrist_name"  value="l_hand" />      <!--Last arm link name-->
+    <param name="hand_link"   value="left_palm"  />  <!--First hand link name-->
+    <param name="joint_group" value="left_hand"  />  <!--Hand joint group specified in SRDF-->
 
     <remap from="template_stitch_pose" to="/manipulation_control/l_hand/template_stitch_pose" />
     <remap from="template_stitch"      to="/manipulation_control/l_hand/template_stitch_request" />

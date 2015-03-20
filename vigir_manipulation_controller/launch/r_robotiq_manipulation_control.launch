@@ -3,18 +3,20 @@
 
 <launch>
 
-<include file="$(find vigir_robotiq_ros_control)/launch/r_robotiq_ros_controller.launch"/>
+<include file="$(find vigir_robotiq_ros_control)/launch/r_robotiq_ros_controller.launch"/>  <!--Specific ROS controller for hand (if required)-->
 <!-- -->
-<node name="right_vigir_manipulation_controller" pkg="vigir_manipulation_controller" type="vigir_manipulation_controller_node" respawn="true" ><!--output="screen"  launch-prefix="xterm -e gdb -ex r"-->
+<node name="right_vigir_manipulation_controller" pkg="vigir_robotiq_grasp_controller" type="vigir_robotiq_grasp_controller_node" respawn="true" ><!--output="screen"  launch-prefix="xterm -e gdb -ex r"-->
 
-    <param name="hand" value="r_hand" />
+    <param name="wrist_name"  value="r_hand" />      <!--Last arm link name-->
+    <param name="hand_link"   value="right_palm" />  <!--First hand link name-->
+    <param name="joint_group" value="right_hand" />  <!--Hand joint group specified in SRDF-->
 
     <remap from="template_stitch_pose" to="/manipulation_control/r_hand/template_stitch_pose" />
     <remap from="template_stitch"      to="/manipulation_control/r_hand/template_stitch_request" />
     <remap from="move_to_pose"         to="/manipulation_control/r_hand/move_to_pose" />
     <remap from="attach_object"        to="/manipulation_control/r_hand/attach_object" />
     <remap from="detach_object"        to="/manipulation_control/r_hand/detach_object" />
-    <remap from="affordance_command"  to="/manipulation_control/r_hand/affordance_command" />
+    <remap from="affordance_command"   to="/manipulation_control/r_hand/affordance_command" />
 
     <remap from="grasp_command"        to="/grasp_control/r_hand/grasp_command" />
     <remap from="grasp_status"         to="/grasp_control/r_hand/grasp_status" />

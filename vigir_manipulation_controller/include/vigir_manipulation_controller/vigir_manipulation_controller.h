@@ -83,6 +83,8 @@
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/robot_model/link_model.h>
 
+#include <urdf/model.h>
+
 namespace vigir_manipulation_controller {
 
 typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> TrajectoryActionClient;
@@ -125,10 +127,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
      /** Set the current planning group to "arm only" or "arm + torso"           */
      void  graspPlanningGroupCallback(const flor_ocs_msgs::OCSGhostControl& planning_group);
 
-    /** Release any currently active grasp, and return to the NONE state after opening.
-     *  This requires a new grasp selection to restart.
-     */
-     void  graspCommandCallback(const flor_grasp_msgs::GraspState &grasp);
+
      void  affordanceCommandCallback(const vigir_object_template_msgs::Affordance &affordance);
 
     /**
@@ -140,9 +139,9 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
      void updateHandMass(); // call to publish latest grasp data
 
-     void handStatusCallback(const flor_grasp_msgs::HandStatus msg);
+     void processHandMassData(const tf::Transform& hand_T_template, float &template_mass, tf::Vector3 &template_com);
 
-     GraspQuality processHandTactileData();
+     void handStatusCallback(const flor_grasp_msgs::HandStatus msg);
 
      void requestInstantiatedGraspService(const uint16_t& requested_template_type);
 
@@ -156,6 +155,12 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
      void trajectoryActiveCB();
      void trajectoryFeedbackCB(const control_msgs::FollowJointTrajectoryFeedbackConstPtr& feedback);
      void trajectoryDoneCb(const actionlib::SimpleClientGoalState& state, const control_msgs::FollowJointTrajectoryResultConstPtr &result);
+
+     //Specific hand functions
+     virtual void graspCommandCallback(const flor_grasp_msgs::GraspState &grasp)  = 0;
+     virtual GraspQuality processHandTactileData()                                = 0;
+     virtual void setCloseFingerPoses(const uint8_t& grasp_type)                  = 0;
+     virtual void setOpenFingerPoses(const uint8_t& grasp_type)                   = 0;
 
 
   protected:
@@ -173,8 +178,12 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     // Variables to store locally sensor data recieved from ROS interface
     geometry_msgs::WrenchStamped               local_force_torque_msg_;
 
+    std::string                                robot_description_;
+
     // Internal data set by the controller (specifies right or left hand)
-    std::string                                hand_name_;       // l_hand or r_hand
+    std::string                                wrist_name_;      // l_hand or r_hand
+    std::string                                joint_group_;     // left_hand or right_hand
+    std::string                                hand_link_;       // left_palm or right_palm
     std::string                                hand_side_;       // left or right
     int                                        hand_id_;         // -1=left, 1=right
     std::string                                planning_group_;
@@ -206,6 +215,8 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     robot_model_loader::RobotModelLoaderPtr    robot_model_loader_;
     robot_model::RobotModelPtr                 robot_model_;
     std::vector<std::string>                   hand_joint_names_;
+    std::vector<float>                         hand_upper_limits_;
+    std::vector<float>                         hand_lower_limits_;
 
   private:
     ros::Publisher     wrist_target_pub_ ;
