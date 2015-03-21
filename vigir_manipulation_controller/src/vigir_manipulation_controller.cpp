@@ -702,7 +702,7 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
 
     cmd.rotation_center_pose = affordance.waypoints[0];
 
-    cmd.rotation_angle = affordance.displacement; // UI in deg, msg in rad
+    cmd.rotation_angle = affordance.displacement * 0.0174532925; // UI in deg, msg in rad
 
     cmd.use_environment_obstacle_avoidance = false;
 
