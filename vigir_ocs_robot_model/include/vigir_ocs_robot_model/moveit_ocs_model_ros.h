@@ -34,7 +34,7 @@
 #include <flor_planning_msgs/TargetConfigIkRequest.h>
 
 #include <flor_planning_msgs/PlanRequest.h>
-#include <flor_planning_msgs/PlannerConfiguration.h>
+#include <vigir_planning_msgs/PlannerConfiguration.h>
 #include <flor_planning_msgs/PlanToJointTargetRequest.h>
 
 #include <geometry_msgs/PoseStamped.h>
@@ -65,7 +65,7 @@ public:
   // To be called when model changed
   void onModelUpdated();
 
-  void plannerConfigurationCb(const flor_planning_msgs::PlannerConfiguration::ConstPtr& msg);
+  void plannerConfigurationCb(const vigir_planning_msgs::PlannerConfiguration::ConstPtr& msg);
 
   void incomingPlanToPoseRequestCallback(const std_msgs::String::ConstPtr& msg);
 
@@ -83,8 +83,6 @@ protected:
   boost::shared_ptr<MoveItOcsModel> ocs_model_;
 
   moveit_msgs::DisplayRobotState display_state_msg_;
-
-  flor_planning_msgs::JointPositionConstraints::ConstPtr torso_joint_position_constraints_;
 
   ros::Publisher pose_plan_request_pub_;
   ros::Publisher joint_plan_request_pub_;

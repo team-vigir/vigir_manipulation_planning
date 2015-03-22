@@ -1,6 +1,7 @@
 
 #include <vigir_ocs_robot_model/moveit_ocs_model_ros.h>
 
+#include <vigir_planning_msgs/constraints_conversion.h>
 
 MoveItOcsModelRos::MoveItOcsModelRos()
 {
@@ -145,18 +146,30 @@ void MoveItOcsModelRos::onModelUpdated()
     }
 }
 
-void MoveItOcsModelRos::plannerConfigurationCb(const flor_planning_msgs::PlannerConfiguration::ConstPtr& msg)
+void MoveItOcsModelRos::plannerConfigurationCb(const vigir_planning_msgs::PlannerConfiguration::ConstPtr& msg)
 {
     ROS_INFO("Received planner settings");
-    ocs_model_->setJointPositionConstraints(msg->joint_position_constraints);
 
-    collision_avoidance_active_ = !msg->disable_collision_avoidance.data;
+    std::vector<moveit_msgs::JointConstraint> joint_constraints;
 
-    this->onModelUpdated();
+    joint_constraints.resize(msg->joint_position_constraints.size());
+
+    for (size_t i = 0; i < msg->joint_position_constraints.size(); ++i){
+      vigir_planning_msgs::toMoveitConstraint(msg->joint_position_constraints[i], joint_constraints[i]);
+
+      joint_constraints[i].weight = 0.5;
+      joint_constraints[i].joint_name = ocs_model_->getModel().getJointOfVariable(msg->joint_position_constraints[i].joint_index)->getName();
     }
 
-    void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String::ConstPtr& msg)
-    {
+    ocs_model_->setJointPositionConstraints(joint_constraints);
+
+    collision_avoidance_active_ = !msg->disable_collision_avoidance;
+
+    this->onModelUpdated();
+}
+
+void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String::ConstPtr& msg)
+{
     ROS_INFO("Received plan to pose request, sending group %s", msg->data.c_str());
 
     const std::string& group_name = msg->data;

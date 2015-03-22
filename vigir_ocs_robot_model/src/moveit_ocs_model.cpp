@@ -5,6 +5,7 @@
 //#include <flor_moveit_tools/planner_setting_utils.h>
 
 #include <eigen_conversions/eigen_msg.h>
+#include <vigir_moveit_utils/group_utils.h>
 
 MoveItOcsModel::MoveItOcsModel()
 {
@@ -48,7 +49,7 @@ bool MoveItOcsModel::setByIk(const geometry_msgs::PoseStamped& goal_pose, const 
   const robot_state::JointModelGroup* joint_model_group = robot_state_->getJointModelGroup(group_name);
 
   //@TODO Port group utils
-  //return group_utils::setJointStateGroupFromIk(*robot_state_,joint_model_group, goal_pose.pose, torso_joint_position_constraints_);
+  return group_utils::setJointStateGroupFromIk(*robot_state_,joint_model_group, goal_pose.pose, torso_joint_position_constraints_);
   return true;
 }
 
@@ -143,9 +144,9 @@ const std::vector<std::string>& MoveItOcsModel::getLinkNames() const
 
 const robot_state::RobotStateConstPtr MoveItOcsModel::getState() { return robot_state_; }
 
-void MoveItOcsModel::setJointPositionConstraints(const flor_planning_msgs::JointPositionConstraints& msg)
+void MoveItOcsModel::setJointPositionConstraints(const std::vector<moveit_msgs::JointConstraint>& constraints)
 {
-  torso_joint_position_constraints_ = msg;
+  torso_joint_position_constraints_ = constraints;
 }
 
 void MoveItOcsModel::getCollidingLinks(std::vector<std::string>& colliding_links) const

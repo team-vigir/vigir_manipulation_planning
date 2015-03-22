@@ -37,7 +37,7 @@
 #include <moveit/robot_state/conversions.h>
 #include <moveit/planning_scene/planning_scene.h>
 
-#include <flor_planning_msgs/JointPositionConstraints.h>
+#include <vigir_planning_msgs/JointPositionConstraint.h>
 #include <moveit/kinematics_metrics/kinematics_metrics.h>
 
 
@@ -71,7 +71,7 @@ public:
   const std::vector<std::string>& getLinkNames() const;
   const robot_state::RobotStateConstPtr getState();
 
-  void setJointPositionConstraints(const flor_planning_msgs::JointPositionConstraints& msg);
+  void setJointPositionConstraints(const std::vector<moveit_msgs::JointConstraint>& constraints);
 
   void getCollidingLinks(std::vector<std::string>& colliding_links) const;
 
@@ -87,8 +87,11 @@ public:
 
   std::vector<srdf::Model::Group>  getGroups();
 
+  const robot_model::RobotModel& getModel() const { return *robot_model_; };
+
 protected:
-  flor_planning_msgs::JointPositionConstraints torso_joint_position_constraints_;
+  //std::vector <vigir_planning_msgs::JointPositionConstraints> torso_joint_position_constraints_;
+  std::vector<moveit_msgs::JointConstraint> torso_joint_position_constraints_;
 
   planning_scene::PlanningScenePtr planning_scene_;
 
