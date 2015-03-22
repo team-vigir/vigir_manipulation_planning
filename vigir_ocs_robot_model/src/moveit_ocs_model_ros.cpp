@@ -128,6 +128,7 @@ void MoveItOcsModelRos::onModelUpdated()
     ocs_model_->getJointStates(joint_state_ghost);
     current_ghost_joint_states_pub_.publish(joint_state_ghost);
 
+    /*
     if (marker_array_pub_.getNumSubscribers() > 0){
 
       visualization_msgs::MarkerArray markers;
@@ -144,6 +145,7 @@ void MoveItOcsModelRos::onModelUpdated()
 
       marker_array_pub_.publish(markers);
     }
+    */
 }
 
 void MoveItOcsModelRos::plannerConfigurationCb(const vigir_planning_msgs::PlannerConfiguration::ConstPtr& msg)
