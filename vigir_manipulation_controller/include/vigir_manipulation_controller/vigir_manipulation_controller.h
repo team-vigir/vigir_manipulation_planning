@@ -65,10 +65,6 @@
 #include <tf_conversions/tf_eigen.h>
 
 #include <trajectory_msgs/JointTrajectory.h>
-#include <actionlib/client/simple_action_client.h>
-#include <actionlib/client/terminal_state.h>
-#include <control_msgs/FollowJointTrajectoryAction.h>
-#include <control_msgs/FollowJointTrajectoryGoal.h>
 
 #include <vigir_object_template_msgs/GetInstantiatedGraspInfo.h>
 #include <vigir_object_template_msgs/GetTemplateStateAndTypeInfo.h>
@@ -86,8 +82,6 @@
 #include <urdf/model.h>
 
 namespace vigir_manipulation_controller {
-
-typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> TrajectoryActionClient;
 
     typedef enum
     {
@@ -114,61 +108,37 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 
       void initializeManipulationController(ros::NodeHandle &nh, ros::NodeHandle &nhp);
 
-     /** This function is called whenever the template needs to be stitched to the real object.
-      * assump template pose is given in world frame
-      */
-     void  templateStitchCallback(const flor_grasp_msgs::GraspSelection& grasp_msg);
-
-     /** called to update the latest wrist pose */
-     void  wristPoseCallback(const geometry_msgs::PoseStamped& wrist_pose);
-
-     void moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp);
-
-     /** Set the current planning group to "arm only" or "arm + torso"           */
-     void  graspPlanningGroupCallback(const flor_ocs_msgs::OCSGhostControl& planning_group);
-
-
-     void  affordanceCommandCallback(const vigir_object_template_msgs::Affordance &affordance);
-
-    /**
-     * This function must be called to publish the updated wrist target after the template is updated.
-     */
-     void updateWristTarget();
-
-     void updateGraspStatus(); // call to publish latest grasp data
-
-     void updateHandMass(); // call to publish latest grasp data
-
-     void processHandMassData(const tf::Transform& hand_T_template, float &template_mass, tf::Vector3 &template_com);
-
-     void handStatusCallback(const flor_grasp_msgs::HandStatus msg);
-
-     void requestInstantiatedGraspService(const uint16_t& requested_template_type);
-
-     void setAttachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
-     void setDetachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
-     void setStitchingObject(const flor_grasp_msgs::TemplateSelection& template_data);
-
-     void sendCircularAffordance(vigir_object_template_msgs::Affordance affordance);
-     void sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance);
-
-     void trajectoryActiveCB();
-     void trajectoryFeedbackCB(const control_msgs::FollowJointTrajectoryFeedbackConstPtr& feedback);
-     void trajectoryDoneCb(const actionlib::SimpleClientGoalState& state, const control_msgs::FollowJointTrajectoryResultConstPtr &result);
-
-     //Specific hand functions
-     virtual void graspCommandCallback(const flor_grasp_msgs::GraspState &grasp)  = 0;
-     virtual GraspQuality processHandTactileData()                                = 0;
-     virtual void setCloseFingerPoses(const uint8_t& grasp_type)                  = 0;
-     virtual void setOpenFingerPoses(const uint8_t& grasp_type)                   = 0;
-
-
   protected:
 
    inline int16_t  getGraspStatus() { return RobotStatusCodes::status(grasp_status_code_, grasp_status_severity_);}
    void            setGraspStatus(const RobotStatusCodes::StatusCode& status, const RobotStatusCodes::StatusLevel& severity);
 
-    flor_grasp_msgs::HandStatus                local_hand_status_msg_;
+   void                        setLinkState(flor_grasp_msgs::LinkState link_state);
+   flor_grasp_msgs::HandStatus getHandStatus() { return last_hand_status_msg_; }
+
+   //Specific hand functions
+
+   /* This funtion receives a grasp command.
+    *
+    * Grasp command has a grip in the range [0,200] where range [0,100) means percentage closure and
+    * range [100,200] means percentage effort
+    * */
+   virtual void graspCommandCallback(const flor_grasp_msgs::GraspState &grasp)  = 0;
+
+   /* This function needs to set the tactile information of the hand and will also return
+    * a GraspQualtity evaluation    *
+    */
+   virtual GraspQuality processHandTactileData()                                = 0;
+
+   /* This Function will set the JointStates that correspond to a "Close Hand" configuration
+    */
+   virtual void setCloseFingerPoses(const uint8_t& grasp_type)                  = 0;
+
+   /* This Function will set the JointStates that correspond to an "Open Hand" configuration
+    */
+   virtual void setOpenFingerPoses(const uint8_t& grasp_type)                   = 0;
+
+    flor_grasp_msgs::HandStatus                last_hand_status_msg_;
     flor_grasp_msgs::LinkState                 link_tactile_;
 
     flor_ocs_msgs::OCSRobotStatus              last_planner_status_msg_;
@@ -191,7 +161,7 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     // Internal variables used by active controllers
     vigir_object_template_msgs::GetInstantiatedGraspInfoResponse last_grasp_res_;
     tf::Transform                              palmStitch_T_hand_;
-    tf::Transform                              palm_T_hand_;
+    tf::Transform                              hand_T_palm_;
 //    tf::TransformListener                      listener_;
     flor_planning_msgs::PlanRequest            wrist_target_pose_;
     flor_atlas_msgs::AtlasHandMass             hand_mass_msg_;
@@ -203,11 +173,6 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     RobotStatusCodes::StatusLevel              grasp_status_severity_;
 
     boost::mutex                               write_data_mutex_;
-
-    //Trajectory Action
-    TrajectoryActionClient*                    trajectory_client_;
-    control_msgs::FollowJointTrajectoryGoal    trajectory_action_;
-
 
     moveit::planning_interface::VigirMoveGroup l_arm_group_;
     moveit::planning_interface::VigirMoveGroup r_arm_group_;
@@ -234,7 +199,8 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     ros::Subscriber    template_stitch_sub_;       ///< Current template pose to be stitched
     ros::Subscriber    attach_object_sub_;         ///< Attach current template
     ros::Subscriber    detach_object_sub_;         ///< Detach current template
-    ros::Subscriber    affordance_command_sub_;    ///< Releasgrasp_joint_controller.e grasp and reset the initial finger positions
+    ros::Subscriber    affordance_command_sub_;    ///< Circulat and Cartesian affordance
+    ros::Subscriber    update_hand_marker_sub_;    ///< Update the pose of the marker to control the end-effector
 
     ros::Subscriber    force_torque_sub_;          ///< Force torque including wrists
     ros::Subscriber    current_wrist_sub_;         ///< Current wrist pose (same frame as target)
@@ -247,6 +213,41 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     ros::ServiceClient attach_object_client_;
     ros::ServiceClient stitch_object_client_;
     ros::ServiceClient detach_object_client_;
+
+    /** This function is called whenever the template needs to be stitched to the real object.
+     * assump template pose is given in world frame
+     */
+    void  templateStitchCallback(const flor_grasp_msgs::GraspSelection& grasp_msg);
+
+    /** called to update the latest wrist pose */
+    void  wristPoseCallback(const geometry_msgs::PoseStamped& wrist_pose);
+
+    void moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp);
+
+    /** Set the current planning group to "arm only" or "arm + torso"           */
+    void  graspPlanningGroupCallback(const flor_ocs_msgs::OCSGhostControl& planning_group);
+    void  affordanceCommandCallback(const vigir_object_template_msgs::Affordance &affordance);
+    void  updateHandMarkerCallback(const geometry_msgs::Pose &hand_T_marker);
+
+   /**
+    * This function must be called to publish the updated wrist target after the template is updated.
+    */
+    void updateWristTarget();
+
+    void updateGraspStatus(); // call to publish latest grasp data
+    void updateHandMass(); // call to publish latest grasp data
+    void processHandMassData(const tf::Transform& hand_T_template, float &template_mass, tf::Vector3 &template_com);
+    void handStatusCallback(const flor_grasp_msgs::HandStatus msg);
+
+    void requestInstantiatedGraspService(const uint16_t& requested_template_type);
+
+    void setAttachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
+    void setDetachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
+    void setStitchingObject(const flor_grasp_msgs::TemplateSelection& template_data);
+
+    void sendCircularAffordance(vigir_object_template_msgs::Affordance affordance);
+    void sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance);
+
 
     // Calculate the wrist target in world frame given wrist pose in template frame
     int calcWristTarget(const geometry_msgs::Pose& wrist_pose);

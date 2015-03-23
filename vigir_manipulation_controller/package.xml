@@ -40,8 +40,6 @@
   <!-- Use test_depend for packages you need only for testing: -->
   <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>actionlib</build_depend>
-  <build_depend>control_msgs</build_depend>
   <build_depend>flor_control_msgs</build_depend>
   <build_depend>flor_grasp_msgs</build_depend>
   <build_depend>flor_ocs_msgs</build_depend>
@@ -55,8 +53,6 @@
   <build_depend>trajectory_msgs</build_depend>
   <build_depend>vigir_object_template_msgs</build_depend>
   <build_depend>vigir_planning_interface</build_depend>
-  <run_depend>actionlib</run_depend>
-  <run_depend>control_msgs</run_depend>
   <run_depend>flor_control_msgs</run_depend>
   <run_depend>flor_grasp_msgs</run_depend>
   <run_depend>flor_ocs_msgs</run_depend>

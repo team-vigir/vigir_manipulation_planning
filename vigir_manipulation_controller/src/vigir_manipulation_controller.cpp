@@ -58,21 +58,21 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
 
     // which hand are we controlling
     if (!nhp.getParam("wrist_name", this->wrist_name_)){
-        ROS_ERROR(" Did not find wrist_name parameter - using right hand as default");
+        ROS_ERROR(" Did not find wrist_name parameter - using r_hand as default");
         this->wrist_name_ = "r_hand";
     }else
         ROS_INFO("Hand parameters received, hand: %s", this->wrist_name_.c_str());
 
     // which joint_group are we controlling
     if (!nhp.getParam("hand_link", this->hand_link_)){
-        ROS_ERROR(" Did not find hand_link parameter - using right_palm as default");
+        ROS_WARN(" Did not find hand_link parameter, assuming no end-effector is being used.");
         this->hand_link_ = "right_palm";
     }else
         ROS_INFO("Hand link parameters received, hand: %s", this->hand_link_.c_str());
 
     // which joint_group are we controlling
     if (!nhp.getParam("joint_group", this->joint_group_)){
-        ROS_ERROR(" Did not find joint_group parameter - using right_hand as default");
+        ROS_WARN(" Did not find joint_group parameter - assuming end-effector has no joints");
         this->joint_group_ = "right_hand";
     }else
         ROS_INFO("Joint group parameters received, hand: %s", this->joint_group_.c_str());
@@ -119,6 +119,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     attach_object_sub_         = nh.subscribe("attach_object",      1, &VigirManipulationController::setAttachingObject,         this);
     detach_object_sub_         = nh.subscribe("detach_object",      1, &VigirManipulationController::setDetachingObject,         this);
     affordance_command_sub_    = nh.subscribe("affordance_command", 1, &VigirManipulationController::affordanceCommandCallback,  this);
+    update_hand_marker_sub_    = nh.subscribe("hand_marker",        1, &VigirManipulationController::updateHandMarkerCallback,   this);
 
     inst_grasp_info_client_    = nh.serviceClient<vigir_object_template_msgs::GetInstantiatedGraspInfo>("/instantiated_grasp_info");
     template_info_client_      = nh.serviceClient<vigir_object_template_msgs::GetTemplateStateAndTypeInfo>("/template_info");
@@ -133,12 +134,14 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
 
     urdf::Model robot_urdf_model_;
 
-
+    //Initializing hand joint names
+    hand_joint_names_.clear();
 
     if(robot_model_->hasJointModelGroup(joint_group_))
     {
-        hand_joint_names_.clear();
         hand_joint_names_ = robot_model_->getJointModelGroup(joint_group_)->getActiveJointModelNames();
+
+        ROS_INFO("%s %s hand model gotten, #actuated joints: %ld ",hand_side_.c_str(), robot_model_->getName().c_str(),hand_joint_names_.size() );
 
         //Getting joint limits from URDF
         if (!robot_urdf_model_.initString(this->robot_description_)){
@@ -154,11 +157,11 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
         ROS_WARN("NO JOINTS FOUND FOR %s HAND",joint_group_.c_str());
     }
 
-    ROS_INFO("%s %s hand model gotten, #actuated joints: %ld ",hand_side_.c_str(), robot_model_->getName().c_str(),hand_joint_names_.size() );
-
+    //Initializing hand transformation in palm frame to identity (no end-effector used)
+    hand_T_palm_.setIdentity();
 
     if(!robot_model_->hasLinkModel(hand_link_)){
-        ROS_WARN("Hand model does not contain %s_palm",hand_side_.c_str());
+        ROS_WARN("Hand model does not contain %s_palm link",hand_side_.c_str());
     }else{
         robot_model::LinkTransformMap hand_palm_tf_map = robot_model_->getLinkModel(hand_link_)->getAssociatedFixedTransforms();
         ROS_INFO("Requested linktransform for %s_palm",hand_side_.c_str());
@@ -178,9 +181,11 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
 
         if(!found){
             ROS_WARN("Wrist %c_hand NOT found!!!, setting to identity",hand_side_[0]);
-            palm_T_hand_.setIdentity();
         }else{
-            tf::transformEigenToTF( hand_palm_aff,palm_T_hand_);
+            //Initializing palm transformation in hand frame
+            tf::transformEigenToTF( hand_palm_aff,hand_T_palm_);
+            //We got palm_T_hand, need to invert
+            hand_T_palm_ = hand_T_palm_.inverse();
         }
     }
 }
@@ -312,22 +317,6 @@ void  VigirManipulationController::wristPoseCallback(const geometry_msgs::PoseSt
      return;
 }
 
-void VigirManipulationController::trajectoryActiveCB()
-{
-    //ROS_INFO("TrajectoryActionClient: Status changed to active.");
-}
-
-void VigirManipulationController::trajectoryFeedbackCB(const control_msgs::FollowJointTrajectoryFeedbackConstPtr& feedback)
-{
-    ROS_INFO("TrajectoryActionClient: Feedback received.");// pos[0]= %f", feedback->actual.positions[0]);
-}
-
-void VigirManipulationController::trajectoryDoneCb(const actionlib::SimpleClientGoalState& state,
-                                                  const control_msgs::FollowJointTrajectoryResultConstPtr& result)
-{
-    ROS_INFO("Fingers Trajectory finished in state [%s]", state.toString().c_str());
-}
-
 void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp)
 {
     // Store the latest grasp command, and update at next calculation loop
@@ -381,6 +370,18 @@ void VigirManipulationController::affordanceCommandCallback(const vigir_object_t
         sendCircularAffordance(affordance);
     else
         sendCartesianAffordance(affordance);
+}
+
+void VigirManipulationController::updateHandMarkerCallback(const geometry_msgs::Pose& hand_T_marker)
+{
+    hand_T_palm_.setOrigin(tf::Vector3(hand_T_marker.position.x,
+                                       hand_T_marker.position.y,
+                                       hand_T_marker.position.z));
+
+    hand_T_palm_.setRotation(tf::Quaternion(hand_T_marker.orientation.x,
+                                            hand_T_marker.orientation.y,
+                                            hand_T_marker.orientation.z,
+                                            hand_T_marker.orientation.w));
 }
 
 // Called because of stitching functionality
@@ -455,6 +456,10 @@ void VigirManipulationController::setGraspStatus(const RobotStatusCodes::StatusC
     }
 }
 
+void VigirManipulationController::setLinkState(flor_grasp_msgs::LinkState link_state){
+    link_tactile_ = link_state;
+}
+
 void VigirManipulationController::updateWristTarget()
 {
     if (wrist_target_pub_ && wrist_plan_pub_)
@@ -510,7 +515,7 @@ void VigirManipulationController::handStatusCallback(const flor_grasp_msgs::Hand
 {
     {
         boost::lock_guard<boost::mutex> guard(this->write_data_mutex_);
-        local_hand_status_msg_ = msg;
+        last_hand_status_msg_ = msg;
     }
 
     this->processHandTactileData();
@@ -577,7 +582,7 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
         geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
 
         // get position of the marker in world coordinates
-        poseTransform(hand, palm_T_hand_.inverse());
+        poseTransform(hand, hand_T_palm_);
 
         // calculate the difference between them
         tf::Vector3 diff_vector;
@@ -618,7 +623,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
     geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
 
     // get position of the marker in world coordinates
-    poseTransform(hand, palm_T_hand_.inverse());
+    poseTransform(hand, hand_T_palm_);
 
     // calculate the difference between them
     tf::Vector3 diff_vector;
@@ -650,7 +655,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
             waypoint.orientation.z = cmd.waypoints[i].orientation.z;
             waypoint.orientation.w = cmd.waypoints[i].orientation.w;
 
-            poseTransform(waypoint, palm_T_hand_);
+            poseTransform(waypoint, hand_T_palm_.inverse());
 
             cmd.waypoints[i] = waypoint;
         }

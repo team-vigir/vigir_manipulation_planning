@@ -5,8 +5,6 @@ project(vigir_manipulation_controller)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  actionlib
-  control_msgs
   flor_control_msgs
   flor_grasp_msgs
   flor_ocs_msgs
@@ -99,7 +97,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES vigir_manipulation_controller
-  CATKIN_DEPENDS actionlib control_msgs flor_control_msgs flor_grasp_msgs flor_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp urdf tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface
+  CATKIN_DEPENDS flor_control_msgs flor_grasp_msgs flor_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp urdf tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface
 #  DEPENDS system_lib
 )
 
