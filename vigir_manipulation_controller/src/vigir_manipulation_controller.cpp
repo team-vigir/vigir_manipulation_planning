@@ -372,16 +372,16 @@ void VigirManipulationController::affordanceCommandCallback(const vigir_object_t
         sendCartesianAffordance(affordance);
 }
 
-void VigirManipulationController::updateHandMarkerCallback(const geometry_msgs::Pose& hand_T_marker)
+void VigirManipulationController::updateHandMarkerCallback(const geometry_msgs::PoseStamped &hand_T_marker)
 {
-    hand_T_palm_.setOrigin(tf::Vector3(hand_T_marker.position.x,
-                                       hand_T_marker.position.y,
-                                       hand_T_marker.position.z));
+    hand_T_palm_.setOrigin(tf::Vector3(hand_T_marker.pose.position.x,
+                                       hand_T_marker.pose.position.y,
+                                       hand_T_marker.pose.position.z));
 
-    hand_T_palm_.setRotation(tf::Quaternion(hand_T_marker.orientation.x,
-                                            hand_T_marker.orientation.y,
-                                            hand_T_marker.orientation.z,
-                                            hand_T_marker.orientation.w));
+    hand_T_palm_.setRotation(tf::Quaternion(hand_T_marker.pose.orientation.x,
+                                            hand_T_marker.pose.orientation.y,
+                                            hand_T_marker.pose.orientation.z,
+                                            hand_T_marker.pose.orientation.w));
 }
 
 // Called because of stitching functionality
