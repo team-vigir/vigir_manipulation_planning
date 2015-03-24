@@ -159,6 +159,7 @@ public:
 
   void planCircularRequestCallback(const flor_planning_msgs::CircularMotionRequest::ConstPtr& msg)
   {
+    /*
     flor_planning_msgs::GetMotionPlanForCircularMotion plan_srv;
 
     plan_srv.request.plan_request = *msg;
@@ -179,11 +180,13 @@ public:
       setStatus(plan_srv.response.status,status);
       plan_status_pub_.publish(status);
     }
+    */
 
   }
 
   void planCartesianRequestCallback(const flor_planning_msgs::CartesianMotionRequest::ConstPtr& msg)
   {
+    /*
     flor_planning_msgs::GetMotionPlanForCartesianWaypoints plan_srv;
 
     plan_srv.request.plan_request = *msg;
@@ -206,6 +209,7 @@ public:
       setStatus(plan_srv.response.status, status);
       plan_status_pub_.publish(status);
     }
+    */
 
   }
 
@@ -338,10 +342,22 @@ public:
       return false;
     }
     */
+    goal_.request.group_name = plan_request.planning_group.data;
+    goal_.request.num_planning_attempts = 1;
+    goal_.request.allowed_planning_time = 1.0;
+    goal_.request.max_velocity_scaling_factor = 1.0;
+
+    goal_.extended_planning_options.target_frame = plan_request.pose.header.frame_id;
+    goal_.extended_planning_options.target_poses.clear();
+    goal_.extended_planning_options.target_poses.push_back(plan_request.pose.pose);
+    goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION;
+
+    move_action_client_->sendGoal(goal_);
   }
 
   bool planAndMoveToJoints(const flor_planning_msgs::PlanToJointTargetRequest plan_request, flor_ocs_msgs::OCSRobotStatus* status = 0)
   {
+    /*
     flor_planning_msgs::GetMotionPlanForJoints plan_srv;
 
     plan_srv.request.plan_request = plan_request;
@@ -363,7 +379,18 @@ public:
          this->setStatus(plan_srv.response.status, *status);
       }
       return false;
-    }
+    }*/
+    goal_.request.group_name = plan_request.planning_group;
+    goal_.request.num_planning_attempts = 1;
+    goal_.request.max_velocity_scaling_factor = 1.0;
+    goal_.request.allowed_planning_time = 1.0;
+
+    //goal_.extended_planning_options.target_frame = plan_request.pose.header.frame_id;
+    goal_.extended_planning_options.target_poses.clear();
+    //goal_.extended_planning_options.target_poses.push_back(plan_request.pose.pose);
+    goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION;
+
+    move_action_client_->sendGoal(goal_);
 
   }
 
@@ -609,7 +636,7 @@ protected:
 
   boost::scoped_ptr<actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> > move_action_client_;
 
-  vigir_planning_msgs::MoveActionGoal goal_;
+  vigir_planning_msgs::MoveGoal goal_;
 };
 
 int main(int argc, char** argv)
