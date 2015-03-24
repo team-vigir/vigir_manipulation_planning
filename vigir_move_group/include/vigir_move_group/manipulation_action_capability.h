@@ -43,6 +43,7 @@
 
 #include <vigir_moveit_utils/trajectory_utils.h>
 #include <vigir_plan_execution/continuous_plan_execution.h>
+#include <moveit_msgs/GetCartesianPath.h>
 
 #include <tf/transform_listener.h>
 
@@ -76,6 +77,9 @@ private:
   bool planUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
   bool planCartesianUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
 
+  // Mostly copy of MoveGroup CartesianPath service with modifications
+  bool computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req, moveit_msgs::GetCartesianPath::Response &res);
+
   boost::scoped_ptr<actionlib::SimpleActionServer<vigir_planning_msgs::MoveAction> > move_action_server_;
   vigir_planning_msgs::MoveFeedback move_feedback_;
 
@@ -92,6 +96,8 @@ private:
   ros::Publisher drake_trajectory_result_pub_;
 
   tf::TransformListener transform_listener_;
+  trajectory_processing::IterativeParabolicTimeParameterization time_param_;
+
 };
 
 

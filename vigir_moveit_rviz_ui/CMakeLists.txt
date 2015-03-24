@@ -23,14 +23,14 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_visualization
   cmake_modules
   vigir_planning_interface
+  rviz
 )
 
 find_package(Eigen REQUIRED)
-
-include_directories(vigir_motion_planning_rviz_plugin/include
-		    ${catkin_INCLUDE_DIRS})
 		    
 include_directories(SYSTEM
+                    vigir_motion_planning_rviz_plugin/include
+                    ${catkin_INCLUDE_DIRS}
                     ${Boost_INCLUDE_DIRS}
                     ${QT_INCLUDE_DIR}
                     ${OGRE_INCLUDE_DIRS})		    
@@ -51,15 +51,6 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
-include_directories(
-  ${catkin_INCLUDE_DIRS}
-  vigir_motion_planning_rviz_plugin/include
-)
-
-include_directories(SYSTEM
-                    ${Boost_INCLUDE_DIRS}
-                    ${QT_INCLUDE_DIR}
-                    ${OGRE_INCLUDE_DIRS})
 
 link_directories(${Boost_LIBRARY_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})

@@ -47,10 +47,27 @@
 #include <moveit/move_group/capability_names.h>
 #include <moveit/robot_state/conversions.h>
 #include <moveit_msgs/DisplayTrajectory.h>
-
-
 #include <vigir_planning_msgs/RequestWholeBodyTrajectory.h>
 #include <vigir_planning_msgs/RequestWholeBodyCartesianTrajectory.h>
+
+#include <vigir_moveit_utils/constrained_motion_utils.h>
+
+
+namespace
+{
+bool isStateValid(const planning_scene::PlanningScene *planning_scene,
+                  const kinematic_constraints::KinematicConstraintSet *constraint_set,
+                  robot_state::RobotState *state,
+                  const robot_state::JointModelGroup *group, const double *ik_solution)
+{
+  state->setJointGroupPositions(group, ik_solution);
+  state->update();
+  return (!planning_scene || !planning_scene->isStateColliding(*state, group->getName())) &&
+    (!constraint_set || constraint_set->decide(*state).satisfied);
+}
+}
+
+
 
 move_group::MoveGroupManipulationAction::MoveGroupManipulationAction() :
   MoveGroupCapability("VigirManipulationAction"),
@@ -206,9 +223,11 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
     else {
         opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
         
+    //We normally don't plan with lookaround so the below can be ignored
         if (goal->planning_options.look_around && context_->plan_with_sensing_)
         {
-          opt.plan_callback_ = boost::bind(&plan_execution::PlanWithSensing::computePlan, context_->plan_with_sensing_.get(), _1, opt.plan_callback_, goal->planning_options.look_around_attempts, goal->planning_options.max_safe_execution_cost);
+      opt.plan_callback_ = boost::bind(&plan_execution::PlanWithSensing::computePlan, context_->plan_with_sensing_.get(), _1, opt.plan_callback_,
+                                       goal->planning_options.look_around_attempts, goal->planning_options.max_safe_execution_cost);
           context_->plan_with_sensing_->setBeforeLookCallback(boost::bind(&MoveGroupManipulationAction::startMoveLookCallback, this));
         }
     }
@@ -456,13 +475,79 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
 
 void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
 {
+  moveit_msgs::GetCartesianPath cart_path;
+
+  std::vector <geometry_msgs::Pose> pose_vec;
+
   if (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS){
     ROS_WARN("Cartesian waypoints not implemented yet!");
 
   }else if (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION){
     ROS_WARN("Circular waypoints not implemented yet!");
+
+    if (goal->extended_planning_options.target_poses.size() != 1){
+      ROS_ERROR("There has to be exactly one target pose for circular motion requests!");
+      return;
+    }
+
+    geometry_msgs::PoseStamped rotation_pose;
+    rotation_pose.pose = goal->extended_planning_options.target_poses[0];
+    rotation_pose.header.frame_id = goal->extended_planning_options.target_frame;
+
+    //Can easily transform goal pose to arbitrary target frame
+    this->performTransform(rotation_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame());
+
+
+    Eigen::Affine3d rotation_center;
+    tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
+
+    {
+      planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
+      const robot_state::RobotState& curr_state = lscene.getPlanningSceneMonitor()->getPlanningScene()->getCurrentState();
+
+      std::string start_pose_link;
+
+      std::string first_char = goal->request.group_name.substr(0,1);
+
+      if (first_char == "r"){
+        start_pose_link = "r_hand";
+      }else if(first_char == "l"){
+        start_pose_link = "l_hand";
+      }else{
+        ROS_ERROR("Group name %s does not start with l or r. Cannot infer endeffector to use, aborting", goal->request.group_name.c_str());
+        //res.status += flor_planning_msgs::GetMotionPlanForPose::Response::PLANNING_INVALID_REQUEST;
+        return;
+      }
+
+      Eigen::Affine3d start (curr_state.getGlobalLinkTransform(start_pose_link));
+
+      constrained_motion_utils::getCircularArcPoses(rotation_center,
+                                                    start,
+                                                    pose_vec,
+                                                    0.2,
+                                                    goal->extended_planning_options.rotation_angle,
+                                                    goal->extended_planning_options.keep_endeffector_orientation);
+
+
+    }
+
+    //std::string start_pose_link;
   }
+
+  cart_path.request.waypoints = pose_vec;
+
+  cart_path.request.header.stamp = ros::Time::now();
+  cart_path.request.header.frame_id = goal->extended_planning_options.target_frame;
+
+  cart_path.request.jump_threshold = 10.0;
+  cart_path.request.max_step = 0.01;
+  cart_path.request.avoid_collisions = goal->extended_planning_options.avoid_collisions;
+  cart_path.request.group_name = goal->request.group_name;
+
+  moveit_msgs::GetCartesianPath::Response result;
+  //this->computeCartesianPathService(cart_path.request, cart_path.response);
 }
+
 
 bool move_group::MoveGroupManipulationAction::planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan)
 {
@@ -708,6 +793,163 @@ void move_group::MoveGroupManipulationAction::setMoveState(MoveGroupState state)
   move_state_ = state;
   move_feedback_.state = stateToStr(state);
   move_action_server_->publishFeedback(move_feedback_);
+}
+
+// This is basically a copy of the original MoveIt!
+bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req, moveit_msgs::GetCartesianPath::Response &res)
+{
+  /*
+  if (marker_array_pub_.getNumSubscribers() > 0){
+    visualization_msgs::MarkerArray markers;
+    flor_visualization_utils::drawPoses(req.waypoints, markers, req.header.frame_id, ros::Time::now(), 0.1, 1.0);
+    marker_array_pub_.publish(markers);
+  }
+  */
+
+
+  ROS_INFO("Received request to compute Cartesian path");
+  context_->planning_scene_monitor_->updateFrameTransforms();
+
+  const planning_scene::PlanningScenePtr& planning_scene = context_->planning_scene_monitor_->getPlanningScene();
+
+  geometry_msgs::PoseStamped goal_pose;
+
+  uint8_t status;
+
+  /*
+  planningSceneCommonSetup(planning_scene,
+                           //req.plan_request.use_environment_obstacle_avoidance.data,
+                           true,
+                           //res.status,
+                           status,
+                           goal_pose);
+  */
+
+
+
+  robot_state::RobotState start_state = planning_scene_monitor::LockedPlanningSceneRO(context_->planning_scene_monitor_)->getCurrentState();
+  robot_state::robotStateMsgToRobotState(req.start_state, start_state);
+  if (const robot_model::JointModelGroup *jmg = start_state.getJointModelGroup(req.group_name))
+  {
+    std::string link_name = req.link_name;
+    if (link_name.empty() && !jmg->getLinkModelNames().empty())
+      link_name = jmg->getLinkModelNames().back();
+
+    bool ok = true;
+    EigenSTL::vector_Affine3d waypoints(req.waypoints.size());
+    const std::string &default_frame = context_->planning_scene_monitor_->getRobotModel()->getModelFrame();
+    bool no_transform = req.header.frame_id.empty() || robot_state::Transforms::sameFrame(req.header.frame_id, default_frame) ||
+      robot_state::Transforms::sameFrame(req.header.frame_id, link_name);
+
+    for (std::size_t i = 0 ; i < req.waypoints.size() ; ++i)
+    {
+      if (no_transform)
+        tf::poseMsgToEigen(req.waypoints[i], waypoints[i]);
+      else
+      {
+        geometry_msgs::PoseStamped p;
+        p.header = req.header;
+        p.pose = req.waypoints[i];
+        if (performTransform(p, default_frame))
+          tf::poseMsgToEigen(p.pose, waypoints[i]);
+        else
+        {
+          ROS_ERROR("Error encountered transforming waypoints to frame '%s'", default_frame.c_str());
+          ok = false;
+          break;
+        }
+      }
+    }
+
+    if (ok)
+    {
+      if (req.max_step < std::numeric_limits<double>::epsilon())
+      {
+        ROS_ERROR("Maximum step to take between consecutive configrations along Cartesian path was not specified (this value needs to be > 0)");
+        res.error_code.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+      }
+      else
+      {
+        if (waypoints.size() > 0)
+        {
+          robot_state::GroupStateValidityCallbackFn constraint_fn;
+          boost::scoped_ptr<planning_scene_monitor::LockedPlanningSceneRO> ls;
+          boost::scoped_ptr<kinematic_constraints::KinematicConstraintSet> kset;
+          if (req.avoid_collisions || !kinematic_constraints::isEmpty(req.path_constraints))
+          {
+            ls.reset(new planning_scene_monitor::LockedPlanningSceneRO(context_->planning_scene_monitor_));
+            kset.reset(new kinematic_constraints::KinematicConstraintSet((*ls)->getRobotModel()));
+            kset->add(req.path_constraints, (*ls)->getTransforms());
+            constraint_fn = boost::bind(&isStateValid, req.avoid_collisions ? static_cast<const planning_scene::PlanningSceneConstPtr&>(*ls).get() : NULL, kset->empty() ? NULL : kset.get(), _1, _2, _3);
+          }
+          bool global_frame = !robot_state::Transforms::sameFrame(link_name, req.header.frame_id);
+          ROS_INFO("Attempting to follow %u waypoints for link '%s' using a step of %lf m and jump threshold %lf (in %s reference frame)",
+                   (unsigned int)waypoints.size(), link_name.c_str(), req.max_step, req.jump_threshold, global_frame ? "global" : "link");
+          std::vector<robot_state::RobotStatePtr> traj;
+
+          //std::vector<std::string> locked_joints = group_utils::getLockedLinks(jmg, planner_configuration_.joint_position_constraints);
+
+          /*
+          ROS_INFO("Using %d locked torso joints", (int)locked_joints.size());
+
+          if (locked_joints.size() != 0){
+            ROS_INFO("Locking joints for cartesian planning");
+
+            robot_model::JointModelGroup group_cpy = *jmg;
+
+            const kinematics::KinematicsBasePtr& solver = group_cpy.getSolverInstance();
+            solver->setRedundantJoints(locked_joints);
+
+            kinematics::KinematicsQueryOptions options;
+            options.lock_redundant_joints = true;
+
+            res.fraction = start_state.computeCartesianPath(&group_cpy, traj, start_state.getLinkModel(link_name), waypoints, global_frame, req.max_step, req.jump_threshold, constraint_fn, options);
+          }else{
+          */
+            res.fraction = start_state.computeCartesianPath(jmg, traj, start_state.getLinkModel(link_name), waypoints, global_frame, req.max_step, req.jump_threshold, constraint_fn);
+          //}
+
+          robot_state::robotStateToRobotStateMsg(start_state, res.start_state);
+
+          std::vector<robot_state::RobotStatePtr> traj_filtered;
+          trajectory_utils::removeDuplicateStates(traj, traj_filtered);
+
+          robot_trajectory::RobotTrajectory rt(context_->planning_scene_monitor_->getRobotModel(), req.group_name);
+          for (std::size_t i = 0 ; i < traj_filtered.size() ; ++i)
+            rt.addSuffixWayPoint(traj_filtered[i], 0.2); // \todo make 0.2 a param; better: compute time stemps based on eef distance and param m/s speed for eef;
+
+          /*
+          if (!time_param_.computeTimeStamps(rt, planner_configuration_.trajectory_time_factor.data)){
+            ROS_WARN("Time parametrization for the solution path failed.");
+          }
+          */
+
+          //trajectory_utils::removeZeroDurationJointTrajectoryPoints(rt);
+
+          rt.getRobotTrajectoryMsg(res.solution);
+          ROS_INFO("Computed Cartesian path with %u points (followed %lf%% of requested trajectory)", (unsigned int)traj.size(), res.fraction * 100.0);
+          ROS_INFO("Reduced to %u points by removing duplicate states", (unsigned int)traj_filtered.size());
+          /*
+          if (plan_vis_pub_.getNumSubscribers() > 0 && rt.getWayPointCount() > 0)
+          {
+            moveit_msgs::DisplayTrajectory disp;
+            disp.model_id = context_->planning_scene_monitor_->getRobotModel()->getName();
+            disp.trajectory.resize(1, res.solution);
+            robot_state::robotStateToRobotStateMsg(rt.getFirstWayPoint(), disp.trajectory_start);
+            plan_vis_pub_.publish(disp);
+          }
+          */
+        }
+        res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+      }
+    }
+    else
+      res.error_code.val = moveit_msgs::MoveItErrorCodes::FRAME_TRANSFORM_FAILURE;
+  }
+  else
+    res.error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_GROUP_NAME;
+
+  return true;
 }
 
 #include <class_loader/class_loader.h>
