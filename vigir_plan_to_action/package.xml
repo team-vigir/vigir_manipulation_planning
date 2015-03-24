@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<package>
+  <name>vigir_plan_to_action</name>
+  <version>0.0.0</version>
+  <description>flor_moveit_pipeline provides a interface to use the moveit planning functionality with the atlas robot</description>
+
+  <!-- One maintainer tag required, multiple allowed, one person per tag -->
+  <!-- Example:  -->
+  <maintainer email="kohlbrecher@sim.tu-darmstadt.de">Stefan Kohlbrecher</maintainer>
+  <author email="kohlbrecher@sim.tu-darmstadt.de">Stefan Kohlbrecher</author>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>cmake_modules</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>actionlib</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>flor_utilities</build_depend>
+  <build_depend>flor_planning_msgs</build_depend>
+  <build_depend>flor_ocs_msgs</build_depend>
+  <build_depend>flor_moveit_pipeline</build_depend>
+  <build_depend>vigir_planning_msgs</build_depend>
+
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>actionlib</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>flor_utilities</run_depend>
+  <run_depend>flor_planning_msgs</run_depend>
+  <run_depend>flor_ocs_msgs</run_depend>
+  <run_depend>flor_moveit_pipeline</run_depend>
+  <run_depend>vigir_planning_msgs</run_depend>
+
+
+  <export>
+  </export>
+</package>
