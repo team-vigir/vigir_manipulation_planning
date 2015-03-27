@@ -529,6 +529,7 @@ void VigirManipulationController::requestInstantiatedGraspService(const uint16_t
     //CALLING THE TEMPLATE SERVER
     vigir_object_template_msgs::GetInstantiatedGraspInfo srv;
     srv.request.template_id = requested_template_id;
+    srv.request.hand_side   = srv.request.BOTH_HANDS;
     if (!inst_grasp_info_client_.call(srv))
     {
         ROS_ERROR("Failed to call service request grasp info");
