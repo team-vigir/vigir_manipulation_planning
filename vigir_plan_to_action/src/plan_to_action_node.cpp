@@ -73,7 +73,7 @@ public:
 
     move_action_client_.reset(new actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction>(nh,
                                                                                               "vigir_move_group",
-                                                                                              false));
+                                                                                              true));
     waitForAction(move_action_client_, wait_for_server, "move");
 
 
@@ -352,7 +352,10 @@ public:
     goal_.extended_planning_options.target_poses.push_back(plan_request.pose.pose);
     goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION;
 
-    move_action_client_->sendGoal(goal_);
+    move_action_client_->sendGoal(goal_,
+                                  boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
+                                  boost::bind(&PlanToAction::moveActionActiveCallback, this),
+                                  boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));
   }
 
   bool planAndMoveToJoints(const flor_planning_msgs::PlanToJointTargetRequest plan_request, flor_ocs_msgs::OCSRobotStatus* status = 0)
@@ -392,6 +395,36 @@ public:
 
     move_action_client_->sendGoal(goal_);
 
+  }
+
+  void moveActionDoneCallback(const actionlib::SimpleClientGoalState& state, const vigir_planning_msgs::MoveResultConstPtr& result)
+  {
+    flor_ocs_msgs::OCSRobotStatus status;
+
+    status.stamp = ros::Time::now();
+
+    //@TODO: Fill status msg here
+    switch (result->error_code.val)
+    {
+      case moveit_msgs::MoveItErrorCodes::SUCCESS:
+        status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_MOVEIT_PLAN_ACTIVE, RobotStatusCodes::OK);
+        break;
+      default:
+        status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
+
+    }
+
+    plan_status_pub_.publish(status);
+  }
+
+  void moveActionActiveCallback()
+  {
+      ROS_INFO("StepPlanRequest: Status changed to active.");
+  }
+
+  void moveActionFeedbackCallback(const vigir_planning_msgs::MoveFeedbackConstPtr& feedback)
+  {
+      ROS_INFO("StepPlanRequest: Feedback received.");
   }
 
   std::string inferGroupNameFromTrajectory(const trajectory_msgs::JointTrajectory& traj) const
