@@ -36,6 +36,7 @@
 
 #include <flor_planning_msgs/PlanRequest.h>
 #include <flor_planning_msgs/PlanToJointTargetRequest.h>
+#include <flor_planning_msgs/PlannerConfiguration.h>
 
 #include <flor_planning_msgs/GetMotionPlanForPose.h>
 #include <flor_planning_msgs/GetMotionPlanForJoints.h>
@@ -76,6 +77,10 @@ public:
                                                                                               true));
     waitForAction(move_action_client_, wait_for_server, "move");
 
+    planner_configuration_sub_ = nh.subscribe("/flor/planning/upper_body/configuration",
+                                              10,
+                                              &PlanToAction::plannerConfigurationCb,
+                                              this);
 
     // General planning ROS API
     plan_request_sub_ = nh.subscribe("plan_request", 1, &PlanToAction::planRequestCallback, this);
@@ -101,6 +106,12 @@ public:
     l_grasp_plan_request_sub_ = nh.subscribe("l_grasp_plan_request", 1, &PlanToAction::lGraspRequestCallback, this);
     r_grasp_plan_request_sub_ = nh.subscribe("r_grasp_plan_request", 1, &PlanToAction::rGraspRequestCallback, this);
 
+  }
+
+  void plannerConfigurationCb(const flor_planning_msgs::PlannerConfiguration::ConstPtr& msg)
+  {
+    ROS_INFO("Received planner configuration");
+    planner_configuration_ = *msg;
   }
 
   void planRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr& msg)
@@ -342,6 +353,12 @@ public:
       return false;
     }
     */
+
+    goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor.data);
+
+    //@TODO Convert from vigir to moveit constraints
+    //goal_.request.path_constraints.joint_constraints  =this->planner_configuration_.joint_position_constraints;
+
     goal_.request.group_name = plan_request.planning_group.data;
     goal_.request.num_planning_attempts = 1;
     goal_.request.allowed_planning_time = 1.0;
@@ -670,6 +687,10 @@ protected:
   boost::scoped_ptr<actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> > move_action_client_;
 
   vigir_planning_msgs::MoveGoal goal_;
+
+  ros::Subscriber planner_configuration_sub_;
+  flor_planning_msgs::PlannerConfiguration planner_configuration_;
+
 };
 
 int main(int argc, char** argv)
