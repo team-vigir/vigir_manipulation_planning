@@ -219,6 +219,7 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
     //Call service for template info
     vigir_object_template_msgs::GetTemplateStateAndTypeInfo template_srv_;
     template_srv_.request.template_id = grasp_msg.template_id.data;
+    template_srv_.request.hand_side = template_srv_.request.BOTH_HANDS;
     if (!template_info_client_.call(template_srv_))
     {
         ROS_ERROR("Failed to call service request grasp info");
@@ -528,6 +529,7 @@ void VigirManipulationController::requestInstantiatedGraspService(const uint16_t
     //CALLING THE TEMPLATE SERVER
     vigir_object_template_msgs::GetInstantiatedGraspInfo srv;
     srv.request.template_id = requested_template_id;
+    srv.request.hand_side   = srv.request.BOTH_HANDS;
     if (!inst_grasp_info_client_.call(srv))
     {
         ROS_ERROR("Failed to call service request grasp info");
