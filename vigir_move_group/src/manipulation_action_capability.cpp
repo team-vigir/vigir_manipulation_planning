@@ -46,6 +46,7 @@
 #include <moveit/robot_state/conversions.h>
 
 #include <vigir_moveit_utils/constrained_motion_utils.h>
+#include <vigir_moveit_utils/joint_constraint_utils.h>
 
 
 namespace
@@ -101,10 +102,9 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
     action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
   }else if (goal->extended_planning_options.target_poses.size() != 0){
 
-    const boost::shared_ptr<tf::Transformer>& tf = context_->planning_scene_monitor_->getTFClient();
-    tf->waitForTransform(context_->planning_scene_monitor_->getRobotModel()->getModelFrame(), goal->extended_planning_options.target_frame, ros::Time::now(), ros::Duration(0.5));
-
-
+    //const boost::shared_ptr<tf::Transformer>& tf = context_->planning_scene_monitor_->getTFClient();
+    //tf->waitForTransform(context_->planning_scene_monitor_->getRobotModel()->getModelFrame(), goal->extended_planning_options.target_frame, ros::Time::now(), ros::Duration(0.5));
+    executeCartesianMoveCallback_PlanAndExecute(goal, action_res);
 
   }else{
 
@@ -241,10 +241,22 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   std::vector <geometry_msgs::Pose> pose_vec;
 
   if (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS){
-    ROS_WARN("Cartesian waypoints not implemented yet!");
+    ROS_INFO("Received %d cartesian waypoints with target frame %s",
+             (int)goal->extended_planning_options.target_poses.size(),
+             goal->extended_planning_options.target_frame.c_str());
+
+    pose_vec.resize(goal->extended_planning_options.target_poses.size());
+    geometry_msgs::PoseStamped tmp_pose;
+
+    for (size_t i = 0; i < goal->extended_planning_options.target_poses.size(); ++i){
+      tmp_pose.pose = goal->extended_planning_options.target_poses[i];
+      tmp_pose.header.frame_id = goal->extended_planning_options.target_frame;
+      this->performTransform(tmp_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame());
+      pose_vec[i] = tmp_pose.pose;
+    }
 
   }else if (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION){
-    ROS_WARN("Circular waypoints not implemented yet!");
+    ROS_INFO("Received circular cartesian motion request!");
 
     if (goal->extended_planning_options.target_poses.size() != 1){
       ROS_ERROR("There has to be exactly one target pose for circular motion requests!");
@@ -289,10 +301,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
                                                     goal->extended_planning_options.rotation_angle,
                                                     goal->extended_planning_options.keep_endeffector_orientation);
 
-
     }
-
-    //std::string start_pose_link;
   }
 
   cart_path.request.waypoints = pose_vec;
@@ -306,7 +315,53 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   cart_path.request.group_name = goal->request.group_name;
 
   moveit_msgs::GetCartesianPath::Response result;
-  //this->computeCartesianPathService(cart_path.request, cart_path.response);
+  setMoveState(PLANNING);
+  this->computeCartesianPath(cart_path.request, cart_path.response);
+
+  if ((result.fraction < 1.0) && !goal->extended_planning_options.execute_incomplete_cartesian_plans){
+    ROS_WARN("Incomplete cartesian plan computed, fraction: %f and goal specified to not execute in that case!", result.fraction);
+    action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+    return;
+  }
+
+  /*
+  plan_execution::ExecutableMotionPlan plan;
+
+  {
+    planning_scene_monitor::LockedPlanningSceneRO lscene(plan.planning_scene_monitor_);
+    robot_state::RobotState state = lscene.getPlanningSceneMonitor()->getPlanningScene()->getCurrentState();
+
+
+
+    plan_execution::ExecutableMotionPlan plan;
+    plan.plan_components_.resize(1);
+    plan.plan_components_[0].trajectory_.reset(new robot_trajectory::RobotTrajectory(
+                                                 lscene.getPlanningSceneMonitor()->getPlanningScene()->getRobotModel(),
+                                                 goal->request.group_name));
+    plan.plan_components_[0].trajectory_->setRobotTrajectoryMsg(state, result.solution);
+  }
+
+  setMoveState(MONITOR);
+
+  context_->plan_execution_->executeAndMonitor(plan);
+  */
+
+  context_->trajectory_execution_manager_->clear();
+
+  if (context_->trajectory_execution_manager_->push(result.solution)){
+    moveit_controller_manager::ExecutionStatus es = context_->trajectory_execution_manager_->waitForExecution();
+    if (es == moveit_controller_manager::ExecutionStatus::SUCCEEDED)
+      action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+    else
+      if (es == moveit_controller_manager::ExecutionStatus::PREEMPTED)
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PREEMPTED;
+      else
+        if (es == moveit_controller_manager::ExecutionStatus::TIMED_OUT)
+          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::TIMED_OUT;
+        else
+          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::CONTROL_FAILED;
+    ROS_INFO_STREAM("Execution completed: " << es.asString());
+  }
 }
 
 bool move_group::MoveGroupManipulationAction::planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan)
@@ -364,7 +419,7 @@ void move_group::MoveGroupManipulationAction::setMoveState(MoveGroupState state)
   move_action_server_->publishFeedback(move_feedback_);
 }
 
-// This is basically a copy of the original MoveIt!
+// This is basically a copy of the original MoveIt! cartesian planner with minor mods
 bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req, moveit_msgs::GetCartesianPath::Response &res)
 {
   /*
@@ -456,9 +511,8 @@ bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::
                    (unsigned int)waypoints.size(), link_name.c_str(), req.max_step, req.jump_threshold, global_frame ? "global" : "link");
           std::vector<robot_state::RobotStatePtr> traj;
 
-          //std::vector<std::string> locked_joints = group_utils::getLockedLinks(jmg, planner_configuration_.joint_position_constraints);
+          std::vector<std::string> locked_joints = joint_constraint_utils::getLockedJoints(jmg, req.path_constraints.joint_constraints);
 
-          /*
           ROS_INFO("Using %d locked torso joints", (int)locked_joints.size());
 
           if (locked_joints.size() != 0){
@@ -473,10 +527,9 @@ bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::
             options.lock_redundant_joints = true;
 
             res.fraction = start_state.computeCartesianPath(&group_cpy, traj, start_state.getLinkModel(link_name), waypoints, global_frame, req.max_step, req.jump_threshold, constraint_fn, options);
-          }else{
-          */
+          }else{         
             res.fraction = start_state.computeCartesianPath(jmg, traj, start_state.getLinkModel(link_name), waypoints, global_frame, req.max_step, req.jump_threshold, constraint_fn);
-          //}
+          }
 
           robot_state::robotStateToRobotStateMsg(start_state, res.start_state);
 

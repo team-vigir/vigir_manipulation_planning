@@ -89,6 +89,20 @@ static inline bool toVigirConstraint (const moveit_msgs::JointConstraint &input,
   return true;
 }
 
+std::vector<std::string> getLockedJoints(const robot_model::JointModelGroup* group, const std::vector<moveit_msgs::JointConstraint> constraints)
+{
+  std::vector<std::string> lockedJoints;
+
+  for (size_t i = 0; i < constraints.size(); ++i){
+    if (group->hasJointModel(constraints[i].joint_name) && (constraints[i].tolerance_above == constraints[i].tolerance_below)){
+      lockedJoints.push_back(constraints[i].joint_name);
+    }
+  }
+
+  return lockedJoints;
+}
+
+
 }
 
 #endif
