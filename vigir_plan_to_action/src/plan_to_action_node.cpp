@@ -36,7 +36,7 @@
 
 #include <flor_planning_msgs/PlanRequest.h>
 #include <flor_planning_msgs/PlanToJointTargetRequest.h>
-#include <flor_planning_msgs/PlannerConfiguration.h>
+
 
 #include <flor_planning_msgs/GetMotionPlanForPose.h>
 #include <flor_planning_msgs/GetMotionPlanForJoints.h>
@@ -45,6 +45,13 @@
 
 #include <actionlib/client/simple_action_client.h>
 #include <vigir_planning_msgs/MoveAction.h>
+
+#include <vigir_planning_msgs/PlannerConfiguration.h>
+#include <vigir_moveit_utils/joint_constraint_utils.h>
+
+#include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit/robot_model/robot_model.h>
+#include <moveit/kinematic_constraints/utils.h>
 
 class PlanToAction
 {
@@ -69,6 +76,16 @@ public:
     circular_planning_srv_client_ = nh.serviceClient<flor_planning_msgs::GetMotionPlanForCircularMotion>("get_plan_circular");
     cartesian_planning_srv_client_ = nh.serviceClient<flor_planning_msgs::GetMotionPlanForCartesianWaypoints>("get_plan_cartesian");
     */
+
+    planner_configuration_.disable_collision_avoidance = false;
+    planner_configuration_.robot_collision_padding = 0.0f;
+    planner_configuration_.trajectory_time_factor = 1.0f;
+    planner_configuration_.octomap_max_height = 2.3f;
+    planner_configuration_.goal_cube_clearance = 0.105f;
+
+
+    robot_model_loader_.reset(new robot_model_loader::RobotModelLoader());
+    robot_model_ = robot_model_loader_->getModel();
 
     ros::Duration wait_for_server(5.0);
 
@@ -108,10 +125,14 @@ public:
 
   }
 
-  void plannerConfigurationCb(const flor_planning_msgs::PlannerConfiguration::ConstPtr& msg)
+  void plannerConfigurationCb(const vigir_planning_msgs::PlannerConfiguration::ConstPtr& msg)
   {
     ROS_INFO("Received planner configuration");
     planner_configuration_ = *msg;
+
+    joint_constraint_utils::toMoveitConstraint(planner_configuration_.joint_position_constraints,
+                                               *robot_model_,
+                                               goal_.request.path_constraints.joint_constraints);
   }
 
   void planRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr& msg)
@@ -119,12 +140,12 @@ public:
     flor_ocs_msgs::OCSRobotStatus status;
 
     if (!planAndMove(*msg, &status)){
-      status.stamp  = ros::Time::now();
-      plan_status_pub_.publish(status); // publish original message first
-      status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
+      //status.stamp  = ros::Time::now();
+      //plan_status_pub_.publish(status); // publish original message first
+      //status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
     }
 
-    plan_status_pub_.publish(status);
+    //plan_status_pub_.publish(status);
   }
 
   void lGraspRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr& msg)
@@ -133,12 +154,12 @@ public:
 
     if (!planAndMove(*msg, &status)){
       status.stamp = ros::Time::now();
-      plan_status_pub_.publish(status); // publish original message first
+      //plan_status_pub_.publish(status); // publish original message first
       status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
     }
 
     l_grasp_status_pub_.publish(status);
-    plan_status_pub_.publish(status);
+    //plan_status_pub_.publish(status);
   }
 
   void rGraspRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr& msg)
@@ -147,12 +168,12 @@ public:
 
     if (!planAndMove(*msg, &status)){
       status.stamp = ros::Time::now();
-      plan_status_pub_.publish(status); // publish original message first
+      //plan_status_pub_.publish(status); // publish original message first
       status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
     }
 
     r_grasp_status_pub_.publish(status);
-    plan_status_pub_.publish(status);
+    //plan_status_pub_.publish(status);
   }
 
   void planJointRequestCallback(const flor_planning_msgs::PlanToJointTargetRequest::ConstPtr& msg)
@@ -160,12 +181,12 @@ public:
     flor_ocs_msgs::OCSRobotStatus status;
 
     if (!planAndMoveToJoints(*msg, &status)){
-      status.stamp = ros::Time::now();
-      plan_status_pub_.publish(status); // publish original message first
-      status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
+      //status.stamp = ros::Time::now();
+      //plan_status_pub_.publish(status); // publish original message first
+      //status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
     }
 
-    plan_status_pub_.publish(status);
+    //plan_status_pub_.publish(status);
   }
 
   void planCircularRequestCallback(const flor_planning_msgs::CircularMotionRequest::ConstPtr& msg)
@@ -354,7 +375,7 @@ public:
     }
     */
 
-    goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor.data);
+    goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor);
 
     //@TODO Convert from vigir to moveit constraints
     //goal_.request.path_constraints.joint_constraints  =this->planner_configuration_.joint_position_constraints;
@@ -405,13 +426,27 @@ public:
     goal_.request.max_velocity_scaling_factor = 1.0;
     goal_.request.allowed_planning_time = 1.0;
 
-    //goal_.extended_planning_options.target_frame = plan_request.pose.header.frame_id;
+    //goal_.request.goal_constraints = plan_request.position;
+    //kinematic_constraints::constructGoalConstraints()
+
+    robot_state::RobotState tmp (robot_model_);
+
+    std::string curr_group = plan_request.planning_group;
+
+    const robot_state::JointModelGroup* joint_model_group = tmp.getJointModelGroup(curr_group);
+
+    tmp.setVariablePositions(joint_model_group->getJointModelNames(), plan_request.position);
+
+    goal_.request.goal_constraints.clear();
+    goal_.request.goal_constraints.push_back(kinematic_constraints::constructGoalConstraints(tmp, joint_model_group));
+
     goal_.extended_planning_options.target_poses.clear();
-    //goal_.extended_planning_options.target_poses.push_back(plan_request.pose.pose);
     goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION;
 
-    move_action_client_->sendGoal(goal_);
-
+    move_action_client_->sendGoal(goal_,
+                                  boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
+                                  boost::bind(&PlanToAction::moveActionActiveCallback, this),
+                                  boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));
   }
 
   void moveActionDoneCallback(const actionlib::SimpleClientGoalState& state, const vigir_planning_msgs::MoveResultConstPtr& result)
@@ -421,14 +456,17 @@ public:
     status.stamp = ros::Time::now();
 
     //@TODO: Fill status msg here
+    ROS_INFO("Move Action done callback, error code: %d", result->error_code.val);
     switch (result->error_code.val)
     {
       case moveit_msgs::MoveItErrorCodes::SUCCESS:
         status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_MOVEIT_PLAN_ACTIVE, RobotStatusCodes::OK);
         break;
+      case moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION:
+        status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_IK_FAILED, RobotStatusCodes::ERROR);
+        break;
       default:
         status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
-
     }
 
     plan_status_pub_.publish(status);
@@ -436,12 +474,16 @@ public:
 
   void moveActionActiveCallback()
   {
-      ROS_INFO("StepPlanRequest: Status changed to active.");
+      ROS_INFO("Move Action active callback");
+
+      flor_ocs_msgs::OCSRobotStatus status;
+      status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_MOVEIT_PLAN_ACTIVE, RobotStatusCodes::OK);
+      plan_status_pub_.publish(status);
   }
 
   void moveActionFeedbackCallback(const vigir_planning_msgs::MoveFeedbackConstPtr& feedback)
   {
-      ROS_INFO("StepPlanRequest: Feedback received.");
+      ROS_INFO("Move Action feedback callback: %s", feedback->state.c_str());
   }
 
   std::string inferGroupNameFromTrajectory(const trajectory_msgs::JointTrajectory& traj) const
@@ -689,7 +731,10 @@ protected:
   vigir_planning_msgs::MoveGoal goal_;
 
   ros::Subscriber planner_configuration_sub_;
-  flor_planning_msgs::PlannerConfiguration planner_configuration_;
+  vigir_planning_msgs::PlannerConfiguration planner_configuration_;
+
+  robot_model_loader::RobotModelLoaderPtr robot_model_loader_;
+  robot_model::RobotModelPtr robot_model_;
 
 };
 

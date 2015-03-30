@@ -19,8 +19,11 @@
   <build_depend>flor_utilities</build_depend>
   <build_depend>flor_planning_msgs</build_depend>
   <build_depend>flor_ocs_msgs</build_depend>
-  <build_depend>flor_moveit_pipeline</build_depend>
   <build_depend>vigir_planning_msgs</build_depend>
+  <build_depend>vigir_moveit_utils</build_depend>
+  <build_depend>eigen_conversions</build_depend>
+  <build_depend>moveit_core</build_depend>
+  <build_depend>moveit_ros_planning</build_depend>
 
 
   <run_depend>roscpp</run_depend>
@@ -29,9 +32,11 @@
   <run_depend>flor_utilities</run_depend>
   <run_depend>flor_planning_msgs</run_depend>
   <run_depend>flor_ocs_msgs</run_depend>
-  <run_depend>flor_moveit_pipeline</run_depend>
   <run_depend>vigir_planning_msgs</run_depend>
-
+  <run_depend>vigir_moveit_utils</run_depend>
+  <run_depend>eigen_conversions</run_depend>
+  <run_depend>moveit_core</run_depend>
+  <run_depend>moveit_ros_planning</run_depend>
 
   <export>
   </export>
