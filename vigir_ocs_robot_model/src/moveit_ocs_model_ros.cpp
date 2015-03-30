@@ -3,6 +3,8 @@
 
 #include <vigir_planning_msgs/constraints_conversion.h>
 
+#include <vigir_moveit_utils/joint_constraint_utils.h>
+
 MoveItOcsModelRos::MoveItOcsModelRos()
 {
     ocs_model_.reset(new MoveItOcsModel());
@@ -154,6 +156,7 @@ void MoveItOcsModelRos::plannerConfigurationCb(const vigir_planning_msgs::Planne
 
     std::vector<moveit_msgs::JointConstraint> joint_constraints;
 
+    /*
     joint_constraints.resize(msg->joint_position_constraints.size());
 
     for (size_t i = 0; i < msg->joint_position_constraints.size(); ++i){
@@ -161,7 +164,12 @@ void MoveItOcsModelRos::plannerConfigurationCb(const vigir_planning_msgs::Planne
 
       joint_constraints[i].weight = 0.5;
       joint_constraints[i].joint_name = ocs_model_->getModel().getJointOfVariable(msg->joint_position_constraints[i].joint_index)->getName();
+    }*/
+
+    if (!joint_constraint_utils::toMoveitConstraint(msg->joint_position_constraints, ocs_model_->getModel(), joint_constraints)){
+      ROS_ERROR("Error in joint constraint conversions, not using constraints!");
     }
+
 
     ocs_model_->setJointPositionConstraints(joint_constraints);
 

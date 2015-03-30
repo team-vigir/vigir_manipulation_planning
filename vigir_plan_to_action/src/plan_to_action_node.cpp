@@ -486,6 +486,7 @@ public:
       ROS_INFO("Move Action feedback callback: %s", feedback->state.c_str());
   }
 
+  // Assumes groups are named according to special conventions
   std::string inferGroupNameFromTrajectory(const trajectory_msgs::JointTrajectory& traj) const
   {
     const std::vector<std::string>& names = traj.joint_names;
@@ -515,6 +516,7 @@ public:
     return "";
   }
 
+  // Assumes groups are named according to special conventions
   void splitAndSendTrajectory(const trajectory_msgs::JointTrajectory& traj, const std::string& group) const
   {
     if (group =="r_arm_with_torso_group"){
