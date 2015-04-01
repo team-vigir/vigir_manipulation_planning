@@ -77,6 +77,20 @@ void MotionPlanningFrame::planningAlgorithmIndexChanged(int index)
     else
       move_group_->setPlannerId("");
   }
+
+  // show Drake-relevant stuff only for when drake planner is selected
+  if ( ui_->planning_algorithm_combo_box->itemText(index) == "drake" ) {
+      ui_->drake_options_groupbox->show();
+
+      if ( ui_->tabWidget->indexOf(ui_->cartesian_trajectory) == -1)
+        ui_->tabWidget->addTab(ui_->cartesian_trajectory, tr("Cartesian Trajectory (Drake)"));
+
+  }
+  else {
+      ui_->drake_options_groupbox->hide();
+      int tab_page_index = ui_->tabWidget->indexOf(ui_->cartesian_trajectory);
+      ui_->tabWidget->removeTab(tab_page_index);
+  }
 }
 
 void MotionPlanningFrame::resetDbButtonClicked()
