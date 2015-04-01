@@ -97,6 +97,7 @@ catkin_package(
    
  )
 
+ add_dependencies(vigir_head_control ${catkin_EXPORTED_TARGETS})
 ## Declare a cpp executable
 add_executable(vigir_head_control_node src/vigir_head_control_node.cpp)
 
