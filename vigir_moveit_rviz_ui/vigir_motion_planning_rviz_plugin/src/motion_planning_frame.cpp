@@ -64,11 +64,13 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay *pdisplay, rviz::
 {
   // set up the GUI
   ui_->setupUi(this);
+  initCartesianTrajectoryTab();
 
   // connect bottons to actions; each action usually registers the function pointer for the actual computation,
   // to keep the GUI more responsive (using the background job processing)
   connect( ui_->plan_button, SIGNAL( clicked() ), this, SLOT( planButtonClicked() ));
   connect( ui_->execute_button, SIGNAL( clicked() ), this, SLOT( executeButtonClicked() ));
+  connect( ui_->execute_cartesian_trajectory_button, SIGNAL( clicked() ), this, SLOT( executeButtonClicked() ));
   connect( ui_->plan_and_execute_button, SIGNAL( clicked() ), this, SLOT( planAndExecuteButtonClicked() ));
   connect( ui_->use_start_state_button, SIGNAL( clicked() ), this, SLOT( useStartStateButtonClicked() ));
   connect( ui_->use_goal_state_button, SIGNAL( clicked() ), this, SLOT( useGoalStateButtonClicked() ));
@@ -122,6 +124,18 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay *pdisplay, rviz::
   connect( ui_->detected_objects_list, SIGNAL( itemSelectionChanged() ), this, SLOT( selectedDetectedObjectChanged() ));
   connect( ui_->detected_objects_list, SIGNAL( itemChanged( QListWidgetItem * ) ), this, SLOT( detectedObjectChanged( QListWidgetItem * ) ));
   connect( ui_->support_surfaces_list, SIGNAL( itemSelectionChanged() ), this, SLOT( selectedSupportSurfaceChanged() ));
+
+  // cartesian trajectory tab
+  connect(ui_->add_waypoint_button, SIGNAL(clicked()), this, SLOT(addWaypointButtonClicked()));
+  connect(ui_->remove_waypoint_button, SIGNAL(clicked()), this, SLOT(removeWaypointButtonClicked()));
+  connect(ui_->clear_waypoints_button, SIGNAL(clicked()), this, SLOT(clearWaypointsButtonClicked()));
+  connect(ui_->load_cartesian_trajectory_button, SIGNAL(clicked()), this, SLOT(loadCartesianTrajectoryButtonClicked()));
+  connect(ui_->save_cartesian_trajectory_button, SIGNAL(clicked()), this, SLOT(saveCartesianTrajectoryButtonClicked()));
+  connect(ui_->plan_cartesian_trajectory_button, SIGNAL(clicked()), this, SLOT(planCartesianTrajectoryButtonClicked()));
+  connect(&cartesian_trajectory_waypoint_change_mapper_, SIGNAL(mapped(QWidget*)), this, SLOT(updateWaypointData(QWidget*)));
+
+
+
 
   connect( ui_->tabWidget, SIGNAL( currentChanged ( int ) ), this, SLOT( tabChanged( int ) ));
 

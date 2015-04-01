@@ -11,6 +11,7 @@ find_package(PkgConfig REQUIRED)
 #link_directories( ${OGRE_LIBRARY_DIRS} )
 
 # Qt Stuff
+set(QT_USE_QTXML TRUE)
 find_package(Qt4 REQUIRED)
 include(${QT_USE_FILE})
 add_definitions(-DQT_NO_KEYWORDS)
