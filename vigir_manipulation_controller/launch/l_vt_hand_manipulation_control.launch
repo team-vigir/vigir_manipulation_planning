@@ -4,14 +4,15 @@
 <launch>
 
 <include file="$(find thor_vt_hand_ros_control)/launch/l_vt_hand_sim_trajectory_controllers.launch"/>
+
 <!-- -->
-<node name="left_vigir_manipulation_controller"  pkg="vigir_robotiq_grasp_controller" type="vigir_robotiq_grasp_controller_node" respawn="true" ><!-- output="screen" launch-prefix="xterm -e gdb -ex r"-->
+<!--<node name="left_vigir_manipulation_controller"  pkg="thor_vt_hand_grasp_controller" type="thor_vt_hand_grasp_controller_node" respawn="true" >--><!-- output="screen" launch-prefix="xterm -e gdb -ex r"-->
 
-    <param name="wrist_name"  value="l_hand" />      <!--Last arm link name-->
-    <param name="hand_link"   value="left_palm"  />  <!--First hand link name-->
-    <param name="joint_group" value="left_hand"  />  <!--Hand joint group specified in SRDF-->
+    <!--<param name="wrist_name"  value="l_hand" /> -->     <!--Last arm link name-->
+    <!--<param name="hand_link"   value="left_palm"  />-->  <!--First hand link name-->
+    <!--<param name="joint_group" value="left_hand"  />-->  <!--Hand joint group specified in SRDF-->
 
-    <remap from="template_stitch_pose" to="/manipulation_control/l_hand/template_stitch_pose" />
+    <!--<remap from="template_stitch_pose" to="/manipulation_control/l_hand/template_stitch_pose" />
     <remap from="template_stitch"      to="/manipulation_control/l_hand/template_stitch_request" />
     <remap from="move_to_pose"         to="/manipulation_control/l_hand/move_to_pose" />
     <remap from="attach_object"        to="/manipulation_control/l_hand/attach_object" />
@@ -30,7 +31,7 @@
     <remap from="wrist_pose"           to="/flor/l_arm_current_pose" />
     <remap from="planner_status"       to="/grasp_planning/l_hand/status" />
     <remap from="planning_group"       to="/flor/ocs/ghost_ui_state" />
-</node>
+</node>-->
 
   <node name    = "start_left_controller"
         pkg     = "thor_vt_hand_ros_control"
