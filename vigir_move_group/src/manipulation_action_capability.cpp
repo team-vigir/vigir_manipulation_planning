@@ -137,13 +137,17 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
   
   else if (goal->extended_planning_options.target_poses.size() != 0){
 
-    const boost::shared_ptr<tf::Transformer>& tf = context_->planning_scene_monitor_->getTFClient();
-    tf->waitForTransform(context_->planning_scene_monitor_->getRobotModel()->getModelFrame(), goal->extended_planning_options.target_frame, ros::Time::now(), ros::Duration(0.5));
+
+    if (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION){
+      // For free motion, do IK and plan.
+      // Consider additional joint constraints/redundant joints
 
 
-    //const boost::shared_ptr<tf::Transformer>& tf = context_->planning_scene_monitor_->getTFClient();
-    //tf->waitForTransform(context_->planning_scene_monitor_->getRobotModel()->getModelFrame(), goal->extended_planning_options.target_frame, ros::Time::now(), ros::Duration(0.5));
-    executeCartesianMoveCallback_PlanAndExecute(goal, action_res);
+
+    }else{
+      //Otherwise, perform cartesian motion
+      executeCartesianMoveCallback_PlanAndExecute(goal, action_res);
+    }
 
   }else{
 

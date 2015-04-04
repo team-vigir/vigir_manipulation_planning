@@ -63,18 +63,24 @@ namespace group_utils{
 
     int idx = group->getVariableGroupIndex(constraint.joint_name);
 
-    if ((fabs(constraint.tolerance_above) < 4.0) && (fabs(constraint.tolerance_below) < 4.0)){
+    if ((constraint.tolerance_above < 0.0) || (constraint.tolerance_below < 0.0)){
+      ROS_ERROR("Negative joint tolerance, not using!");
+    }else if (constraint.tolerance_above <= std::numeric_limits<double>::epsilon()){
+      redundant_joints_vector.push_back (constraint.joint_name);
+    }else if ((fabs(constraint.tolerance_above) < 4.0) && (fabs(constraint.tolerance_below) < 4.0)){
 
-      double limit_range = (constraint.tolerance_below + constraint.tolerance_above) * 0.5;
-      double seed_angle = constraint.position;
-      consistency_limits[idx] = limit_range;
-      //set_joint_angles_map[link_name] = seed_angle;
+      //We cannot be sure that constraints are always given with
+      //position mean of max and min, so consider that.
+      //Per default mean will be equal to constraint.position though.
+      double max = constraint.position + constraint.tolerance_above;
+      double min = constraint.position - constraint.tolerance_below;
 
-      state.setVariablePosition(constraint.joint_name, seed_angle);
+      double mean = (max - min) * 0.5;
+
+      consistency_limits[idx] = max - mean;
+
+      state.setVariablePosition(constraint.joint_name, mean);
     }
-    //else if (min_angle > 99.0){
-    //  redundant_joints_vector.push_back (link_name);
-    //}
   }
 
 
@@ -128,15 +134,13 @@ namespace group_utils{
 
     const std::string& tip_frame = group->getSolverInstance()->getTipFrame();
 
-    //Remember state of joints
+    //Remember state of joints to reapply later in case IK fails
     sensor_msgs::JointState original_joint_state_msg;
     robotStateToJointStateMsg(state, original_joint_state_msg);
-    //joint_state_group->getVariableValues(original_joint_state);
 
     std::vector<double> consistency_limits;
     consistency_limits.resize(group->getVariableCount(), 1000.0);
 
-    //if (torso_joint_position_constraints_){
     std::vector<std::string> redundant_joints_vector;
 
     for (size_t i = 0; i < torso_joint_position_constraints_.size(); ++i){
@@ -146,31 +150,6 @@ namespace group_utils{
                                         consistency_limits,
                                         redundant_joints_vector);
     }
-
-    /*
-    group_utils::setJointIkConstraint("back_bkz",
-                                      torso_joint_position_constraints_.back_bkz_min.data,
-                                      torso_joint_position_constraints_.back_bkz_max.data,
-                                      group,
-                                      state,
-                                      consistency_limits,
-                                      redundant_joints_vector);
-    group_utils::setJointIkConstraint("back_bky",
-                                      torso_joint_position_constraints_.back_bky_min.data,
-                                      torso_joint_position_constraints_.back_bky_max.data,
-                                      group,
-                                      state,
-                                      consistency_limits,
-                                      redundant_joints_vector);
-    group_utils::setJointIkConstraint("back_bkx",
-                                      torso_joint_position_constraints_.back_bkx_min.data,
-                                      torso_joint_position_constraints_.back_bkx_max.data,
-                                      group,
-                                      state,
-                                      consistency_limits,
-                                      redundant_joints_vector);
-                                      */
-    //}
 
     Eigen::Affine3d mat;
     tf::poseMsgToEigen(goal_pose, mat);
@@ -184,7 +163,10 @@ namespace group_utils{
       robot_model::JointModelGroup group_cpy = *group;
 
       const kinematics::KinematicsBasePtr& solver = group_cpy.getSolverInstance();
-      solver->setRedundantJoints(redundant_joints_vector);
+
+      if (!solver->setRedundantJoints(redundant_joints_vector)){
+        ROS_ERROR("Failure when setting redundant joints!");
+      }
 
       kinematics::KinematicsQueryOptions options;
       options.lock_redundant_joints = true;
@@ -192,7 +174,10 @@ namespace group_utils{
 
       //Reset redundant joints to make sure we don't alter solver settings
       redundant_joints_vector.clear();
-      solver->setRedundantJoints(redundant_joints_vector);
+
+      if (!solver->setRedundantJoints(redundant_joints_vector)){
+        ROS_ERROR("Failure when resetting redundant joints!");
+      }
     }
 
     if (!success){
@@ -203,27 +188,6 @@ namespace group_utils{
 
     return true;
   }
-
-  /*
-  std::vector<std::string> getLockedJoints(const robot_model::JointModelGroup* group, const vigir_planning_msgs::JointPositionConstraints& constraints)
-  {
-    std::vector<std::string> lockedJoints;
-
-    if (group->hasJointModel("back_bkz") && (constraints[0].joint_min > 99.0) && (constraints[0].joint_max > 99.0)){
-      lockedJoints.push_back("back_bkz");
-    }
-
-    if (group->hasJointModel("back_bky") && (constraints[1].joint_min > 99.0) && (constraints[1].joint_max > 99.0)){
-      lockedJoints.push_back("back_bky");
-    }
-
-    if (group->hasJointModel("back_bkx") && (constraints[2].joint_min > 99.0) && (constraints[2].joint_max > 99.0)){
-      lockedJoints.push_back("back_bkx");
-    }
-
-    return lockedJoints;
-  }
-  */
 
 }
 

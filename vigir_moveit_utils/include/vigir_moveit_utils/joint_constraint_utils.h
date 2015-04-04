@@ -94,7 +94,7 @@ std::vector<std::string> getLockedJoints(const robot_model::JointModelGroup* gro
   std::vector<std::string> lockedJoints;
 
   for (size_t i = 0; i < constraints.size(); ++i){
-    if (group->hasJointModel(constraints[i].joint_name) && (constraints[i].tolerance_above == constraints[i].tolerance_below)){
+    if (group->hasJointModel(constraints[i].joint_name) && (constraints[i].tolerance_above <= std::numeric_limits<double>::epsilon())){
       lockedJoints.push_back(constraints[i].joint_name);
     }
   }
