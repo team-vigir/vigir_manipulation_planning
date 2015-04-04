@@ -181,6 +181,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
           executeMoveCallback_PlanAndExecute(updated_goal, action_res);
         }
       }else{
+        ROS_WARN("No valid IK solution found, cannot generate goal constraints!");
         action_res.error_code.val == moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
       }
 
@@ -604,12 +605,11 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   cart_path.request.avoid_collisions = goal->extended_planning_options.avoid_collisions;
   cart_path.request.group_name = goal->request.group_name;
 
-  moveit_msgs::GetCartesianPath::Response result;
   setMoveState(PLANNING);
   this->computeCartesianPath(cart_path.request, cart_path.response);
 
-  if ((result.fraction < 1.0) && !goal->extended_planning_options.execute_incomplete_cartesian_plans){
-    ROS_WARN("Incomplete cartesian plan computed, fraction: %f and goal specified to not execute in that case!", result.fraction);
+  if ((cart_path.response.fraction < 1.0) && !goal->extended_planning_options.execute_incomplete_cartesian_plans){
+    ROS_WARN("Incomplete cartesian plan computed, fraction: %f and goal specified to not execute in that case!", cart_path.response.fraction);
     action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
     return;
   }
@@ -638,7 +638,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
 
   context_->trajectory_execution_manager_->clear();
 
-  if (context_->trajectory_execution_manager_->push(result.solution)){
+  if (context_->trajectory_execution_manager_->push(cart_path.response.solution)){
     moveit_controller_manager::ExecutionStatus es = context_->trajectory_execution_manager_->waitForExecution();
     if (es == moveit_controller_manager::ExecutionStatus::SUCCEEDED)
       action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
