@@ -639,6 +639,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   context_->trajectory_execution_manager_->clear();
 
   if (context_->trajectory_execution_manager_->push(cart_path.response.solution)){
+    context_->trajectory_execution_manager_->execute();
     moveit_controller_manager::ExecutionStatus es = context_->trajectory_execution_manager_->waitForExecution();
     if (es == moveit_controller_manager::ExecutionStatus::SUCCEEDED)
       action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
@@ -651,6 +652,8 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
         else
           action_res.error_code.val = moveit_msgs::MoveItErrorCodes::CONTROL_FAILED;
     ROS_INFO_STREAM("Execution completed: " << es.asString());
+  }else{
+    ROS_WARN("Could not push trajectory for execution!");
   }
 }
 

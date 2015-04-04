@@ -201,6 +201,7 @@ public:
     goal_.extended_planning_options.keep_endeffector_orientation = msg->keep_endeffector_orientation;
     goal_.extended_planning_options.rotation_angle = msg->rotation_angle;
     goal_.extended_planning_options.avoid_collisions = msg->use_environment_obstacle_avoidance;
+    goal_.extended_planning_options.execute_incomplete_cartesian_plans = true;
 
     goal_.request.goal_constraints.clear();
 
@@ -248,6 +249,7 @@ public:
 
     goal_.extended_planning_options.target_frame = msg->header.frame_id;
     goal_.extended_planning_options.avoid_collisions = msg->use_environment_obstacle_avoidance;
+    goal_.extended_planning_options.execute_incomplete_cartesian_plans = true;
 
     goal_.request.goal_constraints.clear();
 
