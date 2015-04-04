@@ -83,8 +83,8 @@ namespace group_utils{
     }
   }
 
-
-
+  //@TODO: Below is obsolete, remove once refactoring complete
+  /*
   static bool setJointPlanningConstraint(moveit_msgs::JointConstraint& constraint, const std::string& name, const robot_state::RobotState& robot_state, double min_angle, double max_angle, double weight)
   {
     double limit_range = (max_angle - min_angle) * 0.5;
@@ -107,15 +107,16 @@ namespace group_utils{
 
     return true;
   }
+  */
 
-  static bool setJointStateGroupFromIk(robot_state::RobotState &state,
+  static bool setJointModelGroupFromIk(robot_state::RobotState &state,
                                        const robot_model::JointModelGroup* group,
                                        const geometry_msgs::Pose& goal_pose,
                                        const std::vector<moveit_msgs::JointConstraint>& torso_joint_position_constraints_)
   {
 
     if (group == NULL){
-      ROS_WARN("invalid group name, cannot plan");
+      ROS_WARN("Group null pointer, cannot generate IK");
       return false;
     }
     // Can now call IK on the group

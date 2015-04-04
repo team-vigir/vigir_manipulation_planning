@@ -191,29 +191,25 @@ public:
 
   void planCircularRequestCallback(const flor_planning_msgs::CircularMotionRequest::ConstPtr& msg)
   {
-    /*
-    flor_planning_msgs::GetMotionPlanForCircularMotion plan_srv;
+    goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor);
 
-    plan_srv.request.plan_request = *msg;
+    goal_.request.group_name = msg->planning_group;
+    goal_.request.num_planning_attempts = 1;
+    goal_.request.allowed_planning_time = 1.0;
 
-    flor_ocs_msgs::OCSRobotStatus status;
+    goal_.extended_planning_options.target_frame = msg->rotation_center_pose.header.frame_id;
+    goal_.extended_planning_options.keep_endeffector_orientation = msg->keep_endeffector_orientation;
+    goal_.extended_planning_options.rotation_angle = msg->rotation_angle;
+    goal_.extended_planning_options.avoid_collisions = msg->use_environment_obstacle_avoidance;
 
-    if (circular_planning_srv_client_.call(plan_srv))
-    {
-      if (plan_srv.response.status == flor_planning_msgs::GetMotionPlanForPose::Response::OK){
-        splitAndSendTrajectory(plan_srv.response.trajectory, msg->planning_group);
-        ROS_INFO("Succesfully planned and sent circular trajectory to planner.");
-      }
-      ROS_DEBUG("Called circular trajectory planning service with return status %d", (int)plan_srv.response.status);
-      setStatus(plan_srv.response.status,status);
-      plan_status_pub_.publish(status);
-    }else{
-      ROS_ERROR("Service call to circular trajectory planning service returned false.");
-      setStatus(plan_srv.response.status,status);
-      plan_status_pub_.publish(status);
-    }
-    */
+    goal_.extended_planning_options.target_poses.clear();
+    goal_.extended_planning_options.target_poses.push_back(msg->rotation_center_pose.pose);
+    goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION;
 
+    move_action_client_->sendGoal(goal_,
+                                  boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
+                                  boost::bind(&PlanToAction::moveActionActiveCallback, this),
+                                  boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));
   }
 
   void planCartesianRequestCallback(const flor_planning_msgs::CartesianMotionRequest::ConstPtr& msg)
@@ -242,6 +238,23 @@ public:
       plan_status_pub_.publish(status);
     }
     */
+    goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor);
+
+    goal_.request.group_name = msg->planning_group;
+    goal_.request.num_planning_attempts = 1;
+    goal_.request.allowed_planning_time = 1.0;
+
+    goal_.extended_planning_options.target_frame = msg->header.frame_id;
+    goal_.extended_planning_options.avoid_collisions = msg->use_environment_obstacle_avoidance;
+
+    goal_.extended_planning_options.target_poses.clear();
+    goal_.extended_planning_options.target_poses = msg->waypoints;
+    goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
+
+    move_action_client_->sendGoal(goal_,
+                                  boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
+                                  boost::bind(&PlanToAction::moveActionActiveCallback, this),
+                                  boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));
 
   }
 

@@ -53,6 +53,7 @@
 
 #include <vigir_moveit_utils/constrained_motion_utils.h>
 #include <vigir_moveit_utils/joint_constraint_utils.h>
+#include <vigir_moveit_utils/group_utils.h>
 
 
 namespace
@@ -139,8 +140,49 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
 
 
     if (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION){
+
       // For free motion, do IK and plan.
       // Consider additional joint constraints/redundant joints
+
+      moveit_msgs::Constraints goal_constraints;
+      bool found_ik = false;
+
+      {
+        planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
+        robot_state::RobotState tmp = lscene->getCurrentState();
+
+        const robot_state::JointModelGroup* joint_model_group = tmp.getJointModelGroup(goal->request.group_name);
+
+        found_ik = group_utils::setJointModelGroupFromIk(tmp,
+                                                         joint_model_group,
+                                                         goal->extended_planning_options.target_poses[0],
+                                                         goal->request.path_constraints.joint_constraints);
+
+        if (found_ik){
+          goal_constraints = kinematic_constraints::constructGoalConstraints(tmp, joint_model_group);
+        }
+      }
+
+      if (found_ik){
+        vigir_planning_msgs::MoveGoalPtr updated_goal;
+        updated_goal.reset(new vigir_planning_msgs::MoveGoal());
+        *updated_goal = *goal;
+
+        updated_goal->request.goal_constraints.push_back(goal_constraints);
+
+        if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
+        {
+          if (!goal->planning_options.plan_only)
+            ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
+          executeMoveCallback_PlanOnly(updated_goal, action_res);
+        }
+        else
+        {
+          executeMoveCallback_PlanAndExecute(updated_goal, action_res);
+        }
+      }else{
+        action_res.error_code.val == moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
+      }
 
 
 

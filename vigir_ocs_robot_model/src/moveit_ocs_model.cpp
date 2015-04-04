@@ -49,8 +49,7 @@ bool MoveItOcsModel::setByIk(const geometry_msgs::PoseStamped& goal_pose, const 
   const robot_state::JointModelGroup* joint_model_group = robot_state_->getJointModelGroup(group_name);
 
   //@TODO Port group utils
-  return group_utils::setJointStateGroupFromIk(*robot_state_,joint_model_group, goal_pose.pose, torso_joint_position_constraints_);
-  return true;
+  return group_utils::setJointModelGroupFromIk(*robot_state_,joint_model_group, goal_pose.pose, torso_joint_position_constraints_);
 }
 
 bool MoveItOcsModel::getManipulationMetrics(const std::string& group_name,
