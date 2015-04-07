@@ -61,8 +61,6 @@ namespace group_utils{
       return;
     }
 
-    //const moveit::core::JointModel* joint_model  = group->getJointModel(link_name);
-
     int idx = group->getVariableGroupIndex(constraint.joint_name);
 
     if ((constraint.tolerance_above < 0.0) || (constraint.tolerance_below < 0.0)){
@@ -102,8 +100,6 @@ namespace group_utils{
     // Could query multiple groups or poses here
     ROS_DEBUG_STREAM("----- pre IK tx: " << goal_pose.position.x << " ty: " << goal_pose.position.y << " tz: " << goal_pose.position.z << "\n");
     //ROS_DEBUG_STREAM("----- pre IK frame: " << goal_pose.header.frame_id << "\n");
-
-    //const robot_model::JointModelGroup* group = joint_state_group->getJointModelGroup();
 
     const kinematics::KinematicsBaseConstPtr& solver = group->getSolverInstance();
 
