@@ -1,29 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(vigir_manipulation_controller)
+project(vigir_grasping_controllers)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  flor_control_msgs
-  flor_grasp_msgs
-  flor_ocs_msgs
-  geometric_shapes
-  moveit_core
-  moveit_msgs
-  roscpp
-  urdf
-  tf
-  tf_conversions
-  trajectory_msgs
-  vigir_object_template_msgs
-  vigir_planning_interface
+  controller_interface
+  joint_trajectory_controller
 )
-
-#set the default path for built executables to the "bin" directory
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-#set the default path for built libraries to the "lib" directory
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -82,7 +66,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   control_msgs#   flor_control_msgs#   flor_grasp_msgs#   flor_ocs_msgs#   moveit_msgs#   trajectory_msgs#   vigir_object_template_msgs
+#   control_msgs#   std_msgs#   trajectory_msgs
 # )
 
 ###################################
@@ -96,8 +80,8 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES vigir_manipulation_controller
-  CATKIN_DEPENDS flor_control_msgs flor_grasp_msgs flor_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp urdf tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface
+  LIBRARIES ${PROJECT_NAME}
+  CATKIN_DEPENDS controller_interface joint_trajectory_controller
 #  DEPENDS system_lib
 )
 
@@ -110,46 +94,97 @@ catkin_package(
 # include_directories(include)
 include_directories(
   include
+  ${Boost_INCLUDE_DIR}
   ${catkin_INCLUDE_DIRS}
-)
-link_directories(${catkin_LIBRARY_DIRS})
-
-SET(HEADERS
-include/${PROJECT_NAME}/vigir_manipulation_controller.h
-)
-
-SET(SOURCE
-src/vigir_manipulation_controller.cpp
 )
 
 ## Declare a cpp library
-add_library(${PROJECT_NAME} ${SOURCE} ${HEADERS} )
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+add_library(${PROJECT_NAME}
+    src/vigir_grasping_controllers.cpp
+    include/${PROJECT_NAME}/init_joint_trajectory.h
+    include/${PROJECT_NAME}/vigir_grasping_controllers.h
+    include/${PROJECT_NAME}/vigir_grasping_controllers_impl.h
+    include/${PROJECT_NAME}/joint_trajectory_segment.h
+    include/${PROJECT_NAME}/tolerances.h
+)
 
 ## Declare a cpp executable
-#add_executable(vigir_manipulation_controller_node ${SOURCE} ${HEADERS})
-#add_dependencies(vigir_manipulation_controller_node ${catkin_EXPORTED_TARGETS})
-#target_link_libraries(vigir_manipulation_controller_node  ${catkin_LIBRARIES})
+# add_executable(vigir_grasp_trajectory_controller_node src/vigir_grasp_trajectory_controller_node.cpp)
+
+## Add cmake target dependencies of the executable/library
+## as an example, message headers may need to be generated before nodes
+# add_dependencies(vigir_grasp_trajectory_controller_node vigir_grasp_trajectory_controller_generate_messages_cpp)
+
+## Specify libraries to link a library or executable target against
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##
 #############
 
-install( TARGETS ${PROJECT_NAME}
-   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+# Install
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
 
-### Mark executables and/or libraries for installation
-#install(TARGETS
-#   vigir_manipulation_controller_node
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#install(DIRECTORY include/trajectory_interface/
+#  DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}/trajectory_interface/)
+
+install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  )
+
+install(FILES vigir_grasping_controllers_plugins.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+
+#install the executable.
+#install(TARGETS rrbot
+#    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 #)
 
-install ( DIRECTORY launch
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
+# all install targets should use catkin DESTINATION variables
+# See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
+## Mark executable scripts (Python etc.) for installation
+## in contrast to setup.py, you can choose the destination
+# install(PROGRAMS
+#   scripts/my_python_script
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
 
+## Mark executables and/or libraries for installation
+# install(TARGETS vigir_grasp_trajectory_controller vigir_grasp_trajectory_controller_node
+#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
+
+## Mark cpp header files for installation
+# install(DIRECTORY include/${PROJECT_NAME}/
+#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+#   FILES_MATCHING PATTERN "*.h"
+#   PATTERN ".svn" EXCLUDE
+# )
+
+## Mark other files for installation (e.g. launch and bag files, etc.)
+# install(FILES
+#   # myfile1
+#   # myfile2
+#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+# )
+
+#############
+## Testing ##
+#############
+
+## Add gtest based cpp test target and link libraries
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_vigir_grasp_trajectory_controller.cpp)
+# if(TARGET ${PROJECT_NAME}-test)
+#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
+# endif()
+
+## Add folders to be run by python nosetests
+# catkin_add_nosetests(test)
