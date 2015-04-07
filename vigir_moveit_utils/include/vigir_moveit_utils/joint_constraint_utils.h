@@ -54,7 +54,7 @@ static inline bool toMoveitConstraint (const vigir_planning_msgs::JointPositionC
 {
   vigir_planning_msgs::toMoveitConstraint(input, output);
 
-  output.joint_name = robot_model.getJointOfVariable(input.joint_index)->getName();
+  output.joint_name = robot_model.getJointModel(input.joint_index)->getName();
   output.weight = 0.5;
 
   return true;
@@ -84,7 +84,7 @@ static inline bool toVigirConstraint (const moveit_msgs::JointConstraint &input,
 {
   vigir_planning_msgs::toVigirConstraint(input, output);
 
-  output.joint_index = robot_model.getJointOfVariable(input.joint_name)->getJointIndex();
+  output.joint_index = robot_model.getJointModel(input.joint_name)->getJointIndex();
 
   return true;
 }

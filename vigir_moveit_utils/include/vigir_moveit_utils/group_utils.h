@@ -55,7 +55,12 @@ namespace group_utils{
 
     //const robot_model::JointModelGroup* group = joint_state_group->getJointModelGroup();
 
+    std::cout << "constraint name: " << constraint.joint_name <<
+                 " above: " << constraint.tolerance_above <<
+                 " below: " << constraint.tolerance_below << "\n";
+
     if (!group->hasJointModel(constraint.joint_name)){
+      ROS_ERROR("Wrong joint name %s for constraint, not using!", constraint.joint_name.c_str());
       return;
     }
 
@@ -115,6 +120,7 @@ namespace group_utils{
                                        const std::vector<moveit_msgs::JointConstraint>& torso_joint_position_constraints_)
   {
 
+    std::cout << "size: " << torso_joint_position_constraints_.size() << "\n";
     if (group == NULL){
       ROS_WARN("Group null pointer, cannot generate IK");
       return false;
@@ -159,8 +165,9 @@ namespace group_utils{
 
     if (redundant_joints_vector.size() == 0){
       success = state.setFromIK(group, mat, tip_frame, consistency_limits, 1, 0.1);
+      std::cout << "zero redundant\n";
     }else{
-
+      std::cout << "nonzero redundant\n";
       robot_model::JointModelGroup group_cpy = *group;
 
       const kinematics::KinematicsBasePtr& solver = group_cpy.getSolverInstance();
