@@ -3,7 +3,8 @@
 
 namespace head_control{
     HeadControl::HeadControl()
-    {
+    {   ROS_INFO ("started!!!!!!!!!!!!!!");
+        std::cout << "started node !!!!!!!" << std::endl;
         tracking_mode = head_tracking_mode::NONE;
 
         ROS_DEBUG("Creating Head Controler");
@@ -23,7 +24,7 @@ namespace head_control{
     void HeadControl::HeadControlCb(const vigir_planning_msgs::HeadControlCommand &command){
      ///flor/l_arm_current_pose
      /// //trajectory_msgs/JointTrajectory
-
+        ROS_INFO ("bla!!!!!!!!!!!!!!");
         ROS_DEBUG("Setting Head Control Mode to %u", command.motion_type);
 
         if(command.motion_type == vigir_planning_msgs::HeadControlCommand::USE_PROVIDED_JOINTS){
@@ -43,8 +44,8 @@ namespace head_control{
             tracking_mode = head_tracking_mode::LEFT_HAND_TRACKING;
         } else if (command.motion_type == vigir_planning_msgs::HeadControlCommand::TRACK_RIGHT_HAND){
             tracking_mode = head_tracking_mode::RIGHT_HAND_TRACKING;
-            std::vector<double> joints = computeJointsRightHandTracking();
-            setHeadJointPosition(joints[0], joints[1]);
+            //std::vector<double> joints = computeJointsRightHandTracking();
+            //setHeadJointPosition(joints[0], joints[1]);
         }else{
             ROS_WARN("Received invalid Head Control Mode: %u", command.motion_type);
         }
@@ -77,10 +78,45 @@ namespace head_control{
         joint_trajectory_pub.publish(jointTrajectory);
     }
 
-    std::vector<double> HeadControl::computeJointsLeftHandTracking(){
+    std::vector<double> HeadControl::computeJointsLeftHandTracking(const geometry_msgs::PoseStamped &pose){
         //TODO:: implement
-        double pan = 2.0;
-        double tilt = 1.0;
+        geometry_msgs::PointStamped lookat_point;
+        lookat_point.header=pose.header;
+        lookat_point.point=pose.pose.position;
+        geometry_msgs::PointStamped lookat_camera;
+
+            tf::StampedTransform base_camera_transform;
+
+            try {
+              tf.waitForTransform("world", lookat_point.header.frame_id, ros::Time(), ros::Duration(1.0));
+              tf.transformPoint("world", ros::Time(), lookat_point, lookat_point.header.frame_id, lookat_camera);
+            } catch (std::runtime_error& e) {
+              ROS_WARN("Could not transform look_at position to target frame_id %s", e.what());
+                 //TODO return  !!!!
+            }
+
+            try {
+              tf.waitForTransform("world", "head_cam_link", ros::Time(), ros::Duration(1.0));
+              tf.lookupTransform("world", "world", ros::Time(), base_camera_transform);
+            } catch (std::runtime_error& e) {
+              ROS_WARN("Could not transform from base frame to camera_frame %s", e.what());
+              //TODO return  !!!!
+            }
+
+            geometry_msgs::QuaternionStamped orientation;
+            orientation.header = lookat_camera.header;
+            orientation.header.frame_id = "world";
+            tf::Vector3 dir(lookat_camera.point.x - base_camera_transform.getOrigin().x(), lookat_camera.point.y - base_camera_transform.getOrigin().y(), lookat_camera.point.z - base_camera_transform.getOrigin().z());
+
+            //tf::Quaternion quaternion = tf::createQuaternionFromRPY(0.0, -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y())), atan2(dir.y(), dir.x()));
+
+
+            double pan = atan2(dir.y(), dir.x()); //yaw
+            double tilt = -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y()));  // pitch
+
+            std::cout << "pan" << pan <<"   tilt" << tilt << "!!!!"<<std::endl;
+        //double pan = 2.0; //yaw
+        //double tilt = 1.0;  // pitch
         std::vector<double> joints;
         joints.push_back(pan);
         joints.push_back(tilt);
@@ -88,7 +124,7 @@ namespace head_control{
         return joints;
     }
 
-    std::vector<double> HeadControl::computeJointsRightHandTracking(){
+    std::vector<double> HeadControl::computeJointsRightHandTracking(const geometry_msgs::PoseStamped &pose){
         //TODO:: implement
         double pan = 1.0;
         double tilt = 1.0;
@@ -100,15 +136,17 @@ namespace head_control{
     }
 
     void HeadControl::trackLeftHandCb(const geometry_msgs::PoseStamped &pose){
+        std::cout << "In Callback !!!!!"<<std::endl;
         if(tracking_mode == head_tracking_mode::LEFT_HAND_TRACKING){
-            std::vector<double> joints = computeJointsLeftHandTracking();
+             std::cout << "In If !!!!!"<<std::endl;
+            std::vector<double> joints = computeJointsLeftHandTracking(pose);
             setHeadJointPosition(joints[0], joints[1]);
         }
     }
 
     void HeadControl::trackRightHandCb(const geometry_msgs::PoseStamped &pose){
         if(tracking_mode == head_tracking_mode::RIGHT_HAND_TRACKING){
-            std::vector<double> joints = computeJointsRightHandTracking();
+            std::vector<double> joints = computeJointsRightHandTracking(pose);
             setHeadJointPosition(joints[0], joints[1]);
         }
     }

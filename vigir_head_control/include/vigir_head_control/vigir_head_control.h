@@ -5,6 +5,9 @@
 #include <vigir_planning_msgs/HeadControlCommand.h>
 #include <trajectory_msgs/JointTrajectory.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/QuaternionStamped.h>
+#include <tf/transform_listener.h>
+#include <tf/transform_datatypes.h>
 
 namespace head_control{
 
@@ -19,14 +22,16 @@ namespace head_control{
       void trackRightHandCb(const geometry_msgs::PoseStamped &pose);
 
       void setHeadJointPosition(const double pan, const double tilt);
-      std::vector<double> computeJointsLeftHandTracking();
-      std::vector<double> computeJointsRightHandTracking();
+      std::vector<double> computeJointsLeftHandTracking(const geometry_msgs::PoseStamped &pose);
+      std::vector<double> computeJointsRightHandTracking(const geometry_msgs::PoseStamped &pose);
     private:
       unsigned char tracking_mode;
       ros::Publisher joint_trajectory_pub;
       ros::Subscriber head_control_sub;
       ros::Subscriber left_hand_sub;
       ros::Subscriber right_hand_sub;
+      tf::TransformListener tf;
+
     };
 }
 
