@@ -24,7 +24,6 @@ namespace head_control{
     void HeadControl::HeadControlCb(const vigir_planning_msgs::HeadControlCommand &command){
      ///flor/l_arm_current_pose
      /// //trajectory_msgs/JointTrajectory
-        ROS_INFO ("bla!!!!!!!!!!!!!!");
         ROS_DEBUG("Setting Head Control Mode to %u", command.motion_type);
 
         if(command.motion_type == vigir_planning_msgs::HeadControlCommand::USE_PROVIDED_JOINTS){
@@ -88,16 +87,16 @@ namespace head_control{
             tf::StampedTransform base_camera_transform;
 
             try {
-              tf.waitForTransform("world", lookat_point.header.frame_id, ros::Time(), ros::Duration(1.0));
-              tf.transformPoint("world", ros::Time(), lookat_point, lookat_point.header.frame_id, lookat_camera);
+              tf.waitForTransform("utorso", lookat_point.header.frame_id, ros::Time(), ros::Duration(1.0));
+              tf.transformPoint("utorso", ros::Time(), lookat_point, lookat_point.header.frame_id, lookat_camera);
             } catch (std::runtime_error& e) {
               ROS_WARN("Could not transform look_at position to target frame_id %s", e.what());
                  //TODO return  !!!!
             }
 
             try {
-              tf.waitForTransform("world", "head_cam_link", ros::Time(), ros::Duration(1.0));
-              tf.lookupTransform("world", "head_cam_link", ros::Time(), base_camera_transform);
+              tf.waitForTransform("utorso", "head_cam_link", ros::Time(), ros::Duration(1.0));
+              tf.lookupTransform("utorso", "head_cam_link", ros::Time(), base_camera_transform);
             } catch (std::runtime_error& e) {
               ROS_WARN("Could not transform from base frame to camera_frame %s", e.what());
               //TODO return  !!!!
