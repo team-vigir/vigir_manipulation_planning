@@ -97,7 +97,7 @@ namespace head_control{
 
             try {
               tf.waitForTransform("world", "head_cam_link", ros::Time(), ros::Duration(1.0));
-              tf.lookupTransform("world", "world", ros::Time(), base_camera_transform);
+              tf.lookupTransform("world", "head_cam_link", ros::Time(), base_camera_transform);
             } catch (std::runtime_error& e) {
               ROS_WARN("Could not transform from base frame to camera_frame %s", e.what());
               //TODO return  !!!!
@@ -114,14 +114,11 @@ namespace head_control{
             double pan = atan2(dir.y(), dir.x()); //yaw
             double tilt = -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y()));  // pitch
 
-            std::cout << "pan" << pan <<"   tilt" << tilt << "!!!!"<<std::endl;
-        //double pan = 2.0; //yaw
-        //double tilt = 1.0;  // pitch
-        std::vector<double> joints;
-        joints.push_back(pan);
-        joints.push_back(tilt);
+            std::vector<double> joints;
+            joints.push_back(pan);
+            joints.push_back(tilt);
 
-        return joints;
+            return joints;
     }
 
     std::vector<double> HeadControl::computeJointsRightHandTracking(const geometry_msgs::PoseStamped &pose){
@@ -136,7 +133,7 @@ namespace head_control{
     }
 
     void HeadControl::trackLeftHandCb(const geometry_msgs::PoseStamped &pose){
-        std::cout << "In Callback !!!!!"<<std::endl;
+        //std::cout << "In Callback !!!!!"<<std::endl;
         if(tracking_mode == head_tracking_mode::LEFT_HAND_TRACKING){
              std::cout << "In If !!!!!"<<std::endl;
             std::vector<double> joints = computeJointsLeftHandTracking(pose);
