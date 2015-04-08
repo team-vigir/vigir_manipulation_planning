@@ -7,20 +7,27 @@ from math import pi
 from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
+from PySide.QtCore import SIGNAL
+
 from std_msgs.msg import String
 from vigir_planning_msgs.msg import HeadControlCommand
-
+from sensor_msgs.msg import JointState
 
 
 class HeadControl(Plugin):
+
+    manualControlsEnabled = True
 
     def __init__(self, context):
         super(HeadControl, self).__init__(context)
         # Give QObjects reasonable names
         self.setObjectName('Head Control')
 
-        #Publisher
+        # Publisher
         self.modePublisher = rospy.Publisher('/thor_mang/head_control_mode', HeadControlCommand)
+
+        # Subscriber
+        self.jointSubscriber = rospy.Subscriber('/thor_mang/joint_states', JointState, self.updateJointStates)
 
         # Process standalone plugin command-line arguments
         from argparse import ArgumentParser
@@ -53,8 +60,11 @@ class HeadControl(Plugin):
         context.add_widget(self._widget)
 
         # Connect buttons
-        self._widget.modeTrackLeftRadioButton.pressed.connect(self.modeTrackLeftRadioButtonPressed)
-        self._widget.modeTrackRightRadioButton.pressed.connect(self.modeTrackRightRadioButtonPressed)
+        self._widget.modeTrackLeftRadioButton.toggled.connect(self.modeTrackLeftRadioButtonToggled)
+        self._widget.modeTrackRightRadioButton.toggled.connect(self.modeTrackRightRadioButtonToggled)
+        self._widget.modeManualRadioButton.toggled.connect(self.modeManualRadioButtonToggled)
+        self._widget.modeTrackFrameRadioButton.toggled.connect(self.modeTrackFrameRadioButtonToggled)
+
         self._widget.zeroPushButton.pressed.connect(self.zeroPushButtonPressed)
 
         self._widget.panDial.sliderReleased.connect(self.manualJointChanged)
@@ -63,17 +73,35 @@ class HeadControl(Plugin):
         self._widget.tiltSlider.sliderReleased.connect(self.manualJointChanged)
         self._widget.tiltSpinBox.editingFinished.connect(self.manualJointChanged)
 
+        #self._widget.panDial.valueChanged.connect(self.manualJointChanged)
+        #self._widget.panSlider.valueChanged.connect(self.manualJointChanged)
+        #self._widget.panSpinBox.editingFinished.connect(self.manualJointChanged)
+        #self._widget.tiltSlider.valueChanged.connect(self.manualJointChanged)
+        #self._widget.tiltSpinBox.editingFinished.connect(self.manualJointChanged)
+
+        self.connect(self, SIGNAL("panChanged"), self._widget.panSlider.setValue)
+        self.connect(self, SIGNAL("tiltChanged"), self._widget.tiltSlider.setValue)
 
 
-    def modeTrackLeftRadioButtonPressed(self):
+    def modeManualRadioButtonToggled(self, pressed):
+        self.setManualControlsEnabled(pressed)
+
+    def modeTrackLeftRadioButtonToggled(self, pressed):
         command = HeadControlCommand(HeadControlCommand.TRACK_LEFT_HAND, [])
         self.modePublisher.publish(command)
 
-    def modeTrackRightRadioButtonPressed(self):
+    def modeTrackRightRadioButtonToggled(self, pressed):
         command = HeadControlCommand(HeadControlCommand.TRACK_RIGHT_HAND, [])
         self.modePublisher.publish(command)
 
+    def modeTrackFrameRadioButtonToggled(self, pressed):
+        pass
+
+
     def zeroPushButtonPressed(self):
+        self._widget.modeManualRadioButton.setChecked(True);
+        self._widget.panSpinBox.setValue(0);
+        self._widget.tiltSpinBox.setValue(0);
         command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [0.0, 0.0])
         self.modePublisher.publish(command)
 
@@ -82,6 +110,22 @@ class HeadControl(Plugin):
         tilt = float(self._widget.tiltSpinBox.value()) / 360.0 * 2 * pi
         command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [pan, tilt])
         self.modePublisher.publish(command)
+
+    def setManualControlsEnabled(self, enabled):
+        self.manualControlsEnabled = enabled
+        self._widget.panGroupBox.setEnabled(enabled)
+        self._widget.tiltGroupBox.setEnabled(enabled)
+
+    def updateJointStates(self, jointStateMessage):
+        if(not(self.manualControlsEnabled)):
+            panIndex = jointStateMessage.name.index('head_pan')
+            tiltIndex = jointStateMessage.name.index('head_tilt')
+            pan = int(jointStateMessage.position[panIndex] * 360.0 / (2.0*pi))
+            tilt = int(jointStateMessage.position[tiltIndex] * 360.0 / (2.0*pi))
+            #self._widget.panSpinBox.setValue(pan)
+            #self._widget.tiltSpinBox.setValue(tilt)
+            self.emit(SIGNAL("panChanged"), pan)
+            self.emit(SIGNAL("tiltChanged"), tilt)
 
 
     def shutdown_plugin(self):
