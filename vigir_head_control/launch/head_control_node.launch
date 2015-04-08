@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <launch>
-<node name="head_control_node" pkg="vigir_head_control" type="vigir_head_control_node" respawn="true" />
+<node name="head_control_node" pkg="vigir_head_control" type="vigir_head_control_node" respawn="true" output="screen"/>
 </launch>
