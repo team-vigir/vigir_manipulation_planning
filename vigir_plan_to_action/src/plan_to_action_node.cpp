@@ -57,17 +57,25 @@ class PlanToAction
 {
 public:
 
+  enum MotionSource{
+    NO_GRASP,
+    LEFT_GRASP,
+    RIGHT_GRASP
+  };
+
   PlanToAction()
   {
+    motion_source_= NO_GRASP;
+
     ros::NodeHandle nh("");
 
     // Trajectory Controllers
-    /*
+
     l_arm_traj_pub_ = nh.advertise<trajectory_msgs::JointTrajectory>("l_arm_trajectory",1,false);
     r_arm_traj_pub_ = nh.advertise<trajectory_msgs::JointTrajectory>("r_arm_trajectory",1,false);
     torso_traj_pub_ = nh.advertise<trajectory_msgs::JointTrajectory>("torso_trajectory",1,false);
     neck_traj_pub_  = nh.advertise<trajectory_msgs::JointTrajectory>("neck_trajectory",1,false);
-    */
+
 
     // Connection to planning service
     /*
@@ -137,19 +145,15 @@ public:
 
   void planRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr& msg)
   {
-    flor_ocs_msgs::OCSRobotStatus status;
-
-    if (!planAndMove(*msg, &status)){
-      //status.stamp  = ros::Time::now();
-      //plan_status_pub_.publish(status); // publish original message first
-      //status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
-    }
-
-    //plan_status_pub_.publish(status);
+    motion_source_= NO_GRASP;
+    planAndMove(*msg);
   }
 
   void lGraspRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr& msg)
   {
+    motion_source_= LEFT_GRASP;
+    planAndMove(*msg);
+    /*
     flor_ocs_msgs::OCSRobotStatus status;
 
     if (!planAndMove(*msg, &status)){
@@ -160,10 +164,15 @@ public:
 
     l_grasp_status_pub_.publish(status);
     //plan_status_pub_.publish(status);
+    */
   }
 
   void rGraspRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr& msg)
   {
+    motion_source_= RIGHT_GRASP;
+    planAndMove(*msg);
+
+    /*
     flor_ocs_msgs::OCSRobotStatus status;
 
     if (!planAndMove(*msg, &status)){
@@ -174,23 +183,19 @@ public:
 
     r_grasp_status_pub_.publish(status);
     //plan_status_pub_.publish(status);
+    */
   }
 
   void planJointRequestCallback(const flor_planning_msgs::PlanToJointTargetRequest::ConstPtr& msg)
   {
-    flor_ocs_msgs::OCSRobotStatus status;
-
-    if (!planAndMoveToJoints(*msg, &status)){
-      //status.stamp = ros::Time::now();
-      //plan_status_pub_.publish(status); // publish original message first
-      //status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
-    }
-
-    //plan_status_pub_.publish(status);
+    motion_source_= NO_GRASP;
+    planAndMoveToJoints(*msg);
   }
 
   void planCircularRequestCallback(const flor_planning_msgs::CircularMotionRequest::ConstPtr& msg)
   {
+    motion_source_= NO_GRASP;
+
     goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor);
 
     goal_.request.group_name = msg->planning_group;
@@ -212,35 +217,13 @@ public:
     move_action_client_->sendGoal(goal_,
                                   boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
                                   boost::bind(&PlanToAction::moveActionActiveCallback, this),
-                                  boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));
+                                  boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));    
   }
 
   void planCartesianRequestCallback(const flor_planning_msgs::CartesianMotionRequest::ConstPtr& msg)
   {
-    /*
-    flor_planning_msgs::GetMotionPlanForCartesianWaypoints plan_srv;
+    motion_source_= NO_GRASP;
 
-    plan_srv.request.plan_request = *msg;
-
-    flor_ocs_msgs::OCSRobotStatus status;
-
-    if (cartesian_planning_srv_client_.call(plan_srv))
-    {
-      if (plan_srv.response.status == flor_planning_msgs::GetMotionPlanForPose::Response::OK){
-        splitAndSendTrajectory(plan_srv.response.trajectory, msg->planning_group);
-        ROS_INFO("Succesfully planned and sent cartesian waypoint trajectory to planner.");
-      }
-      ROS_DEBUG("Called cartesian waypoint planning service with return status %d", (int)plan_srv.response.status);
-      setStatus(plan_srv.response.status, status);
-      plan_status_pub_.publish(status);
-    }else{
-      ROS_ERROR("Service call to circular trajectory planning service returned false.");
-      //status.stamp = ros::Time::now();
-      //status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_UNKNOWN_FAILURE, RobotStatusCodes::ERROR);
-      setStatus(plan_srv.response.status, status);
-      plan_status_pub_.publish(status);
-    }
-    */
     goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor);
 
     goal_.request.group_name = msg->planning_group;
@@ -260,8 +243,7 @@ public:
     move_action_client_->sendGoal(goal_,
                                   boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
                                   boost::bind(&PlanToAction::moveActionActiveCallback, this),
-                                  boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));
-
+                                  boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));    
   }
 
   void planExecuteCallback(const trajectory_msgs::JointTrajectory::ConstPtr& msg) const
@@ -368,32 +350,8 @@ public:
   }
 
 
-  bool planAndMove(const flor_planning_msgs::PlanRequest& plan_request, flor_ocs_msgs::OCSRobotStatus* status = 0)
+  bool planAndMove(const flor_planning_msgs::PlanRequest& plan_request)
   {
-    /*
-    flor_planning_msgs::GetMotionPlanForPose plan_srv;
-
-    plan_srv.request.plan_request = plan_request;
-
-    if (pose_planning_srv_client_.call(plan_srv))
-    {
-      if (plan_srv.response.status == flor_planning_msgs::GetMotionPlanForPose::Response::OK){
-        splitAndSendTrajectory(plan_srv.response.trajectory, plan_srv.response.used_planning_group.data);
-      }
-
-      if (status){
-        this->setStatus(plan_srv.response.status, *status);
-      }
-
-      return true;
-    }else{
-      if (status){
-          this->setStatus(plan_srv.response.status, *status);
-      }
-      return false;
-    }
-    */
-
     goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor);
 
     //@TODO Convert from vigir to moveit constraints
@@ -415,33 +373,12 @@ public:
                                   boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
                                   boost::bind(&PlanToAction::moveActionActiveCallback, this),
                                   boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));
+
+    return true;
   }
 
-  bool planAndMoveToJoints(const flor_planning_msgs::PlanToJointTargetRequest plan_request, flor_ocs_msgs::OCSRobotStatus* status = 0)
+  bool planAndMoveToJoints(const flor_planning_msgs::PlanToJointTargetRequest plan_request)
   {
-    /*
-    flor_planning_msgs::GetMotionPlanForJoints plan_srv;
-
-    plan_srv.request.plan_request = plan_request;
-
-    if (joints_planning_srv_client_.call(plan_srv))
-    {
-      ROS_DEBUG ("Planning service called succesfully. Status: %d Used group: %s", plan_srv.response.status, plan_srv.response.used_planning_group.data.c_str());
-      if (plan_srv.response.status == flor_planning_msgs::GetMotionPlanForPose::Response::OK || plan_srv.response.status == flor_planning_msgs::GetMotionPlanForPose::Response::OCTOMAP_WARNING){
-        splitAndSendTrajectory(plan_srv.response.trajectory, plan_srv.response.used_planning_group.data);
-      }
-
-      if (status){
-        this->setStatus(plan_srv.response.status, *status);
-      }
-
-      return true;
-    }else{
-      if (status){
-         this->setStatus(plan_srv.response.status, *status);
-      }
-      return false;
-    }*/
     goal_.request.group_name = plan_request.planning_group;
     goal_.request.num_planning_attempts = 1;
     goal_.request.max_velocity_scaling_factor = 1.0;
@@ -468,6 +405,8 @@ public:
                                   boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
                                   boost::bind(&PlanToAction::moveActionActiveCallback, this),
                                   boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));
+
+    return true;
   }
 
   void moveActionDoneCallback(const actionlib::SimpleClientGoalState& state, const vigir_planning_msgs::MoveResultConstPtr& result)
@@ -475,22 +414,16 @@ public:
     flor_ocs_msgs::OCSRobotStatus status;
 
     status.stamp = ros::Time::now();
-
-    //@TODO: Fill status msg here
-    ROS_INFO("Move Action done callback, error code: %d", result->error_code.val);
-    switch (result->error_code.val)
-    {
-      case moveit_msgs::MoveItErrorCodes::SUCCESS:
-        status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_MOVEIT_PLAN_ACTIVE, RobotStatusCodes::OK);
-        break;
-      case moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION:
-        status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_IK_FAILED, RobotStatusCodes::ERROR);
-        break;
-      default:
-        status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
-    }
+    status.status = this->moveitErrorCodeToPlannerStatus(result->error_code.val);
 
     plan_status_pub_.publish(status);
+
+    if (motion_source_ == LEFT_GRASP){
+      this->l_grasp_status_pub_.publish(status);
+    }else if (motion_source_ == RIGHT_GRASP){
+      this->r_grasp_status_pub_.publish(status);
+    }
+
   }
 
   void moveActionActiveCallback()
@@ -500,12 +433,20 @@ public:
       flor_ocs_msgs::OCSRobotStatus status;
       status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_MOVEIT_PLAN_ACTIVE, RobotStatusCodes::OK);
       plan_status_pub_.publish(status);
+
+      if (motion_source_ == LEFT_GRASP){
+        this->l_grasp_status_pub_.publish(status);
+      }else if (motion_source_ == RIGHT_GRASP){
+        this->r_grasp_status_pub_.publish(status);
+      }
   }
 
   void moveActionFeedbackCallback(const vigir_planning_msgs::MoveFeedbackConstPtr& feedback)
   {
       ROS_INFO("Move Action feedback callback: %s", feedback->state.c_str());
   }
+
+
 
   // Assumes groups are named according to special conventions
   std::string inferGroupNameFromTrajectory(const trajectory_msgs::JointTrajectory& traj) const
@@ -560,6 +501,9 @@ public:
 
   }
 
+
+
+
   // Performs no checks, make sure you feed with correct data
   trajectory_msgs::JointTrajectory splitTrajectoryData(const trajectory_msgs::JointTrajectory& traj, size_t min, size_t max) const
   {
@@ -605,6 +549,49 @@ public:
     return traj_out;
   }
 
+
+
+  uint16_t moveitErrorCodeToPlannerStatus(const int32_t& ec)
+  {
+      switch(ec)
+      {
+      case moveit_msgs::MoveItErrorCodes::SUCCESS:
+          return RobotStatusCodes::status(RobotStatusCodes::PLANNER_MOVEIT_PLAN_ACTIVE, RobotStatusCodes::OK);
+      case moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION:
+          return RobotStatusCodes::status(RobotStatusCodes::PLANNER_IK_FAILED, RobotStatusCodes::ERROR);
+      case moveit_msgs::MoveItErrorCodes::FAILURE:
+      case moveit_msgs::MoveItErrorCodes::PLANNING_FAILED:
+      case moveit_msgs::MoveItErrorCodes::TIMED_OUT:
+      case moveit_msgs::MoveItErrorCodes::PREEMPTED:
+          return RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
+       case moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN:
+          return RobotStatusCodes::status(RobotStatusCodes::PLANNING_INVALID_PLAN, RobotStatusCodes::ERROR);
+       case moveit_msgs::MoveItErrorCodes::START_STATE_IN_COLLISION :
+       case moveit_msgs::MoveItErrorCodes::START_STATE_VIOLATES_PATH_CONSTRAINTS:
+          return RobotStatusCodes::status(RobotStatusCodes::PLANNING_INVALID_START, RobotStatusCodes::ERROR);
+       case moveit_msgs::MoveItErrorCodes::GOAL_IN_COLLISION:
+       case moveit_msgs::MoveItErrorCodes::GOAL_VIOLATES_PATH_CONSTRAINTS:
+       case moveit_msgs::MoveItErrorCodes::GOAL_CONSTRAINTS_VIOLATED:
+          return RobotStatusCodes::status(RobotStatusCodes::PLANNING_INVALID_GOAL, RobotStatusCodes::ERROR);
+       case moveit_msgs::MoveItErrorCodes::INVALID_GROUP_NAME:
+       case moveit_msgs::MoveItErrorCodes::INVALID_GOAL_CONSTRAINTS:
+       case moveit_msgs::MoveItErrorCodes::INVALID_ROBOT_STATE:
+       case moveit_msgs::MoveItErrorCodes::INVALID_LINK_NAME:
+       case moveit_msgs::MoveItErrorCodes::INVALID_OBJECT_NAME:
+       case moveit_msgs::MoveItErrorCodes::FRAME_TRANSFORM_FAILURE:
+          return RobotStatusCodes::status(RobotStatusCodes::PLANNING_INVALID_REQUEST, RobotStatusCodes::ERROR);
+       case moveit_msgs::MoveItErrorCodes::COLLISION_CHECKING_UNAVAILABLE:
+       case moveit_msgs::MoveItErrorCodes::ROBOT_STATE_STALE:
+       case moveit_msgs::MoveItErrorCodes::SENSOR_INFO_STALE:
+       default:
+          return RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
+      }
+
+      return RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
+  }
+
+
+  /* @TODO Below is obsolete, remove once clear that is ok.
   //Sets status for OCS feedback
   void setStatus(uint8_t plan_status, flor_ocs_msgs::OCSRobotStatus& status) const
   {
@@ -675,6 +662,7 @@ public:
         break;
     }
   }
+  */
 
   template<typename T>
   void waitForAction(const T &action, const ros::Duration &wait_for_server, const std::string &name)
@@ -736,6 +724,8 @@ protected:
 
   ros::Subscriber plan_execute_sub_;
 
+  // This now only publishes in the two action callbacks
+  // (start and done)
   ros::Publisher plan_status_pub_;
 
   // Below should go away in the future, use Actions instead
@@ -758,6 +748,8 @@ protected:
 
   robot_model_loader::RobotModelLoaderPtr robot_model_loader_;
   robot_model::RobotModelPtr robot_model_;
+
+  MotionSource motion_source_;
 
 };
 
