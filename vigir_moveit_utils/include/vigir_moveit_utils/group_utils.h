@@ -52,14 +52,14 @@ namespace group_utils{
                                    std::vector<double>& consistency_limits,
                                    std::vector<std::string>& redundant_joints_vector)
   {
-
-    //const robot_model::JointModelGroup* group = joint_state_group->getJointModelGroup();
+    //std::cout << "constraint name: " << constraint.joint_name <<
+    //             " above: " << constraint.tolerance_above <<
+    //             " below: " << constraint.tolerance_below << "\n";
 
     if (!group->hasJointModel(constraint.joint_name)){
+      ROS_ERROR("Wrong joint name %s for constraint, not using!", constraint.joint_name.c_str());
       return;
     }
-
-    //const moveit::core::JointModel* joint_model  = group->getJointModel(link_name);
 
     int idx = group->getVariableGroupIndex(constraint.joint_name);
 
@@ -83,37 +83,14 @@ namespace group_utils{
     }
   }
 
-  //@TODO: Below is obsolete, remove once refactoring complete
-  /*
-  static bool setJointPlanningConstraint(moveit_msgs::JointConstraint& constraint, const std::string& name, const robot_state::RobotState& robot_state, double min_angle, double max_angle, double weight)
-  {
-    double limit_range = (max_angle - min_angle) * 0.5;
-    double seed_angle = min_angle + limit_range;
-
-    constraint.joint_name = name;
-    constraint.position = seed_angle;
-    constraint.tolerance_above =  limit_range;
-    constraint.tolerance_below =  limit_range;
-    constraint.weight = weight;
-
-    //This means joint should be locked
-    if ((min_angle > 99.0) && (max_angle > 99.0)){
-      double angle = robot_state.getVariablePosition(name);
-      constraint.position = angle;
-      constraint.tolerance_above = 0.001;
-      constraint.tolerance_below = 0.001;
-    }
-
-
-    return true;
-  }
-  */
 
   static bool setJointModelGroupFromIk(robot_state::RobotState &state,
                                        const robot_model::JointModelGroup* group,
                                        const geometry_msgs::Pose& goal_pose,
                                        const std::vector<moveit_msgs::JointConstraint>& torso_joint_position_constraints_)
   {
+
+    //std::cout << "size: " << torso_joint_position_constraints_.size() << "\n";
 
     if (group == NULL){
       ROS_WARN("Group null pointer, cannot generate IK");
@@ -123,8 +100,6 @@ namespace group_utils{
     // Could query multiple groups or poses here
     ROS_DEBUG_STREAM("----- pre IK tx: " << goal_pose.position.x << " ty: " << goal_pose.position.y << " tz: " << goal_pose.position.z << "\n");
     //ROS_DEBUG_STREAM("----- pre IK frame: " << goal_pose.header.frame_id << "\n");
-
-    //const robot_model::JointModelGroup* group = joint_state_group->getJointModelGroup();
 
     const kinematics::KinematicsBaseConstPtr& solver = group->getSolverInstance();
 
@@ -159,8 +134,9 @@ namespace group_utils{
 
     if (redundant_joints_vector.size() == 0){
       success = state.setFromIK(group, mat, tip_frame, consistency_limits, 1, 0.1);
+      //std::cout << "zero redundant\n";
     }else{
-
+      //std::cout << "nonzero redundant\n";
       robot_model::JointModelGroup group_cpy = *group;
 
       const kinematics::KinematicsBasePtr& solver = group_cpy.getSolverInstance();

@@ -3,8 +3,6 @@
 
 <launch>
 
-<include file="$(find thor_vt_hand_ros_control)/launch/l_vt_hand_sim_trajectory_controllers.launch"/>
-
 <!-- -->
 <!--<node name="left_vigir_manipulation_controller"  pkg="thor_vt_hand_grasp_controller" type="thor_vt_hand_grasp_controller_node" respawn="true" >--><!-- output="screen" launch-prefix="xterm -e gdb -ex r"-->
 
