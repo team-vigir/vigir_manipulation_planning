@@ -78,7 +78,7 @@ namespace head_control{
         joint_trajectory_pub.publish(jointTrajectory);
     }
 
-    std::vector<double> HeadControl::computeJointsLeftHandTracking(const geometry_msgs::PoseStamped &pose){
+    std::vector<double> HeadControl::computeJointsForTracking(const geometry_msgs::PoseStamped &pose){
         //TODO:: implement
         geometry_msgs::PointStamped lookat_point;
         lookat_point.header=pose.header;
@@ -121,29 +121,18 @@ namespace head_control{
             return joints;
     }
 
-    std::vector<double> HeadControl::computeJointsRightHandTracking(const geometry_msgs::PoseStamped &pose){
-        //TODO:: implement
-        double pan = 1.0;
-        double tilt = 1.0;
-        std::vector<double> joints;
-        joints.push_back(pan);
-        joints.push_back(tilt);
-
-        return joints;
-    }
 
     void HeadControl::trackLeftHandCb(const geometry_msgs::PoseStamped &pose){
         //std::cout << "In Callback !!!!!"<<std::endl;
         if(tracking_mode == head_tracking_mode::LEFT_HAND_TRACKING){
-             std::cout << "In If !!!!!"<<std::endl;
-            std::vector<double> joints = computeJointsLeftHandTracking(pose);
+            std::vector<double> joints = computeJointsForTracking(pose);
             setHeadJointPosition(joints[0], joints[1]);
         }
     }
 
     void HeadControl::trackRightHandCb(const geometry_msgs::PoseStamped &pose){
         if(tracking_mode == head_tracking_mode::RIGHT_HAND_TRACKING){
-            std::vector<double> joints = computeJointsRightHandTracking(pose);
+            std::vector<double> joints = computeJointsForTracking(pose);
             setHeadJointPosition(joints[0], joints[1]);
         }
     }

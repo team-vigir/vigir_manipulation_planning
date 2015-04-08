@@ -22,8 +22,8 @@ namespace head_control{
       void trackRightHandCb(const geometry_msgs::PoseStamped &pose);
 
       void setHeadJointPosition(const double pan, const double tilt);
-      std::vector<double> computeJointsLeftHandTracking(const geometry_msgs::PoseStamped &pose);
-      std::vector<double> computeJointsRightHandTracking(const geometry_msgs::PoseStamped &pose);
+      std::vector<double> computeJointsForTracking(const geometry_msgs::PoseStamped &pose);
+
     private:
       unsigned char tracking_mode;
       ros::Publisher joint_trajectory_pub;
