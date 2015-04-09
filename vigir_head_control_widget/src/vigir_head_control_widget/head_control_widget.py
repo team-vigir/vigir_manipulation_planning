@@ -1,22 +1,30 @@
 import os
+import thread
+
 import rospy
 import rospkg
+import tf
 
 from math import pi
 
 from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
-from PySide.QtCore import SIGNAL
+from PySide import QtCore
 
 from std_msgs.msg import String
 from vigir_planning_msgs.msg import HeadControlCommand
 from sensor_msgs.msg import JointState
+from tf2_msgs.msg import TFMessage
+
+
+from PySide.QtGui import QComboBox
 
 
 class HeadControl(Plugin):
 
-    manualControlsEnabled = True
+    manualControlsEnabled = False
+    running = True
 
     def __init__(self, context):
         super(HeadControl, self).__init__(context)
@@ -24,10 +32,13 @@ class HeadControl(Plugin):
         self.setObjectName('Head Control')
 
         # Publisher
-        self.modePublisher = rospy.Publisher('/thor_mang/head_control_mode', HeadControlCommand)
+        self.modePublisher = rospy.Publisher('/thor_mang/head_control_mode', HeadControlCommand, queue_size=0)
 
         # Subscriber
         self.jointSubscriber = rospy.Subscriber('/thor_mang/joint_states', JointState, self.updateJointStates)
+
+        # Tf
+        self.tfListener = tf.TransformListener()
 
         # Process standalone plugin command-line arguments
         from argparse import ArgumentParser
@@ -67,22 +78,21 @@ class HeadControl(Plugin):
 
         self._widget.zeroPushButton.pressed.connect(self.zeroPushButtonPressed)
 
-        self._widget.panDial.sliderReleased.connect(self.manualJointChanged)
-        self._widget.panSlider.sliderReleased.connect(self.manualJointChanged)
-        self._widget.panSpinBox.editingFinished.connect(self.manualJointChanged)
-        self._widget.tiltSlider.sliderReleased.connect(self.manualJointChanged)
-        self._widget.tiltSpinBox.editingFinished.connect(self.manualJointChanged)
+        self._widget.tiltSpinBox.valueChanged.connect(self.manualJointChanged)
+        self._widget.panSpinBox.valueChanged.connect(self.manualJointChanged)
 
-        #self._widget.panDial.valueChanged.connect(self.manualJointChanged)
-        #self._widget.panSlider.valueChanged.connect(self.manualJointChanged)
-        #self._widget.panSpinBox.editingFinished.connect(self.manualJointChanged)
-        #self._widget.tiltSlider.valueChanged.connect(self.manualJointChanged)
-        #self._widget.tiltSpinBox.editingFinished.connect(self.manualJointChanged)
+        self.connect(self, QtCore.SIGNAL("panChanged"), self._widget.panSlider.setValue)
+        self.connect(self, QtCore.SIGNAL("tiltChanged"), self._widget.tiltSlider.setValue)
 
-        self.connect(self, SIGNAL("panChanged"), self._widget.panSlider.setValue)
-        self.connect(self, SIGNAL("tiltChanged"), self._widget.tiltSlider.setValue)
+        self.connect(self, QtCore.SIGNAL("setComboBoxItems"), self._widget.trackFrameCombobox.addItems)
+        self.connect(self, QtCore.SIGNAL("clearComboBox"), self._widget.trackFrameCombobox.clear)
 
+        #TODO: I think, TF starts it's own thread here that does not exit properly
+        thread.start_new_thread(self.updateTfFrames,())
 
+    '''
+    Radio Buttons
+    '''
     def modeManualRadioButtonToggled(self, pressed):
         self.setManualControlsEnabled(pressed)
 
@@ -97,19 +107,31 @@ class HeadControl(Plugin):
     def modeTrackFrameRadioButtonToggled(self, pressed):
         pass
 
+    '''
+    Spinbox
+    '''
+    def panSpinBoxEditingFinished(self):
+        self._widget.panDial.setValue(self._widget.panSpinBox.value())
+        self._widget.panSlider.setValue(self._widget.panSpinBox.value())
+
+    def tiltSpinBoxEditingFinished(self):
+        self._widget.tiltSlider.setValue(self._widget.tiltSpinBox.value())
+
 
     def zeroPushButtonPressed(self):
-        self._widget.modeManualRadioButton.setChecked(True);
+        self._widget.modeOffRadioButton.setChecked(True);
         self._widget.panSpinBox.setValue(0);
         self._widget.tiltSpinBox.setValue(0);
         command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [0.0, 0.0])
         self.modePublisher.publish(command)
 
     def manualJointChanged(self):
-        pan = float(self._widget.panSpinBox.value()) / 360.0 * 2 * pi
-        tilt = float(self._widget.tiltSpinBox.value()) / 360.0 * 2 * pi
-        command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [pan, tilt])
-        self.modePublisher.publish(command)
+        if(self.manualControlsEnabled):
+            pan = float(self._widget.panSpinBox.value()) / 360.0 * 2 * pi
+            tilt = float(self._widget.tiltSpinBox.value()) / 360.0 * 2 * pi
+            command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [pan, tilt])
+            self.modePublisher.publish(command)
+            print "Sending Manual Joints"
 
     def setManualControlsEnabled(self, enabled):
         self.manualControlsEnabled = enabled
@@ -122,15 +144,29 @@ class HeadControl(Plugin):
             tiltIndex = jointStateMessage.name.index('head_tilt')
             pan = int(jointStateMessage.position[panIndex] * 360.0 / (2.0*pi))
             tilt = int(jointStateMessage.position[tiltIndex] * 360.0 / (2.0*pi))
-            #self._widget.panSpinBox.setValue(pan)
-            #self._widget.tiltSpinBox.setValue(tilt)
-            self.emit(SIGNAL("panChanged"), pan)
-            self.emit(SIGNAL("tiltChanged"), tilt)
+            self.emit(QtCore.SIGNAL("panChanged"), pan)
+            self.emit(QtCore.SIGNAL("tiltChanged"), tilt)
+
+    def updateTfFrames(self):
+        currentFrames = []
+        while(self.running):
+            try:
+                rospy.wait_for_message("/tf", TFMessage, 1)
+            except(rospy.ROSException),e:
+                pass
+            newFrames = self.tfListener.getFrameStrings()
+            if not newFrames == currentFrames and self.running:
+                currentFrames = newFrames
+                self.emit(QtCore.SIGNAL("clearComboBox"), currentFrames)
+                self.emit(QtCore.SIGNAL("setComboBoxItems"), currentFrames)
+                #print currentFrames
 
 
     def shutdown_plugin(self):
+        self.running = False
         # TODO unregister all publishers here
-        pass
+        self.jointSubscriber.unregister()
+        self.modePublisher.unregister()
 
     def save_settings(self, plugin_settings, instance_settings):
         # TODO save intrinsic configuration, usually using:

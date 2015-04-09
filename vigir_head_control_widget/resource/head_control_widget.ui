@@ -41,12 +41,22 @@
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
+         <widget class="QRadioButton" name="modeOffRadioButton">
+          <property name="text">
+           <string>Off</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QRadioButton" name="modeManualRadioButton">
           <property name="text">
            <string>Manual</string>
           </property>
           <property name="checked">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
          </widget>
         </item>
@@ -114,7 +124,7 @@
      <item>
       <widget class="QGroupBox" name="panGroupBox">
        <property name="enabled">
-        <bool>true</bool>
+        <bool>false</bool>
        </property>
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
@@ -163,7 +173,7 @@
            <number>0</number>
           </property>
           <property name="tracking">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
           <property name="wrapping">
            <bool>true</bool>
@@ -191,7 +201,7 @@
            <number>0</number>
           </property>
           <property name="tracking">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -206,6 +216,9 @@
         </item>
         <item>
          <widget class="QSpinBox" name="panSpinBox">
+          <property name="keyboardTracking">
+           <bool>false</bool>
+          </property>
           <property name="minimum">
            <number>-180</number>
           </property>
@@ -219,6 +232,9 @@
      </item>
      <item>
       <widget class="QGroupBox" name="tiltGroupBox">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -253,7 +269,7 @@
            <number>0</number>
           </property>
           <property name="tracking">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
           <property name="orientation">
            <enum>Qt::Vertical</enum>
@@ -268,17 +284,29 @@
            <enum>QSlider::TicksBothSides</enum>
           </property>
           <property name="tickInterval">
-           <number>15</number>
+           <number>45</number>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QSpinBox" name="tiltSpinBox">
+          <property name="wrapping">
+           <bool>false</bool>
+          </property>
+          <property name="buttonSymbols">
+           <enum>QAbstractSpinBox::UpDownArrows</enum>
+          </property>
+          <property name="keyboardTracking">
+           <bool>false</bool>
+          </property>
           <property name="minimum">
            <number>-90</number>
           </property>
           <property name="maximum">
            <number>90</number>
+          </property>
+          <property name="singleStep">
+           <number>1</number>
           </property>
          </widget>
         </item>
@@ -340,22 +368,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>panSpinBox</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>panDial</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>437</x>
-     <y>431</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>352</x>
-     <y>149</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>panSlider</sender>
    <signal>valueChanged(int)</signal>
    <receiver>panSpinBox</receiver>
@@ -372,22 +384,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>panSpinBox</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>panSlider</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>437</x>
-     <y>431</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>437</x>
-     <y>402</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>tiltSlider</sender>
    <signal>valueChanged(int)</signal>
    <receiver>tiltSpinBox</receiver>
@@ -398,7 +394,7 @@
      <y>170</y>
     </hint>
     <hint type="destinationlabel">
-     <x>730</x>
+     <x>696</x>
      <y>431</y>
     </hint>
    </hints>
@@ -410,12 +406,44 @@
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>730</x>
-     <y>431</y>
+     <x>599</x>
+     <y>420</y>
     </hint>
     <hint type="destinationlabel">
-     <x>592</x>
-     <y>174</y>
+     <x>599</x>
+     <y>221</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>panSpinBox</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>panSlider</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>318</x>
+     <y>421</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>323</x>
+     <y>393</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>panSpinBox</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>panDial</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>291</x>
+     <y>415</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>306</x>
+     <y>298</y>
     </hint>
    </hints>
   </connection>
