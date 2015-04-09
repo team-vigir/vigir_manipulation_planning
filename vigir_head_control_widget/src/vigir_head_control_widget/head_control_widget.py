@@ -81,6 +81,8 @@ class HeadControl(Plugin):
         self._widget.tiltSpinBox.valueChanged.connect(self.manualJointChanged)
         self._widget.panSpinBox.valueChanged.connect(self.manualJointChanged)
 
+        self._widget.trackFrameCombobox.currentIndexChanged.connect(self.comboBoxTextChange)
+
         self.connect(self, QtCore.SIGNAL("panChanged"), self._widget.panSlider.setValue)
         self.connect(self, QtCore.SIGNAL("tiltChanged"), self._widget.tiltSlider.setValue)
 
@@ -97,15 +99,29 @@ class HeadControl(Plugin):
         self.setManualControlsEnabled(pressed)
 
     def modeTrackLeftRadioButtonToggled(self, pressed):
-        command = HeadControlCommand(HeadControlCommand.TRACK_LEFT_HAND, [], "")
-        self.modePublisher.publish(command)
+        if pressed:
+            command = HeadControlCommand(HeadControlCommand.TRACK_LEFT_HAND, [], "")
+            self.modePublisher.publish(command)
 
     def modeTrackRightRadioButtonToggled(self, pressed):
-        command = HeadControlCommand(HeadControlCommand.TRACK_RIGHT_HAND, [], "")
-        self.modePublisher.publish(command)
+        if pressed:
+            command = HeadControlCommand(HeadControlCommand.TRACK_RIGHT_HAND, [], "")
+            self.modePublisher.publish(command)
 
     def modeTrackFrameRadioButtonToggled(self, pressed):
-        pass
+        if pressed:
+            frame = str(self._widget.trackFrameCombobox.currentText())
+            command = HeadControlCommand(HeadControlCommand.TRACK_FRAME, [], frame)
+            self.modePublisher.publish(command)
+
+    '''
+    Combobox
+    '''
+    def comboBoxTextChange(self):
+        if self._widget.modeTrackFrameRadioButton.isChecked():
+            frame = str(self._widget.trackFrameCombobox.currentText())
+            command = HeadControlCommand(HeadControlCommand.TRACK_FRAME, [], frame)
+            self.modePublisher.publish(command)
 
     '''
     Spinbox
@@ -122,8 +138,8 @@ class HeadControl(Plugin):
         self._widget.modeOffRadioButton.setChecked(True);
         self._widget.panSpinBox.setValue(0);
         self._widget.tiltSpinBox.setValue(0);
-        command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [0.0, 0.0])
-        self.modePublisher.publish(command, "")
+        command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [0.0, 0.0], "")
+        self.modePublisher.publish(command)
 
     def manualJointChanged(self):
         if(self.manualControlsEnabled):
