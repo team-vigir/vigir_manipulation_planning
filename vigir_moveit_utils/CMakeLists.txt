@@ -5,10 +5,13 @@ project(vigir_moveit_utils)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  cmake_modules
   moveit_core
   moveit_msgs
   visualization_msgs
 )
+
+find_package(Eigen REQUIRED)
 
 catkin_package(
 INCLUDE_DIRS include

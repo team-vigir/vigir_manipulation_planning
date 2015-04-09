@@ -1,0 +1,3 @@
+<launch>
+<node name="head_control_node" pkg="vigir_head_control" type="vigir_head_control_node" respawn="true" />
+</launch>

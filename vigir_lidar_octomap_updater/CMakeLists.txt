@@ -14,9 +14,9 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 catkin_package(
-#  INCLUDE_DIRS include
+  INCLUDE_DIRS include
 #  LIBRARIES vigir_lidar_octomap_updater
-#  CATKIN_DEPENDS moveit_ros_perception pluginlib roscpp
+  CATKIN_DEPENDS moveit_ros_perception pluginlib roscpp vigir_perception_msgs
 #  DEPENDS system_lib
 )
 
@@ -27,6 +27,8 @@ include_directories(
 
 set(MOVEIT_LIB_NAME vigir_lidar_octomap_updater)
 
+
+
 add_library(${MOVEIT_LIB_NAME}_core src/lidar_octomap_updater.cpp)
 target_link_libraries(${MOVEIT_LIB_NAME}_core ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 set_target_properties(${MOVEIT_LIB_NAME}_core PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
@@ -34,6 +36,8 @@ set_target_properties(${MOVEIT_LIB_NAME}_core PROPERTIES LINK_FLAGS "${CMAKE_CXX
 
 add_library(${MOVEIT_LIB_NAME} src/plugin_init.cpp)
 target_link_libraries(${MOVEIT_LIB_NAME} ${MOVEIT_LIB_NAME}_core ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+
+add_dependencies(${MOVEIT_LIB_NAME}_core ${catkin_EXPORTED_TARGETS})
 
 install(DIRECTORY include/ DESTINATION include)
 
