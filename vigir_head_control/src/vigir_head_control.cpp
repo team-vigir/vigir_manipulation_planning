@@ -10,7 +10,10 @@ namespace head_control{
         ROS_DEBUG("Creating Head Controler");
         ros::NodeHandle nh_("");
 
-        head_control_sub = nh_.subscribe("/thor_mang/head_control_mode", 10, &HeadControl::HeadControlCb, this);
+        head_control_sub = nh_.subscribe("/thor_mang/head_control_mode", 1, &HeadControl::HeadControlCb, this);
+
+        tf_sub = nh_.subscribe("/tf", 10, &HeadControl::tfCb, this);
+
         left_hand_sub = nh_.subscribe("/flor/l_arm_current_pose", 1, &HeadControl::trackLeftHandCb, this);
         right_hand_sub = nh_.subscribe("/flor/r_arm_current_pose", 1, &HeadControl::trackRightHandCb, this);
 
@@ -43,8 +46,9 @@ namespace head_control{
             tracking_mode = head_tracking_mode::LEFT_HAND_TRACKING;
         } else if (command.motion_type == vigir_planning_msgs::HeadControlCommand::TRACK_RIGHT_HAND){
             tracking_mode = head_tracking_mode::RIGHT_HAND_TRACKING;
-            //std::vector<double> joints = computeJointsRightHandTracking();
-            //setHeadJointPosition(joints[0], joints[1]);
+        }else if (command.motion_type == vigir_planning_msgs::HeadControlCommand::TRACK_FRAME){
+            tracking_frame = command.tracking_frame;
+            tracking_mode = head_tracking_mode::FRAME_TRACKING;
         }else{
             ROS_WARN("Received invalid Head Control Mode: %u", command.motion_type);
         }
@@ -84,42 +88,91 @@ namespace head_control{
         lookat_point.point=pose.pose.position;
         geometry_msgs::PointStamped lookat_camera;
 
-            tf::StampedTransform base_camera_transform;
+        tf::StampedTransform base_camera_transform;
 
-            try {
-              tf.waitForTransform("utorso", lookat_point.header.frame_id, ros::Time(), ros::Duration(1.0));
-              tf.transformPoint("utorso", ros::Time(), lookat_point, lookat_point.header.frame_id, lookat_camera);
-            } catch (std::runtime_error& e) {
-              ROS_WARN("Could not transform look_at position to target frame_id %s", e.what());
-                 //TODO return  !!!!
-            }
+        try {
+          tf.waitForTransform("utorso", lookat_point.header.frame_id, ros::Time(), ros::Duration(1.0));
+          tf.transformPoint("utorso", ros::Time(), lookat_point, lookat_point.header.frame_id, lookat_camera);
+        } catch (std::runtime_error& e) {
+          ROS_WARN("Could not transform look_at position to target frame_id %s", e.what());
+             //TODO return  !!!!
+        }
 
-            try {
-              tf.waitForTransform("utorso", "head_cam_link", ros::Time(), ros::Duration(1.0));
-              tf.lookupTransform("utorso", "head_cam_link", ros::Time(), base_camera_transform);
-            } catch (std::runtime_error& e) {
-              ROS_WARN("Could not transform from base frame to camera_frame %s", e.what());
-              //TODO return  !!!!
-            }
+        try {
+          tf.waitForTransform("utorso", "head_cam_link", ros::Time(), ros::Duration(1.0));
+          tf.lookupTransform("utorso", "head_cam_link", ros::Time(), base_camera_transform);
+        } catch (std::runtime_error& e) {
+          ROS_WARN("Could not transform from base frame to camera_frame %s", e.what());
+          //TODO return  !!!!
+        }
 
-            geometry_msgs::QuaternionStamped orientation;
-            orientation.header = lookat_camera.header;
-            orientation.header.frame_id = "world";
-            tf::Vector3 dir(lookat_camera.point.x - base_camera_transform.getOrigin().x(), lookat_camera.point.y - base_camera_transform.getOrigin().y(), lookat_camera.point.z - base_camera_transform.getOrigin().z());
+        geometry_msgs::QuaternionStamped orientation;
+        orientation.header = lookat_camera.header;
+        orientation.header.frame_id = "world";
+        tf::Vector3 dir(lookat_camera.point.x - base_camera_transform.getOrigin().x(), lookat_camera.point.y - base_camera_transform.getOrigin().y(), lookat_camera.point.z - base_camera_transform.getOrigin().z());
 
-            //tf::Quaternion quaternion = tf::createQuaternionFromRPY(0.0, -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y())), atan2(dir.y(), dir.x()));
+        //tf::Quaternion quaternion = tf::createQuaternionFromRPY(0.0, -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y())), atan2(dir.y(), dir.x()));
 
 
-            double pan = atan2(dir.y(), dir.x()); //yaw
-            double tilt = -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y()));  // pitch
+        double pan = atan2(dir.y(), dir.x()); //yaw
+        double tilt = -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y()));  // pitch
 
-            std::vector<double> joints;
-            joints.push_back(pan);
-            joints.push_back(tilt);
+        std::vector<double> joints;
+        joints.push_back(pan);
+        joints.push_back(tilt);
 
-            return joints;
+        return joints;
     }
 
+    std::vector<double> HeadControl::computeJointsForTracking(const std::string &target_frame_id){
+        ROS_INFO("Computing Joints for tracking");
+        //geometry_msgs::PointStamped lookat_camera;
+
+        tf::StampedTransform lookat_point_transform;
+
+        tf::StampedTransform base_camera_transform;
+
+        try {
+          tf.waitForTransform("utorso", target_frame_id, ros::Time(), ros::Duration(1.0));
+          tf.lookupTransform("utorso", target_frame_id, ros::Time(), lookat_point_transform);
+        } catch (std::runtime_error& e) {
+          ROS_WARN("Could not transform look_at position to target frame_id %s", e.what());
+             //TODO return  !!!!
+        }
+
+        try {
+          tf.waitForTransform("utorso", "head_cam_link", ros::Time(), ros::Duration(1.0));
+          tf.lookupTransform("utorso", "head_cam_link", ros::Time(), base_camera_transform);
+        } catch (std::runtime_error& e) {
+          ROS_WARN("Could not transform from base frame to camera_frame %s", e.what());
+          //TODO return  !!!!
+        }
+
+//        geometry_msgs::QuaternionStamped orientation;
+//        orientation.header = lookat_camera.header;
+//        orientation.header.frame_id = "world";
+        tf::Vector3 dir(lookat_point_transform.getOrigin().x() - base_camera_transform.getOrigin().x(), lookat_point_transform.getOrigin().y() - base_camera_transform.getOrigin().y(), lookat_point_transform.getOrigin().z() - base_camera_transform.getOrigin().z());
+
+        //tf::Quaternion quaternion = tf::createQuaternionFromRPY(0.0, -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y())), atan2(dir.y(), dir.x()));
+
+
+        double pan = atan2(dir.y(), dir.x()); //yaw
+        double tilt = -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y()));  // pitch
+
+        std::vector<double> joints;
+        joints.push_back(pan);
+        joints.push_back(tilt);
+
+        return joints;
+    }
+
+
+    void HeadControl::tfCb(const tf2_msgs::TFMessage &tfmsg){
+        if(tracking_mode == head_tracking_mode::FRAME_TRACKING){
+            std::vector<double> joints = computeJointsForTracking(tracking_frame);
+            setHeadJointPosition(joints[0], joints[1]);
+        }
+    }
 
     void HeadControl::trackLeftHandCb(const geometry_msgs::PoseStamped &pose){
         //std::cout << "In Callback !!!!!"<<std::endl;

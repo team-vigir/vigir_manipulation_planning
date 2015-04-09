@@ -97,11 +97,11 @@ class HeadControl(Plugin):
         self.setManualControlsEnabled(pressed)
 
     def modeTrackLeftRadioButtonToggled(self, pressed):
-        command = HeadControlCommand(HeadControlCommand.TRACK_LEFT_HAND, [])
+        command = HeadControlCommand(HeadControlCommand.TRACK_LEFT_HAND, [], "")
         self.modePublisher.publish(command)
 
     def modeTrackRightRadioButtonToggled(self, pressed):
-        command = HeadControlCommand(HeadControlCommand.TRACK_RIGHT_HAND, [])
+        command = HeadControlCommand(HeadControlCommand.TRACK_RIGHT_HAND, [], "")
         self.modePublisher.publish(command)
 
     def modeTrackFrameRadioButtonToggled(self, pressed):
@@ -123,13 +123,13 @@ class HeadControl(Plugin):
         self._widget.panSpinBox.setValue(0);
         self._widget.tiltSpinBox.setValue(0);
         command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [0.0, 0.0])
-        self.modePublisher.publish(command)
+        self.modePublisher.publish(command, "")
 
     def manualJointChanged(self):
         if(self.manualControlsEnabled):
             pan = float(self._widget.panSpinBox.value()) / 360.0 * 2 * pi
             tilt = float(self._widget.tiltSpinBox.value()) / 360.0 * 2 * pi
-            command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [pan, tilt])
+            command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [pan, tilt], "")
             self.modePublisher.publish(command)
             print "Sending Manual Joints"
 
