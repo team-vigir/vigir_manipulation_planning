@@ -698,7 +698,7 @@ public:
     }
 
     if (!action->isServerConnected())
-      ROS_WARN("Unable to connect to move_group action server within allotted time (2)");
+      ROS_WARN("Unable to connect to move_group action server within allotted time (Plan to Action node)");
     else
       ROS_DEBUG("Connected to '%s'", name.c_str());
   }
