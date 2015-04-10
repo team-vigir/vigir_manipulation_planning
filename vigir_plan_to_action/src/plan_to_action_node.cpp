@@ -95,7 +95,7 @@ public:
     robot_model_loader_.reset(new robot_model_loader::RobotModelLoader());
     robot_model_ = robot_model_loader_->getModel();
 
-    ros::Duration wait_for_server(5.0);
+    ros::Duration wait_for_server(50.0);
 
     move_action_client_.reset(new actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction>(nh,
                                                                                               "vigir_move_group",
@@ -698,7 +698,7 @@ public:
     }
 
     if (!action->isServerConnected())
-      throw std::runtime_error("Unable to connect to move_group action server within allotted time (2)");
+      ROS_WARN("Unable to connect to move_group action server within allotted time (2)");
     else
       ROS_DEBUG("Connected to '%s'", name.c_str());
   }
