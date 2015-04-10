@@ -1,5 +1,7 @@
 import os
 import thread
+import threading
+import time
 
 import rospy
 import rospkg
@@ -25,6 +27,7 @@ class HeadControl(Plugin):
 
     manualControlsEnabled = False
     running = True
+    isRefreshingFrameList = False
 
     def __init__(self, context):
         super(HeadControl, self).__init__(context)
@@ -36,9 +39,6 @@ class HeadControl(Plugin):
 
         # Subscriber
         self.jointSubscriber = rospy.Subscriber('/thor_mang/joint_states', JointState, self.updateJointStates)
-
-        # Tf
-        self.tfListener = tf.TransformListener()
 
         # Process standalone plugin command-line arguments
         from argparse import ArgumentParser
@@ -71,12 +71,14 @@ class HeadControl(Plugin):
         context.add_widget(self._widget)
 
         # Connect buttons
+        self._widget.modeOffRadioButton.toggled.connect(self.modeOffRadioButtonToggled)
         self._widget.modeTrackLeftRadioButton.toggled.connect(self.modeTrackLeftRadioButtonToggled)
         self._widget.modeTrackRightRadioButton.toggled.connect(self.modeTrackRightRadioButtonToggled)
         self._widget.modeManualRadioButton.toggled.connect(self.modeManualRadioButtonToggled)
         self._widget.modeTrackFrameRadioButton.toggled.connect(self.modeTrackFrameRadioButtonToggled)
 
         self._widget.zeroPushButton.pressed.connect(self.zeroPushButtonPressed)
+        self._widget.FrameRefreshButton.pressed.connect(self.frameRefreshButtonPressed)
 
         self._widget.tiltSpinBox.valueChanged.connect(self.manualJointChanged)
         self._widget.panSpinBox.valueChanged.connect(self.manualJointChanged)
@@ -89,12 +91,16 @@ class HeadControl(Plugin):
         self.connect(self, QtCore.SIGNAL("setComboBoxItems"), self._widget.trackFrameCombobox.addItems)
         self.connect(self, QtCore.SIGNAL("clearComboBox"), self._widget.trackFrameCombobox.clear)
 
-        #TODO: I think, TF starts it's own thread here that does not exit properly
-        thread.start_new_thread(self.updateTfFrames,())
+        self.refreshFrameList()
 
     '''
     Radio Buttons
     '''
+    def modeOffRadioButtonToggled(self, pressed):
+        if pressed:
+            command = HeadControlCommand(HeadControlCommand.NONE, [], "")
+            self.modePublisher.publish(command)
+
     def modeManualRadioButtonToggled(self, pressed):
         self.setManualControlsEnabled(pressed)
 
@@ -134,12 +140,26 @@ class HeadControl(Plugin):
         self._widget.tiltSlider.setValue(self._widget.tiltSpinBox.value())
 
 
+    '''
+    Pushbuttons
+    '''
     def zeroPushButtonPressed(self):
-        self._widget.modeOffRadioButton.setChecked(True);
+        self._widget.modeManualRadioButton.setChecked(True);
         self._widget.panSpinBox.setValue(0);
         self._widget.tiltSpinBox.setValue(0);
-        command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [0.0, 0.0], "")
-        self.modePublisher.publish(command)
+
+    def frameRefreshButtonPressed(self):
+        if not self.isRefreshingFrameList:
+            self.refreshFrameList()
+
+    '''
+    No Gui
+    '''
+    def refreshFrameList(self):
+        self.isRefreshingFrameList = True
+        thread.start_new_thread(self.updateTfFrames,())
+
+
 
     def manualJointChanged(self):
         if(self.manualControlsEnabled):
@@ -147,7 +167,6 @@ class HeadControl(Plugin):
             tilt = float(self._widget.tiltSpinBox.value()) / 360.0 * 2 * pi
             command = HeadControlCommand(HeadControlCommand.USE_PROVIDED_JOINTS, [pan, tilt], "")
             self.modePublisher.publish(command)
-            print "Sending Manual Joints"
 
     def setManualControlsEnabled(self, enabled):
         self.manualControlsEnabled = enabled
@@ -164,23 +183,18 @@ class HeadControl(Plugin):
             self.emit(QtCore.SIGNAL("tiltChanged"), tilt)
 
     def updateTfFrames(self):
-        currentFrames = []
-        while(self.running):
-            try:
-                rospy.wait_for_message("/tf", TFMessage, 1)
-            except(rospy.ROSException),e:
-                pass
-            newFrames = self.tfListener.getFrameStrings()
-            if not newFrames == currentFrames and self.running:
-                currentFrames = newFrames
-                self.emit(QtCore.SIGNAL("clearComboBox"), currentFrames)
-                self.emit(QtCore.SIGNAL("setComboBoxItems"), currentFrames)
-                #print currentFrames
+        tfListener = tf.TransformListener()
+        time.sleep(2)
+        frames = tfListener.getFrameStrings()
+        if self.running:
+            self.emit(QtCore.SIGNAL("clearComboBox"))
+            self.emit(QtCore.SIGNAL("setComboBoxItems"), frames)
+        del tfListener
+        self.isRefreshingFrameList = False
 
 
     def shutdown_plugin(self):
         self.running = False
-        # TODO unregister all publishers here
         self.jointSubscriber.unregister()
         self.modePublisher.unregister()
 
