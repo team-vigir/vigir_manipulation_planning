@@ -36,6 +36,7 @@
 #include <flor_planning_msgs/PlanRequest.h>
 #include <vigir_planning_msgs/PlannerConfiguration.h>
 #include <flor_planning_msgs/PlanToJointTargetRequest.h>
+#include <flor_ocs_msgs/OCSGhostControl.h>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <moveit_msgs/RobotState.h>
@@ -71,6 +72,8 @@ public:
 
   void incomingPlanToJointRequestCallback(const std_msgs::String::ConstPtr& msg);
 
+  void ghostStateCallback(const flor_ocs_msgs::OCSGhostControl::ConstPtr& msg);
+
   void updateRobotStateColors();
 
   void setLinkColor(double r, double g, double b, double a, size_t index);
@@ -78,7 +81,10 @@ public:
   void setLinkColors(double r, double g, double b, double a);
 
 protected:
+  void setPoseWithWholeBodyIK( const std::vector< ::geometry_msgs::PoseStamped > goal_poses, const std::vector<std_msgs::String> target_link_names, const std::string& group_name);
+
   bool collision_avoidance_active_;
+  bool use_drake_ik_;
 
   boost::shared_ptr<MoveItOcsModel> ocs_model_;
 
@@ -98,12 +104,16 @@ protected:
   ros::Publisher robot_state_vis_pub_;
   ros::Publisher marker_array_pub_;
   ros::Publisher current_ghost_joint_states_pub_;
+  ros::Publisher ghost_pelvis_pose_pub_;
 
   ros::Publisher left_hand_pose_pub_;
   ros::Publisher right_hand_pose_pub_;
   ros::Publisher pose_pub_;
 
   ros::Timer ee_pose_pub_timer_;
+
+  ros::ServiceClient whole_body_ik_client_;
+  ros::Subscriber ghost_state_sub_;
 };
 
 #endif
