@@ -349,15 +349,17 @@ void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::Gras
                 this->wrist_target_pose_.use_environment_obstacle_avoidance.data = true;
                 if(grasp.final_pose){
                     this->wrist_target_pose_.pose = grasp_pose;
-                    calcWristTarget(grasp_pose.pose);
+                    calcWristTarget(grasp_pose.pose);  //Applies stitch transform in hand frame
+                    poseTransform(this->wrist_target_pose_.pose.pose, hand_T_palm_);  //Transform back to palm frame
+                    vigir_object_template_msgs::Affordance affordance;
+                    affordance.keep_orientation = true;
+                    affordance.waypoints.push_back(this->wrist_target_pose_.pose);
+                    sendCartesianAffordance(affordance);
                 }else{
                     this->wrist_target_pose_.pose = pre_grasp_pose;
                     calcWristTarget(pre_grasp_pose.pose);
+                    this->updateWristTarget();
                 }
-
-
-                this->updateWristTarget();
-
             }
         }
     }
