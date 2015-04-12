@@ -654,40 +654,6 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   }
 }
 
-bool move_group::MoveGroupManipulationAction::planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan)
-{
-
-    setMoveState(PLANNING);
-
-    planning_scene_monitor::LockedPlanningSceneRO lscene(plan.planning_scene_monitor_);
-    bool solved = false;
-    planning_interface::MotionPlanResponse res;
-    try
-    {
-      solved = context_->planning_pipeline_->generatePlan(plan.planning_scene_, req, res);
-    }
-    catch(std::runtime_error &ex)
-    {
-      ROS_ERROR("Planning pipeline threw an exception: %s", ex.what());
-      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
-    }
-    catch(...)
-    {
-      ROS_ERROR("Planning pipeline threw an exception");
-      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
-    }
-    if (res.trajectory_)
-    {
-      plan.plan_components_.resize(1);
-      plan.plan_components_[0].trajectory_ = res.trajectory_;
-      plan.plan_components_[0].description_ = "plan";
-
-      planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
-    }
-    plan.error_code_ = res.error_code_;
-    return solved;
-}
-
 
 bool move_group::MoveGroupManipulationAction::planUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan)
 {
@@ -873,6 +839,40 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
       result_trajectory_display_msg.trajectory_start = current_state_msg;
       result_trajectory_display_msg.model_id = robot_model->getName();
       drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+    }
+    plan.error_code_ = res.error_code_;
+    return solved;
+}
+
+bool move_group::MoveGroupManipulationAction::planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan)
+{
+
+    setMoveState(PLANNING);
+
+    planning_scene_monitor::LockedPlanningSceneRO lscene(plan.planning_scene_monitor_);
+    bool solved = false;
+    planning_interface::MotionPlanResponse res;
+    try
+    {
+      solved = context_->planning_pipeline_->generatePlan(plan.planning_scene_, req, res);
+    }
+    catch(std::runtime_error &ex)
+    {
+      ROS_ERROR("Planning pipeline threw an exception: %s", ex.what());
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    }
+    catch(...)
+    {
+      ROS_ERROR("Planning pipeline threw an exception");
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    }
+    if (res.trajectory_)
+    {
+      plan.plan_components_.resize(1);
+      plan.plan_components_[0].trajectory_ = res.trajectory_;
+      plan.plan_components_[0].description_ = "plan";
+
+      planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
     }
     plan.error_code_ = res.error_code_;
     return solved;

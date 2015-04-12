@@ -70,7 +70,6 @@ public:
 
   const std::vector<std::string>& getLinkNames() const;
   const robot_state::RobotStateConstPtr getState();
-  robot_state::RobotStatePtr &getStateNonConst();
 
   void setJointPositionConstraints(const std::vector<moveit_msgs::JointConstraint>& constraints);
 

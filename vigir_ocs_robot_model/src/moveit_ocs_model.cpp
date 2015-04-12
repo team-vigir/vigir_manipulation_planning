@@ -142,7 +142,6 @@ const std::vector<std::string>& MoveItOcsModel::getLinkNames() const
 }
 
 const robot_state::RobotStateConstPtr MoveItOcsModel::getState() { return robot_state_; }
-robot_state::RobotStatePtr &MoveItOcsModel::getStateNonConst() { return robot_state_; }
 
 void MoveItOcsModel::setJointPositionConstraints(const std::vector<moveit_msgs::JointConstraint>& constraints)
 {
