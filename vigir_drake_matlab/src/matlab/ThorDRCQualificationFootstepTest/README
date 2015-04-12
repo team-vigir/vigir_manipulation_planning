@@ -1,0 +1,11 @@
+For THOR DRC-Qualification Task 4: Step over 20x20cm block
+
+- tried to use DrakeCartesianTrajectory to walk
+- theoretically nice trajectories possible, but fail in practice:
+  feet are considered fix-points by Drake => robot slides to the side and falls over.
+- Maybe further tweaking of parameters can make it work, but much
+  work and little gain (2015-02-17: Had a trajectory for stepping up that *almost* worked).
+  
+To run it: Copy files to main vigir_drake_matlab/src/matlab folder and request cartesian trajectory => only current robot pose will be used (but this should include at least current orientation).
+
+Select walking pattern in handleIKCartesianTrajectoryRequest (ll. 345-346). 

@@ -15,7 +15,7 @@ MoveItOcsModelRos::MoveItOcsModelRos()
     collision_avoidance_active_ = true;
 
     use_drake_ik_ = false;
-    whole_body_ik_client_ = nh.serviceClient<vigir_planning_msgs::RequestWholeBodyIK>("flor_drake_bridge/request_whole_body_ik");
+    whole_body_ik_client_ = nh.serviceClient<vigir_planning_msgs::RequestWholeBodyIK>("drake_planner/request_whole_body_ik");
 
     //flor_visualization_utils::test();
 
