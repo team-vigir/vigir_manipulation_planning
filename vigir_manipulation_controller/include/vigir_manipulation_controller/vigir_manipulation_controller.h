@@ -130,14 +130,6 @@ namespace vigir_manipulation_controller {
     */
    virtual GraspQuality processHandTactileData()                                = 0;
 
-   /* This Function will set the JointStates that correspond to a "Close Hand" configuration
-    */
-   virtual void setCloseFingerPoses(const uint8_t& grasp_type)                  = 0;
-
-   /* This Function will set the JointStates that correspond to an "Open Hand" configuration
-    */
-   virtual void setOpenFingerPoses(const uint8_t& grasp_type)                   = 0;
-
     flor_grasp_msgs::HandStatus                last_hand_status_msg_;
     flor_grasp_msgs::LinkState                 link_tactile_;
 
