@@ -605,6 +605,17 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   setMoveState(PLANNING);
   this->computeCartesianPath(cart_path.request, cart_path.response);
 
+  {
+    planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
+    const robot_state::RobotState& curr_state = lscene.getPlanningSceneMonitor()->getPlanningScene()->getCurrentState();
+
+    robot_trajectory::RobotTrajectoryPtr tmp;
+    tmp.reset(new robot_trajectory::RobotTrajectory(context_->planning_scene_monitor_->getRobotModel(), goal->request.group_name));
+    tmp->setRobotTrajectoryMsg(curr_state, cart_path.response.solution);
+
+    convertToMsg(tmp, action_res.trajectory_start, action_res.planned_trajectory);
+  }
+
   if ((cart_path.response.fraction < 1.0) && !goal->extended_planning_options.execute_incomplete_cartesian_plans){
     ROS_WARN("Incomplete cartesian plan computed, fraction: %f and goal specified to not execute in that case!", cart_path.response.fraction);
     action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
@@ -633,24 +644,26 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   context_->plan_execution_->executeAndMonitor(plan);
   */
 
-  context_->trajectory_execution_manager_->clear();
+  if (!goal->planning_options.plan_only){
+    context_->trajectory_execution_manager_->clear();
 
-  if (context_->trajectory_execution_manager_->push(cart_path.response.solution)){
-    context_->trajectory_execution_manager_->execute();
-    moveit_controller_manager::ExecutionStatus es = context_->trajectory_execution_manager_->waitForExecution();
-    if (es == moveit_controller_manager::ExecutionStatus::SUCCEEDED)
-      action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
-    else
-      if (es == moveit_controller_manager::ExecutionStatus::PREEMPTED)
-        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PREEMPTED;
+    if (context_->trajectory_execution_manager_->push(cart_path.response.solution)){
+      context_->trajectory_execution_manager_->execute();
+      moveit_controller_manager::ExecutionStatus es = context_->trajectory_execution_manager_->waitForExecution();
+      if (es == moveit_controller_manager::ExecutionStatus::SUCCEEDED)
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
       else
-        if (es == moveit_controller_manager::ExecutionStatus::TIMED_OUT)
-          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::TIMED_OUT;
+        if (es == moveit_controller_manager::ExecutionStatus::PREEMPTED)
+          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PREEMPTED;
         else
-          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::CONTROL_FAILED;
-    ROS_INFO_STREAM("Execution completed: " << es.asString());
-  }else{
-    ROS_WARN("Could not push trajectory for execution!");
+          if (es == moveit_controller_manager::ExecutionStatus::TIMED_OUT)
+            action_res.error_code.val = moveit_msgs::MoveItErrorCodes::TIMED_OUT;
+          else
+            action_res.error_code.val = moveit_msgs::MoveItErrorCodes::CONTROL_FAILED;
+      ROS_INFO_STREAM("Execution completed: " << es.asString());
+    }else{
+      ROS_WARN("Could not push trajectory for execution!");
+    }
   }
 }
 
