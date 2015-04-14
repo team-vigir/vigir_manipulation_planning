@@ -89,7 +89,17 @@ CATKIN_DEPENDS
 ## Build ##
 ###########
 set(POD_NAME drake_planner_cpp)
-set(DRAKE_DIR $ENV{VIGIR_ROOT_DIR}/drake-distro/drake)
+
+if(DEFINED ENV{VIGIR_ROOT_DIR})
+  set(DRAKE_DIR $ENV{VIGIR_ROOT_DIR}/drake-distro/drake)  
+elseif(DEFINED ENV{THOR_ROOT_DIR})
+  set(DRAKE_DIR $ENV{THOR_ROOT_DIR}/drake-distro/drake)  
+else()
+  message(FATAL_ERROR "Found neither VIGIR_ROOT_DIR nor THOR_ROOT_DIR environment variable. Unable to continue.")
+endif()
+
+message("-- Found Drake at location ${DRAKE_DIR}")
+
 include(${DRAKE_DIR}/cmake/pods.cmake)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
