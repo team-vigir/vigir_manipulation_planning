@@ -69,7 +69,7 @@ MoveItOcsModelRos::MoveItOcsModelRos()
 
 void MoveItOcsModelRos::targetConfigCallback (const flor_planning_msgs::TargetConfigIkRequest::ConstPtr& msg)
 {
-    if ( use_drake_ik_ == false ) { // continue with tried and true classic MoveIt IK
+  if ( use_drake_ik_ == false ) { // continue with tried and true classic MoveIt IK
     if (msg->target_poses.size() == 1){
 
       size_t found_index = msg->planning_group.data.find_last_of("_position_only_ik");
@@ -87,13 +87,13 @@ void MoveItOcsModelRos::targetConfigCallback (const flor_planning_msgs::TargetCo
     }else{
       ROS_WARN("Multiple target poses currently not supported!");
     }
-    }
-    else {
-        std::vector< ::geometry_msgs::PoseStamped > testVec;
-        testVec = msg->target_poses;
-        setPoseWithWholeBodyIK(msg->target_poses, msg->target_link_names, msg->planning_group.data);
-    }
-    this->onModelUpdated();
+  }
+  else {
+    std::vector< ::geometry_msgs::PoseStamped > testVec;
+    testVec = msg->target_poses;
+    setPoseWithWholeBodyIK(msg->target_poses, msg->target_link_names, msg->planning_group.data);
+  }
+  this->onModelUpdated();
 }
 
 void MoveItOcsModelRos::incomingJointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg)
@@ -225,43 +225,40 @@ void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String
 
 void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::String::ConstPtr& msg)
 {
-    flor_planning_msgs::PlanToJointTargetRequest request;
+  flor_planning_msgs::PlanToJointTargetRequest request;
 
-    if ( use_drake_ik_ )
-    {
-        request.position.clear();
-        request.planning_group = msg->data;
+  if ( use_drake_ik_ )
+  {
+    request.position.clear();
+    request.planning_group = msg->data;
 
-        // get ghost robot state for planning group
-        const robot_state::RobotState *current_robot_state = ocs_model_->getState().get();
+    // get ghost robot state for planning group
+    const robot_state::RobotState *current_robot_state = ocs_model_->getState().get();
 
-        //request.planning_group = "whole_body_group";
-        if ( current_robot_state->getJointModelGroup(msg->data) == NULL) {
-            ROS_ERROR("Request for unknown planning group: %s - Aborting...", msg->data.c_str());
-            return;
-        }
-
-        const robot_state::JointModelGroup *current_model_group = current_robot_state->getJointModelGroup(msg->data);
-        std::vector<std::string> current_joint_names = current_model_group->getJointModelNames();
-        for ( int i = 0; i < current_joint_names.size(); i++) {
-            std::string current_joint_name = current_joint_names[i];
-            double current_position = current_robot_state->getVariablePosition(current_joint_name);
-            request.position.push_back(current_position);
-        }
-
-        //current_model_group->getJointModel("bla")->getVari;
-        //moveit_msgs::RobotState robot_state_msg;
-        //moveit::core::robotStateToRobotStateMsg(*current_robot_state, robot_state_msg);
-
-        //request.position.resize(robot_state_msg.joint_state.position.size());
-        //std::copy(robot_state_msg.joint_state.position.begin(), robot_state_msg.joint_state.position.end(), request.position.begin());
+    //request.planning_group = "whole_body_group";
+    if ( current_robot_state->getJointModelGroup(msg->data) == NULL) {
+      ROS_ERROR("Request for unknown planning group: %s - Aborting...", msg->data.c_str());
+      return;
     }
-    else {
+
+    const robot_state::JointModelGroup *current_model_group = current_robot_state->getJointModelGroup(msg->data);
+    std::vector<std::string> current_joint_names = current_model_group->getJointModelNames();
+    for ( int i = 0; i < current_joint_names.size(); i++) {
+      std::string current_joint_name = current_joint_names[i];
+      double current_position = current_robot_state->getVariablePosition(current_joint_name);
+      request.position.push_back(current_position);
+    }
+
+    //current_model_group->getJointModel("bla")->getVari;
+    //moveit_msgs::RobotState robot_state_msg;
+    //moveit::core::robotStateToRobotStateMsg(*current_robot_state, robot_state_msg);
+
+    //request.position.resize(robot_state_msg.joint_state.position.size());
+    //std::copy(robot_state_msg.joint_state.position.begin(), robot_state_msg.joint_state.position.end(), request.position.begin());
+  }else{
     ROS_INFO("Received plan to joint config request, sending group %s", msg->data.c_str());
 
     const std::string& group = msg->data;
-
-    flor_planning_msgs::PlanToJointTargetRequest request;
 
     if (!ocs_model_->getGroupJointPositions(group, request.position)){
       ROS_WARN("Received plan to joint state request for group %s but cannot determine joint states for it", msg->data.c_str());
@@ -269,9 +266,9 @@ void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::Strin
     }
 
     request.planning_group = group;
-    }
+  }
 
-    joint_plan_request_pub_.publish(request);
+  joint_plan_request_pub_.publish(request);
 }
 
 void MoveItOcsModelRos::ghostStateCallback(const flor_ocs_msgs::OCSGhostControl::ConstPtr& msg) {
