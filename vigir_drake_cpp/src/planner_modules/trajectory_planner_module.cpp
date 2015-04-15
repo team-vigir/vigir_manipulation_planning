@@ -92,7 +92,7 @@ std::vector<RigidBodyConstraint*> TrajectoryPlannerModule::buildIKConstraints(vi
     Vector4d foot_pts;
     foot_pts << 0.0,0.0,0.0,1.0;
 
-    this->getRobotModel()->use_new_kinsol = false;
+    //this->getRobotModel()->use_new_kinsol = false;
     this->getRobotModel()->doKinematics(q0);
 
     Vector7d l_foot_pos, r_foot_pos;
