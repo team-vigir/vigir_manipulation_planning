@@ -18,4 +18,9 @@
     </description>
   </class>    
 
+  <class name="move_group/RobotStateRetrievalCapability" type="move_group::RobotStateRetrievalCapability" base_class_type="move_group::MoveGroupCapability">
+    <description>
+      Provides API for retrieving the group state
+    </description>
+  </class> 
 </library>
