@@ -249,12 +249,7 @@ void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::Strin
       request.position.push_back(current_position);
     }
 
-    //current_model_group->getJointModel("bla")->getVari;
-    //moveit_msgs::RobotState robot_state_msg;
-    //moveit::core::robotStateToRobotStateMsg(*current_robot_state, robot_state_msg);
-
-    //request.position.resize(robot_state_msg.joint_state.position.size());
-    //std::copy(robot_state_msg.joint_state.position.begin(), robot_state_msg.joint_state.position.end(), request.position.begin());
+    request.planner_id = "drake";
   }else{
     ROS_INFO("Received plan to joint config request, sending group %s", msg->data.c_str());
 
@@ -266,6 +261,7 @@ void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::Strin
     }
 
     request.planning_group = group;
+    request.planner_id = ""; // use default planner
   }
 
   joint_plan_request_pub_.publish(request);
