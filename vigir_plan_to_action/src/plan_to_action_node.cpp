@@ -379,6 +379,7 @@ public:
 
   bool planAndMoveToJoints(const flor_planning_msgs::PlanToJointTargetRequest plan_request)
   {
+    goal_.request.planner_id = plan_request.planner_id;
     goal_.request.group_name = plan_request.planning_group;
     goal_.request.num_planning_attempts = 1;
     goal_.request.max_velocity_scaling_factor = 1.0;
