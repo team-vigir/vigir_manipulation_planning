@@ -114,7 +114,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     grasp_command_sub_         = nh.subscribe("grasp_command",      1, &VigirManipulationController::graspCommandCallback,       this);
     template_stitch_sub_       = nh.subscribe("template_stitch",    1, &VigirManipulationController::templateStitchCallback,     this);
     current_wrist_sub_         = nh.subscribe("wrist_pose",         1, &VigirManipulationController::wristPoseCallback,          this);
-    grasp_planning_group_sub_  = nh.subscribe("planning_group",     1, &VigirManipulationController::graspPlanningGroupCallback, this);
+    grasp_planning_group_sub_  = nh.subscribe("use_torso",          1, &VigirManipulationController::graspPlanningGroupCallback, this);
     moveToPose_sub_            = nh.subscribe("move_to_pose",       1, &VigirManipulationController::moveToPoseCallback,         this);
     attach_object_sub_         = nh.subscribe("attach_object",      1, &VigirManipulationController::setAttachingObject,         this);
     detach_object_sub_         = nh.subscribe("detach_object",      1, &VigirManipulationController::setDetachingObject,         this);
@@ -194,16 +194,17 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
 // Class Callback functions for ros subscribers
 
 
-void VigirManipulationController::graspPlanningGroupCallback(const flor_ocs_msgs::OCSGhostControl& planning_group)
+void VigirManipulationController::graspPlanningGroupCallback(const std_msgs::Bool::ConstPtr& msg)
 {
-    if (planning_group.planning_group[2] == 1)
+    bool use_torso = msg->data;
+    if (use_torso)
     {
         if (hand_id_>0)
             planning_group_ = "r_arm_with_torso_group";
         else
             planning_group_ = "l_arm_with_torso_group";
     }
-    else if (planning_group.planning_group[2] == 0)
+    else
     {
         if (hand_id_>0)
             planning_group_ = "r_arm_group";
