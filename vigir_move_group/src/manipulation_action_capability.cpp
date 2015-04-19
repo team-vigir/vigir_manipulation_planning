@@ -528,6 +528,21 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
 
 void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
 {
+
+  //Only used if keep endeffector orientation true
+  Eigen::Affine3d eef_start_pose;
+
+  if(goal->extended_planning_options.keep_endeffector_orientation &&
+     !planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+                                                    context_->planning_scene_monitor_,
+                                                    eef_start_pose))
+  {
+    ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
+    action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+    return;
+  }
+
+
   moveit_msgs::GetCartesianPath cart_path;
 
   std::vector <geometry_msgs::Pose> pose_vec;
@@ -540,19 +555,6 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     pose_vec.resize(goal->extended_planning_options.target_poses.size());
     geometry_msgs::PoseStamped tmp_pose;
 
-    //Only used if keep endeffector orientation true
-    Eigen::Affine3d start;
-
-    if(goal->extended_planning_options.keep_endeffector_orientation &&
-       !planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
-                                                      context_->planning_scene_monitor_,
-                                                      start))
-    {
-      ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
-      action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
-      return;
-    }
-
     for (size_t i = 0; i < goal->extended_planning_options.target_poses.size(); ++i){
       tmp_pose.pose = goal->extended_planning_options.target_poses[i];
       tmp_pose.header.frame_id = goal->extended_planning_options.target_frame;
@@ -561,9 +563,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
       // Optionally set all poses to keep start orientation
       if(goal->extended_planning_options.keep_endeffector_orientation)
       {
-
-        Eigen::Affine3d oriented_pose = Eigen::Translation3d(Eigen::Vector3d(tmp_pose.pose.position.x,tmp_pose.pose.position.y,tmp_pose.pose.position.z)) * start.rotation();
-
+        Eigen::Affine3d oriented_pose = Eigen::Translation3d(Eigen::Vector3d(tmp_pose.pose.position.x,tmp_pose.pose.position.y,tmp_pose.pose.position.z)) * eef_start_pose.rotation();
         tf::poseEigenToMsg(oriented_pose, tmp_pose.pose);
       }
 
@@ -590,18 +590,8 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
 
     {
-      Eigen::Affine3d start;
-      if(!planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
-                                                        context_->planning_scene_monitor_,
-                                                        start))
-      {
-        ROS_ERROR("Cannot transform endeffector, cartesian planning not possible!");
-        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
-        return;
-      }
-
       constrained_motion_utils::getCircularArcPoses(rotation_center,
-                                                    start,
+                                                    eef_start_pose,
                                                     pose_vec,
                                                     0.2,
                                                     goal->extended_planning_options.rotation_angle,
