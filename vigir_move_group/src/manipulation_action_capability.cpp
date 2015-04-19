@@ -540,6 +540,19 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     pose_vec.resize(goal->extended_planning_options.target_poses.size());
     geometry_msgs::PoseStamped tmp_pose;
 
+    //Only used if keep endeffector orientation true
+    Eigen::Affine3d start;
+
+    if(goal->extended_planning_options.keep_endeffector_orientation &&
+       !planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+                                                      context_->planning_scene_monitor_,
+                                                      start))
+    {
+      ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
+      action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+      return;
+    }
+
     for (size_t i = 0; i < goal->extended_planning_options.target_poses.size(); ++i){
       tmp_pose.pose = goal->extended_planning_options.target_poses[i];
       tmp_pose.header.frame_id = goal->extended_planning_options.target_frame;
@@ -548,19 +561,10 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
       // Optionally set all poses to keep start orientation
       if(goal->extended_planning_options.keep_endeffector_orientation)
       {
-        Eigen::Affine3d start;
-        if(!planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
-                                                          context_->planning_scene_monitor_,
-                                                          start))
-        {
-          ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
-          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
-          return;
-        }
 
-        start = Eigen::Translation3d(Eigen::Vector3d(tmp_pose.pose.position.x,tmp_pose.pose.position.y,tmp_pose.pose.position.z)) * start.rotation();
+        Eigen::Affine3d oriented_pose = Eigen::Translation3d(Eigen::Vector3d(tmp_pose.pose.position.x,tmp_pose.pose.position.y,tmp_pose.pose.position.z)) * start.rotation();
 
-        tf::poseEigenToMsg(start, tmp_pose.pose);
+        tf::poseEigenToMsg(oriented_pose, tmp_pose.pose);
       }
 
       pose_vec[i] = tmp_pose.pose;
