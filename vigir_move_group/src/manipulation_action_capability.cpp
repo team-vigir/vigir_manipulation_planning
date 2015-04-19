@@ -626,7 +626,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   cart_path.request.header.stamp = ros::Time::now();
   cart_path.request.header.frame_id = goal->extended_planning_options.target_frame;
 
-  cart_path.request.jump_threshold = 10.0;
+  cart_path.request.jump_threshold = 2.0;
   cart_path.request.max_step = 0.01;
   cart_path.request.avoid_collisions = goal->extended_planning_options.avoid_collisions;
   cart_path.request.group_name = goal->request.group_name;
