@@ -124,12 +124,19 @@ void MoveItOcsModelRos::pubEndeffectorPosesTimerCallback(const ros::TimerEvent& 
 
     ocs_model_->getLinkPose("pelvis",tmp.pose);
     pose_pub_.publish(tmp);
+    
+    //this->onModelUpdated();
 }
 
 // To be called when model changed
 void MoveItOcsModelRos::onModelUpdated()
 {
+    ros::Time now = ros::Time::now();
+    
     robot_state::robotStateToRobotStateMsg(*ocs_model_->getState(), display_state_msg_.state);
+    display_state_msg_.state.joint_state.header.stamp = now;
+    display_state_msg_.state.multi_dof_joint_state.header.stamp = now;
+    
     this->updateRobotStateColors();
 
     std::vector<std::string> colliding_links;
@@ -141,9 +148,7 @@ void MoveItOcsModelRos::onModelUpdated()
 
     robot_state_vis_pub_.publish(display_state_msg_);
 
-    sensor_msgs::JointState joint_state_ghost;
-    ocs_model_->getJointStates(joint_state_ghost);
-    current_ghost_joint_states_pub_.publish(joint_state_ghost);
+    current_ghost_joint_states_pub_.publish(display_state_msg_.state.joint_state);
 
     /*
     if (marker_array_pub_.getNumSubscribers() > 0){
