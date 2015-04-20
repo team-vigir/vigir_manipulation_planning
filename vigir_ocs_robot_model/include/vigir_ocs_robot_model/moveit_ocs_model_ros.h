@@ -36,7 +36,7 @@
 #include <flor_planning_msgs/PlanRequest.h>
 #include <vigir_planning_msgs/PlannerConfiguration.h>
 #include <flor_planning_msgs/PlanToJointTargetRequest.h>
-#include <flor_ocs_msgs/OCSGhostControl.h>
+#include <std_msgs/Int8.h>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <moveit_msgs/RobotState.h>
@@ -75,7 +75,7 @@ public:
 
   void incomingPlanToJointRequestCallback(const std_msgs::String::ConstPtr& msg);
 
-  void ghostStateCallback(const flor_ocs_msgs::OCSGhostControl::ConstPtr& msg);
+  void ghostStateCallback(const std_msgs::Int8::ConstPtr& msg);
 
   void updateRobotStateColors();
 

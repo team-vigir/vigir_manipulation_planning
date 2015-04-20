@@ -31,7 +31,7 @@ MoveItOcsModelRos::MoveItOcsModelRos()
     pose_pub_ = nh.advertise<geometry_msgs::PoseStamped>("/flor/ghost/pose/robot",1);
 
     // Receive changes in ghost robot state (use Drake?)
-    ghost_state_sub_ = nh.subscribe( "/flor/ocs/ghost_ui_state", 1, &MoveItOcsModelRos::ghostStateCallback, this);
+    ghost_state_sub_ = nh.subscribe( "/flor/ocs/ghost/state_use_drake_ik", 1, &MoveItOcsModelRos::ghostStateCallback, this);
 
     // Planning requests
     pose_plan_request_pub_ = nh.advertise<flor_planning_msgs::PlanRequest>("/flor/planning/upper_body/plan_request",1);
@@ -294,8 +294,9 @@ void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::Strin
   joint_plan_request_pub_.publish(request);
 }
 
-void MoveItOcsModelRos::ghostStateCallback(const flor_ocs_msgs::OCSGhostControl::ConstPtr& msg) {
-    use_drake_ik_ = msg->use_drake_ik;
+void MoveItOcsModelRos::ghostStateCallback(const std_msgs::Int8::ConstPtr& msg)
+{
+    use_drake_ik_ = msg->data;
 }
 
 void MoveItOcsModelRos::updateRobotStateColors()
