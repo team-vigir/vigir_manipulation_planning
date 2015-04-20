@@ -6,10 +6,6 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
 
     interpolated_waypoints = extractOrderedWaypoints(request, robot_model, q0);
     
-    % build IK options (add additional constraint checks)
-    ikoptions = initIKCartesianTrajectoryOptions(robot_model);
-    %ikoptions = ikoptions.setAdditionaltSamples( request.waypoint_times(1):1.0:request.waypoint_times(end) );
-
     nq = robot_model.getNumPositions();
     num_steps = length(interpolated_waypoints);
     success = true;
@@ -46,6 +42,11 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
         q_lin = interp1([current_waypoint.waypoint_time interpolated_waypoints(i).waypoint_time], [q0, q0]', [current_waypoint.waypoint_time interpolated_waypoints(i).waypoint_time])';
         q_nom_traj = PPTrajectory(foh([current_waypoint.waypoint_time interpolated_waypoints(i).waypoint_time],q_lin));
         q_seed_traj = q_nom_traj;
+        
+        % build IK options (add additional constraint checks)
+        duration = interpolated_waypoints(i).waypoint_time - current_waypoint.waypoint_time;
+        ikoptions = initIKCartesianTrajectoryOptions(robot_model, duration);
+        %ikoptions = ikoptions.setAdditionaltSamples( request.waypoint_times(1):1.0:request.waypoint_times(end) );
 
 
         % build list of constraints from message

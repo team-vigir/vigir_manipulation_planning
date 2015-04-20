@@ -1,4 +1,4 @@
-function ikoptions = initIKTrajectoryOptions( robot_model )
+function ikoptions = initIKTrajectoryOptions( robot_model, duration )
     nq = robot_model.getNumPositions();
     ikoptions = IKoptions(robot_model);
     cost = Point(robot_model.getStateFrame,1);
@@ -11,8 +11,8 @@ function ikoptions = initIKTrajectoryOptions( robot_model )
     cost = double(cost);
     Q = diag(cost(1:nq));
     ikoptions = ikoptions.setQ(Q);
-    ikoptions = ikoptions.setQv( 5 * ikoptions.Qv);
-    ikoptions = ikoptions.setQa( 25 * ikoptions.Qa);
+    ikoptions = ikoptions.setQv( duration * ikoptions.Qv);
+    ikoptions = ikoptions.setQa( duration * duration * ikoptions.Qa);
     ikoptions = ikoptions.setMajorIterationsLimit(10000);
     ikoptions = ikoptions.setIterationsLimit(500000);
     ikoptions = ikoptions.setSuperbasicsLimit(1000);

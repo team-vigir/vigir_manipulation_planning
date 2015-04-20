@@ -1,16 +1,15 @@
 function [ trajectory, success ] = calcIKTrajectory( visualizer, robot_model, q0, request )
     % get trajectory duration infos and selected time steps
-    duration = 5; %request.duration;
+    duration = request.duration;
     
     % check trajectory every 0.5s       
     if ( duration <= 0 ) % set default duration, if it is not set correctly
         duration = 5;
     end
     t = 0:0.5:duration;
-    %t = 0:1.25:duration;
-    %if ( t(end) < duration )
-    %    t(end+1) = duration;
-    %end
+    f ( t(end) < duration )
+        t(end+1) = duration;
+    end
 
     % stay at q0 for nominal trajectory
     q_lin = interp1([0, duration], [q0, q0]', t)';
@@ -21,7 +20,7 @@ function [ trajectory, success ] = calcIKTrajectory( visualizer, robot_model, q0
     activeConstraints = buildIKTrajectoryConstraints(robot_model, request.motion_plan_request.goal_constraints.joint_constraints, q0, t);
 
     % run inverse kinematics (mex)
-    ikoptions = initIKTrajectoryOptions(robot_model);
+    ikoptions = initIKTrajectoryOptions(robot_model, duration);
     [trajectory,info_mex,infeasible_constraints] = inverseKinTraj(robot_model, t, q_seed_traj, q_nom_traj, activeConstraints{:},ikoptions);
 
     % visualize result

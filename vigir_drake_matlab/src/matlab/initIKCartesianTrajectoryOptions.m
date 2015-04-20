@@ -1,4 +1,4 @@
-function ikoptions = initIKCartesianTrajectoryOptions( robot_model )
+function ikoptions = initIKCartesianTrajectoryOptions( robot_model, duration )
     nq = robot_model.getNumPositions();
     ikoptions = IKoptions(robot_model);
     cost = Point(robot_model.getStateFrame,1);
@@ -11,7 +11,8 @@ function ikoptions = initIKCartesianTrajectoryOptions( robot_model )
     cost = double(cost);
     Q = diag(cost(1:nq));
     ikoptions = ikoptions.setQ(Q);
-    ikoptions = ikoptions.setQa(0.001*Q);
+    ikoptions = ikoptions.setQ(duration * ikoptions.Qv);
+    ikoptions = ikoptions.setQa(duration * duration * ikoptions.Qa);
     ikoptions = ikoptions.setMajorIterationsLimit(10000);
     ikoptions = ikoptions.setIterationsLimit(500000);
     ikoptions = ikoptions.setSuperbasicsLimit(1000);
