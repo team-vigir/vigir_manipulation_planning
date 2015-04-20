@@ -53,6 +53,7 @@
 #include <vigir_moveit_utils/constrained_motion_utils.h>
 #include <vigir_moveit_utils/joint_constraint_utils.h>
 #include <vigir_moveit_utils/group_utils.h>
+#include <vigir_moveit_utils/planning_scene_utils.h>
 
 
 namespace
@@ -524,6 +525,21 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
 
 void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
 {
+
+  //Only used if keep endeffector orientation true
+  Eigen::Affine3d eef_start_pose;
+
+  if(goal->extended_planning_options.keep_endeffector_orientation &&
+     !planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+                                                    context_->planning_scene_monitor_,
+                                                    eef_start_pose))
+  {
+    ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
+    action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+    return;
+  }
+
+
   moveit_msgs::GetCartesianPath cart_path;
 
   std::vector <geometry_msgs::Pose> pose_vec;
@@ -540,6 +556,14 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
       tmp_pose.pose = goal->extended_planning_options.target_poses[i];
       tmp_pose.header.frame_id = goal->extended_planning_options.target_frame;
       this->performTransform(tmp_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame());
+
+      // Optionally set all poses to keep start orientation
+      if(goal->extended_planning_options.keep_endeffector_orientation)
+      {
+        Eigen::Affine3d oriented_pose = Eigen::Translation3d(Eigen::Vector3d(tmp_pose.pose.position.x,tmp_pose.pose.position.y,tmp_pose.pose.position.z)) * eef_start_pose.rotation();
+        tf::poseEigenToMsg(oriented_pose, tmp_pose.pose);
+      }
+
       pose_vec[i] = tmp_pose.pose;
     }
 
@@ -563,32 +587,12 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
 
     {
-      planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
-      const robot_state::RobotState& curr_state = lscene.getPlanningSceneMonitor()->getPlanningScene()->getCurrentState();
-
-      std::string start_pose_link;
-
-      std::string first_char = goal->request.group_name.substr(0,1);
-
-      if (first_char == "r"){
-        start_pose_link = "r_hand";
-      }else if(first_char == "l"){
-        start_pose_link = "l_hand";
-      }else{
-        ROS_ERROR("Group name %s does not start with l or r. Cannot infer endeffector to use, aborting", goal->request.group_name.c_str());
-        //res.status += flor_planning_msgs::GetMotionPlanForPose::Response::PLANNING_INVALID_REQUEST;
-        return;
-      }
-
-      Eigen::Affine3d start (curr_state.getGlobalLinkTransform(start_pose_link));
-
       constrained_motion_utils::getCircularArcPoses(rotation_center,
-                                                    start,
+                                                    eef_start_pose,
                                                     pose_vec,
                                                     0.2,
                                                     goal->extended_planning_options.rotation_angle,
                                                     goal->extended_planning_options.keep_endeffector_orientation);
-
     }
   }
 
@@ -597,7 +601,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   cart_path.request.header.stamp = ros::Time::now();
   cart_path.request.header.frame_id = goal->extended_planning_options.target_frame;
 
-  cart_path.request.jump_threshold = 10.0;
+  cart_path.request.jump_threshold = 2.0;
   cart_path.request.max_step = 0.01;
   cart_path.request.avoid_collisions = goal->extended_planning_options.avoid_collisions;
   cart_path.request.group_name = goal->request.group_name;
