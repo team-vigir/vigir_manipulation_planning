@@ -2,7 +2,10 @@ function [ trajectory, success ] = calcIKTrajectory( visualizer, robot_model, q0
     % get trajectory duration infos and selected time steps
     duration = 5; %request.duration;
     
-    % check trajectory every 0.5s   
+    % check trajectory every 0.5s       
+    if ( duration <= 0 ) % set default duration, if it is not set correctly
+        duration = 5;
+    end
     t = 0:0.5:duration;
     %t = 0:1.25:duration;
     %if ( t(end) < duration )
