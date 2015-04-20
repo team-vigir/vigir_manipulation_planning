@@ -57,6 +57,9 @@ public:
 
   void incomingJointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg);
 
+  void realJointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg);
+
+
   // Sets global pose of model
   void rootPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
@@ -90,6 +93,8 @@ protected:
 
   moveit_msgs::DisplayRobotState display_state_msg_;
 
+  sensor_msgs::JointStateConstPtr real_joint_states_;
+
   ros::Publisher pose_plan_request_pub_;
   ros::Publisher joint_plan_request_pub_;
 
@@ -97,11 +102,16 @@ protected:
   ros::Subscriber incoming_plan_to_joint_request_sub_;
 
   ros::Subscriber incoming_joint_states_sub_;
+  ros::Subscriber incoming_real_joint_states_sub_;
+
   ros::Subscriber pose_sub_;
   ros::Subscriber root_pose_sub_;
   ros::Subscriber torso_joint_position_constraints_sub_;
 
   ros::Publisher robot_state_vis_pub_;
+  ros::Publisher robot_state_diff_real_vis_pub_;
+
+
   ros::Publisher marker_array_pub_;
   ros::Publisher current_ghost_joint_states_pub_;
   ros::Publisher ghost_pelvis_pose_pub_;

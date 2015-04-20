@@ -20,6 +20,8 @@ MoveItOcsModelRos::MoveItOcsModelRos()
     //flor_visualization_utils::test();
 
     robot_state_vis_pub_ = nh.advertise<moveit_msgs::DisplayRobotState>("/flor/ghost/robot_state_vis",1, true);
+    robot_state_diff_real_vis_pub_ = nh.advertise<moveit_msgs::DisplayRobotState>("/flor/ghost/robot_state_diff_vis",1, true);
+
     marker_array_pub_ = nh.advertise<visualization_msgs::MarkerArray>("/flor/ghost/marker",1, true);
     current_ghost_joint_states_pub_ = nh.advertise<sensor_msgs::JointState>("/flor/ghost/get_joint_states",1, true);
 
@@ -42,6 +44,8 @@ MoveItOcsModelRos::MoveItOcsModelRos()
     pose_sub_ = nh.subscribe("/flor/ghost/set_appendage_poses", 1, &MoveItOcsModelRos::targetConfigCallback, this);
     root_pose_sub_ = nh.subscribe("/flor/ghost/set_root_pose", 1, &MoveItOcsModelRos::rootPoseCallback, this);
     incoming_joint_states_sub_ = nh.subscribe("/flor/ghost/set_joint_states", 5, &MoveItOcsModelRos::incomingJointStatesCallback, this);
+    incoming_real_joint_states_sub_ = nh.subscribe("/atlas/joint_states", 5, &MoveItOcsModelRos::realJointStatesCallback, this);
+
 
     torso_joint_position_constraints_sub_ = nh.subscribe("/flor/planning/upper_body/configuration",
                                                          10,
@@ -102,6 +106,11 @@ void MoveItOcsModelRos::incomingJointStatesCallback(const sensor_msgs::JointStat
     this->onModelUpdated();
 }
 
+void MoveItOcsModelRos::realJointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg)
+{
+    real_joint_states_ = msg;
+}
+
 // Sets global pose of model
 void MoveItOcsModelRos::rootPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
@@ -149,6 +158,19 @@ void MoveItOcsModelRos::onModelUpdated()
     robot_state_vis_pub_.publish(display_state_msg_);
 
     current_ghost_joint_states_pub_.publish(display_state_msg_.state.joint_state);
+
+    //If we got real joint_states, publish diff visualization
+    if (false && real_joint_states_.get()){
+      std::vector<std::string> differing_links;
+      ocs_model_->getDifferingLinks(*real_joint_states_, differing_links);
+
+      for (size_t i = 0; i < differing_links.size(); ++i){
+        setLinkColor(0.5,0.0,0.0,0.0,ocs_model_->getLinkIndex(differing_links[i]));
+      }
+
+      //publish partly translucent diff state here
+      robot_state_diff_real_vis_pub_.publish(display_state_msg_);
+    }
 
     /*
     if (marker_array_pub_.getNumSubscribers() > 0){
