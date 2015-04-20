@@ -1,12 +1,13 @@
 function [ trajectory, success ] = calcIKTrajectory( visualizer, robot_model, q0, request )
     % get trajectory duration infos and selected time steps
-    duration = request.duration;
+    duration = 5; %request.duration;
     
     % check trajectory every 0.5s   
     t = 0:0.5:duration;
-    if ( t(end) < duration )
-        t(end+1) = duration;
-    end
+    %t = 0:1.25:duration;
+    %if ( t(end) < duration )
+    %    t(end+1) = duration;
+    %end
 
     % stay at q0 for nominal trajectory
     q_lin = interp1([0, duration], [q0, q0]', t)';
