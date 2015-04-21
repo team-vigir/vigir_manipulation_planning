@@ -7,12 +7,18 @@
 #include <vigir_planning_msgs/ResultDrakeTrajectory.h>
 
 #include <vector>
+#include <unsupported/Eigen/Splines>
 
 class RigidBodyManipulator;
 class RigidBodyConstraint;
 class IKoptions;
 
 namespace vigir_drake_cpp {
+
+typedef Eigen::Spline<double,NUM_POSITIONS> SplineNd;
+typedef SplineNd::PointType SplinePointType;
+typedef SplineNd::KnotVectorType SplineKnotVectorType;
+typedef SplineNd::ControlPointVectorType SplineControlPointVectorType;
   
 class TrajectoryPlannerModule : public PlannerModule
 {

@@ -5,6 +5,16 @@
 #include <sensor_msgs/JointState.h>
 #include <Eigen/Dense>
 
+// ugly hack, but otherwise no way to instantiate Spline template class
+#if defined(THOR_PLANNER)
+    #define NUM_POSITIONS   35
+#elif defined(ATLAS_PLANNER)
+    #define NUM_POSITIONS   37
+#else
+    #warning "Neither THOR_PLANNER nor ATLAS_PLANNER defined. Assuming ATLAS."
+    #define NUM_POSITIONS   37
+#endif
+
 class RigidBodyManipulator;
 
 namespace Eigen {

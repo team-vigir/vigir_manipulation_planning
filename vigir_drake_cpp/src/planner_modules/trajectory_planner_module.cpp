@@ -6,6 +6,8 @@
 #include "IKoptions.h"
 #include "splineGeneration.h"
 
+#include <unsupported/Eigen/Splines>
+
 #include <algorithm>
 
 #include <tf/tf.h>
@@ -81,41 +83,6 @@ bool TrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeTrajectory &
         if ( response_t_vec[ response_t_vec.size()-1 ] < duration ) {
             response_t_vec.push_back(duration);
         }
-
-        std::vector<int> spline_segment_orders( t_vec.size()-1);
-        std::fill(spline_segment_orders.begin(), spline_segment_orders.end(), 3);
-
-        SplineInformation result_trajectory_info(spline_segment_orders, t_vec);
-        for ( int i = 0; i < q_sol.cols()-1; i++ ) {
-            result_trajectory_info.addValueConstraint(i, ValueConstraint(0, t_vec[i], q_sol(0, i)));
-            result_trajectory_info.addValueConstraint(i, ValueConstraint(1, t_vec[i], qdot_sol(0, i)));
-            //result_trajectory_info.addValueConstraint(i, ValueConstraint(2, t_vec[i], qddot_sol(0, i)));
-            result_trajectory_info.addContinuityConstraint(ContinuityConstraint(i, i+1, 0));
-            result_trajectory_info.addContinuityConstraint(ContinuityConstraint(i, i+1, 1));
-            //result_trajectory_info.addContinuityConstraint(ContinuityConstraint(i, i+1, 2));
-        }
-        /*result_trajectory_info.addValueConstraint(t_vec.size()-1, ValueConstraint(0, t_vec[ t_vec.size()-1], q_sol(0, t_vec.size()-1)));
-        result_trajectory_info.addValueConstraint(t_vec.size()-1, ValueConstraint(1, t_vec[ t_vec.size()-1], qdot_sol(0, t_vec.size()-1)));
-        result_trajectory_info.addValueConstraint(t_vec.size()-1, ValueConstraint(2, t_vec[ t_vec.size()-1], qddot_sol(0, t_vec.size()-1)));*/
-
-
-        PiecewisePolynomial result_trajectory = generateSpline(result_trajectory_info);
-        std::cout << "original knot points = " << std::endl;
-        std::cout << "     " << q_sol.row(0) << std::endl;
-        std::cout << std::endl;
-        std::cout << "spline interpolation = " << std::endl;
-        std::cout << "t = ";
-        for ( int i = 0; i < response_t_vec.size(); i++ ) {
-            std::cout << response_t_vec[i] << ", ";
-        }
-        std::cout << std::endl;
-        std::cout << "q = ";
-        for ( int i = 0; i < response_t_vec.size(); i++ ) {
-            std::cout << result_trajectory.value( response_t_vec[i]) << ", ";
-        }
-        std::cout << std::endl;
-
-
 
         std::vector<std::string> joint_names;
         for ( int i = 0; i < request_message.motion_plan_request.goal_constraints[0].joint_constraints.size(); i++ ) {
