@@ -23,6 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_visualization
   cmake_modules
   vigir_planning_interface
+  vigir_planning_msgs
   rviz
 )
 
@@ -42,7 +43,7 @@ catkin_package(
   INCLUDE_DIRS
     vigir_motion_planning_rviz_plugin/include
   CATKIN_DEPENDS
-    moveit_ros_visualization vigir_planning_interface
+    moveit_ros_visualization vigir_planning_interface vigir_planning_msgs
     )
 ###########
 ## Build ##
