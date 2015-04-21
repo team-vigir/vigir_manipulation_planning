@@ -1,5 +1,4 @@
 #include "vigir_drake_cpp/planner_modules/trajectory_planner_module.h"
-#include "vigir_drake_cpp/spline.h"
 
 #include "RigidBodyManipulator.h"
 #include "RigidBodyConstraint.h"

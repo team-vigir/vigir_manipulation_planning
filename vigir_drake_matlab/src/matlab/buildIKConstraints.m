@@ -1,4 +1,4 @@
-function activeConstraints = buildIKConstraints(robot_model, target_poses, target_link_names, q0)
+function activeConstraints = buildIKConstraints(robot_model, request, q0)
     % build constraints from message
     activeConstraints = {};
 
@@ -37,20 +37,20 @@ function activeConstraints = buildIKConstraints(robot_model, target_poses, targe
     activeConstraints{end+1} = quasi_static_constr;
 
     % handle end effector positions and orientations
-    for i = 1:length(target_poses)
+    for i = 1:length(request.target_poses)
         % get endeffector body ids and points
-        eef_body_id = robot_model.findLinkId(target_link_names{i});
+        eef_body_id = robot_model.findLinkId(request.target_link_names{i});
         eef_pts = [0;0;0];
 
         % goal position constraint
-        goal_position = target_poses(i).pose.position;
+        goal_position = request.target_poses(i).pose.position;
         goal_position_vec = [goal_position.x; goal_position.y; goal_position.z];
 
         eef_position_constr = WorldPositionConstraint(robot_model, eef_body_id, eef_pts, goal_position_vec, goal_position_vec);
         activeConstraints{end+1} = eef_position_constr;
 
         % goal orientation constraint
-        goal_orientation = target_poses(i).pose.orientation;
+        goal_orientation = request.target_poses(i).pose.orientation;
         goal_orientation_quat = [goal_orientation.w; goal_orientation.x; goal_orientation.y; goal_orientation.z];
         if ( all(goal_orientation_quat==0) )
             goal_orientation_quat = [1;0;0;0];
@@ -59,32 +59,18 @@ function activeConstraints = buildIKConstraints(robot_model, target_poses, targe
         eef_orientation_constr = WorldQuatConstraint(robot_model, eef_body_id, goal_orientation_quat, 0);
         activeConstraints{end+1} = eef_orientation_constr;
     end
-%
-%             % fix joint positions of non-move-group joints
-%             fix_joint_idx = [];
-%             for i = 1:robot_model.getNumBodies()
-%                 joint_name = robot_model.body(i).jointname;
-%                 if ( isempty(joint_name) || strcmp(joint_name, 'base') )
-%                     continue;
-%                 end
-%
-%                 matches = strfind(message.free_joint_names, joint_name);
-%                 if ( all(cellfun('isempty', matches)) == true ) % joint not in "free" list
-%                     % fix joint position
-%                     joint_idx = robot_model.findJointId(joint_name);
-%                     fix_joint_idx = [fix_joint_idx joint_idx];
-%                 end
-%             end
-%
-%             move_group_constr = PostureConstraint(robot_model);
-%
-%             % force joint constraints to joint limits (necessary due to
-%             % rounding errors)
-%             min_violation_idx = find ( q0 - robot_model.joint_limit_min < 0 );
-%             max_violation_idx = find ( robot_model.joint_limit_max - q0 < 0 );
-%             q0(min_violation_idx) = robot_model.joint_limit_min(min_violation_idx);
-%             q0(max_violation_idx) = robot_model.joint_limit_max(max_violation_idx);
-%
-%             move_group_constr = move_group_constr.setJointLimits(fix_joint_idx', q0(fix_joint_idx), q0(fix_joint_idx));
-%             activeConstraints{end+1} = move_group_constr;
+    
+    % handle joint group
+    posture_constr = PostureConstraint(robot_model);    
+    for current_joint_name = {robot_model.body.jointname}
+        if ( ~any(strcmpi(request.free_joint_names, current_joint_name)) && ~isempty(current_joint_name{:}) && ~strcmpi(current_joint_name, 'base') )
+            % this is not a free joint, lock it
+            body_idx = robot_model.findJointId(current_joint_name);            
+            fix_joint_idx = robot_model.body(body_idx).position_num;
+            posture_constr = posture_constr.setJointLimits(fix_joint_idx, q0(fix_joint_idx), q0(fix_joint_idx));
+        end
+            
+    end
+
+    activeConstraints{end+1} = posture_constr; 
 end

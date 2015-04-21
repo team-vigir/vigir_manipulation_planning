@@ -8,7 +8,7 @@ function [ posture, success ] = calcIKPosture( visualizer, robot_model, q0, requ
     visualizer.draw(cputime, q0);
 
     % build list of constraints from message
-    activeConstraints = buildIKConstraints(robot_model, request.target_poses, request.target_link_names, q0);
+    activeConstraints = buildIKConstraints(robot_model, request, q0);
 
     % run inverse kinematics (mex)
     ikoptions = initIKOptions(robot_model);
