@@ -9,51 +9,36 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
     nq = robot_model.getNumPositions();
     num_steps = length(interpolated_waypoints);
     success = true;
-    current_waypoint.waypoint_time = 0;
-    current_waypoint.target_link_names = interpolated_waypoints(1).target_link_names;
-    current_waypoint.waypoints = struct('position', {}, 'orientation', {});
-    current_waypoint.keep_line_and_orientation = zeros(length(current_waypoint.target_link_names), 1);
+    start_waypoint.waypoint_time = 0;
+    start_waypoint.target_link_names = interpolated_waypoints(1).target_link_names;
+    start_waypoint.waypoints = struct('position', {}, 'orientation', {});
+    start_waypoint.keep_line_and_orientation = zeros(length(start_waypoint.target_link_names), 1);
     % set waypoint for time = 0
     
     trajectory = [];
     for i = 1:num_steps
-        kinsol0 = doKinematics(robot_model,q0,false,true);
-        
-        current_waypoint.waypoints = struct('position', {}, 'orientation', {});
-        for j = 1:length(current_waypoint.target_link_names)
-            eef_id = robot_model.findLinkId(current_waypoint.target_link_names{j});
-            eef_pts = [0;0;0];
-            
-            waypoint_vec = forwardKin(robot_model,kinsol0,eef_id,eef_pts,2);
-            waypoint.position.x = waypoint_vec(1);
-            waypoint.position.y = waypoint_vec(2);
-            waypoint.position.z = waypoint_vec(3);
-            waypoint.orientation.w = waypoint_vec(4);
-            waypoint.orientation.x = waypoint_vec(5);
-            waypoint.orientation.y = waypoint_vec(6);
-            waypoint.orientation.z = waypoint_vec(7);
-            
-            current_waypoint.waypoints(end+1) = waypoint;
-        end
-        
+      if (i > 1)
+        start_waypoint = target_waypoint;
+      end
+        target_waypoint = interpolated_waypoints(i);
         
 
         % stay at q0 for nominal trajectory
-        q_lin = interp1([current_waypoint.waypoint_time interpolated_waypoints(i).waypoint_time], [q0, q0]', [current_waypoint.waypoint_time interpolated_waypoints(i).waypoint_time])';
-        q_nom_traj = PPTrajectory(foh([current_waypoint.waypoint_time interpolated_waypoints(i).waypoint_time],q_lin));
+        q_lin = interp1([start_waypoint.waypoint_time target_waypoint.waypoint_time], [q0, q0]', [start_waypoint.waypoint_time target_waypoint.waypoint_time])';
+        q_nom_traj = PPTrajectory(foh([start_waypoint.waypoint_time target_waypoint.waypoint_time],q_lin));
         q_seed_traj = q_nom_traj;
         
         % build IK options (add additional constraint checks)
-        duration = interpolated_waypoints(i).waypoint_time - current_waypoint.waypoint_time;
+        duration = target_waypoint.waypoint_time - start_waypoint.waypoint_time;
         ikoptions = initIKCartesianTrajectoryOptions(robot_model, duration);
         %ikoptions = ikoptions.setAdditionaltSamples( request.waypoint_times(1):1.0:request.waypoint_times(end) );
 
 
         % build list of constraints from message
-        activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, request, current_waypoint,  interpolated_waypoints(i), q0);
+        activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, request, start_waypoint,  target_waypoint, q0);
 
         % run inverse kinematics (mex)
-        [current_traj,info_mex,infeasible_constraints] = inverseKinTraj(robot_model, [current_waypoint.waypoint_time interpolated_waypoints(i).waypoint_time], q_seed_traj, q_nom_traj, activeConstraints{:},ikoptions);
+        [current_traj,info_mex,infeasible_constraints] = inverseKinTraj(robot_model, [start_waypoint.waypoint_time target_waypoint.waypoint_time], q_seed_traj, q_nom_traj, activeConstraints{:},ikoptions);
 
         if ( isempty(trajectory) )
             trajectory = current_traj;
@@ -77,15 +62,11 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
 
         q0 = current_traj.eval(interpolated_waypoints(i).waypoint_time);
         q0 = q0(1:nq);
-
-        current_waypoint.waypoint_time = interpolated_waypoints(i).waypoint_time;
-        current_waypoint.target_link_names = interpolated_waypoints(i).target_link_names;
-        current_waypoint.keep_line_and_orientation = interpolated_waypoints(i).keep_line_and_orientation;
     end
 
     % visualize result
     visualizer.playback(trajectory,struct('slider',true));
-    end
+end
 
 function interpolated_waypoints = extractOrderedWaypoints(request, robot_model, q0)
     % sort request by waypoint times

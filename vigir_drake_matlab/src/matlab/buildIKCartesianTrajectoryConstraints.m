@@ -1,4 +1,4 @@
-function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, request, current_waypoint, target_waypoint, q0)
+function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, request, start_waypoint, target_waypoint, q0)
     ORIENTATION_FULL = 0;
     ORIENTATION_AXIS_ONLY = 1;
     ORIENTATION_IGNORE = 2;
@@ -16,7 +16,7 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
     
     % keep torso more or less upright
     torso_body_idx = robot_model.findLinkId('utorso');
-    torso_upright_constr = WorldGazeDirConstraint(robot_model, torso_body_idx, [0; 0; 1], [0;0;1], 0.1, [current_waypoint.waypoint_time, target_waypoint.waypoint_time]);
+    torso_upright_constr = WorldGazeDirConstraint(robot_model, torso_body_idx, [0; 0; 1], [0;0;1], 0.1, [start_waypoint.waypoint_time, target_waypoint.waypoint_time]);
     activeConstraints{end+1} = torso_upright_constr;
     
     % fixed foot placement
@@ -61,7 +61,7 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
     
     % add waypoint constraints
     for i = 1:length(target_waypoint.target_link_names)
-        current_waypoint_idx = find(strcmp(current_waypoint.target_link_names, target_waypoint.target_link_names{i}));
+        current_waypoint_idx = find(strcmp(start_waypoint.target_link_names, target_waypoint.target_link_names{i}));
         
         target_link_name = target_waypoint.target_link_names{i};
         
@@ -77,27 +77,30 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
             activeConstraints{end+1} = eef_position_constr;
 
             % goal orientation constraint
-            if ( current_waypoint.keep_line_and_orientation(current_waypoint_idx) == true )
+            if ( start_waypoint.keep_line_and_orientation(current_waypoint_idx) == true )
+                goal_orientation = start_waypoint.waypoints(i).orientation;
+                goal_orientation_quat = [goal_orientation.w; goal_orientation.x; goal_orientation.y; goal_orientation.z];            
+            elseif ( start_waypoint.keep_line_and_orientation(current_waypoint_idx) == false && target_waypoint.keep_line_and_orientation(current_waypoint_idx) == true)
                 goal_orientation = target_waypoint.waypoints(i).orientation;
                 goal_orientation_quat = [goal_orientation.w; goal_orientation.x; goal_orientation.y; goal_orientation.z];
-
-                if ( request.target_orientation_type == ORIENTATION_FULL )
-                    eef_orientation_constr = WorldQuatConstraint(robot_model, eef_body_id, goal_orientation_quat, 0, [target_waypoint.waypoint_time, target_waypoint.waypoint_time]);
-                    activeConstraints{end+1} = eef_orientation_constr;
-                elseif ( request.target_orientation_type == ORIENTATION_AXIS_ONLY ) % goal axis orientation constraint
-                    direction = quat2axis(goal_orientation_quat);
-                    if ( any(direction(1:3)) ) 
-                        eef_axis_constr = WorldGazeDirConstraint(robot_model, eef_body_id, [0; 1; 0], direction(1:3), 0.05, [target_waypoint.waypoint_time, target_waypoint.waypoint_time]);
-                        activeConstraints{end+1} = eef_axis_constr;
-                    end
-                end
             end
+            
+            if ( request.target_orientation_type == ORIENTATION_FULL )
+                eef_orientation_constr = WorldQuatConstraint(robot_model, eef_body_id, goal_orientation_quat, 0, [target_waypoint.waypoint_time, target_waypoint.waypoint_time]);
+                activeConstraints{end+1} = eef_orientation_constr;
+            elseif ( request.target_orientation_type == ORIENTATION_AXIS_ONLY ) % goal axis orientation constraint
+                direction = quat2axis(goal_orientation_quat);
+                if ( any(direction(1:3)) ) 
+                    eef_axis_constr = WorldGazeDirConstraint(robot_model, eef_body_id, [0; 1; 0], direction(1:3), 0.05, [target_waypoint.waypoint_time, target_waypoint.waypoint_time]);
+                    activeConstraints{end+1} = eef_axis_constr;
+                end
+            end               
 
         % setup line distance constraints between waypoints
-        if ( current_waypoint.keep_line_and_orientation(current_waypoint_idx) == true )
-            line_start = current_waypoint.waypoints(current_waypoint_idx).position;
+        if ( start_waypoint.keep_line_and_orientation(current_waypoint_idx) == true )
+            line_start = start_waypoint.waypoints(current_waypoint_idx).position;
             line_start_vec = [line_start.x; line_start.y; line_start.z];
-            time_start = current_waypoint.waypoint_time;
+            time_start = start_waypoint.waypoint_time;
 
             line_end = target_waypoint.waypoints(i).position;
             line_end_vec = [line_end.x; line_end.y; line_end.z];

@@ -1,17 +1,13 @@
 function [ trajectory, success ] = calcIKTrajectory( visualizer, robot_model, q0, request )
     % get trajectory duration infos and selected time steps
     duration = request.duration;
-    
-    % check trajectory every 0.5s       
+            
     if ( duration <= 0 ) % set default duration, if it is not set correctly
         duration = 5;
     end
     
     num_steps = 3;
     t = 0:duration/num_steps:duration;
-    %if ( t(end) < duration )
-    %    t(end+1) = duration;
-    %end
 
     % stay at q0 for nominal trajectory
     q_lin = interp1([0, duration], [q0, q0]', t)';
@@ -43,6 +39,5 @@ function [ trajectory, success ] = calcIKTrajectory( visualizer, robot_model, q0
     
     % visualize result
     visualizer.playback(trajectory,struct('slider',true));
-
 end
 
