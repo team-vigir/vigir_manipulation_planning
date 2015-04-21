@@ -51,7 +51,6 @@
 #include <flor_grasp_msgs/GraspState.h>
 #include <flor_grasp_msgs/HandStatus.h>
 #include "flor_ocs_msgs/OCSRobotStatus.h"
-#include "flor_ocs_msgs/OCSGhostControl.h"
 #include "flor_ocs_msgs/RobotStatusCodes.h"
 #include "flor_control_msgs/FlorControlMode.h"
 #include <flor_planning_msgs/PlanRequest.h>
@@ -217,7 +216,7 @@ namespace vigir_manipulation_controller {
     void moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp);
 
     /** Set the current planning group to "arm only" or "arm + torso"           */
-    void  graspPlanningGroupCallback(const flor_ocs_msgs::OCSGhostControl& planning_group);
+    void  graspPlanningGroupCallback(const std_msgs::Bool::ConstPtr& msg);
     void  affordanceCommandCallback(const vigir_object_template_msgs::Affordance &affordance);
     void  updateHandMarkerCallback(const geometry_msgs::Pose &hand_T_marker);
 

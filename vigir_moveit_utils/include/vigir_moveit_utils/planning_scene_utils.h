@@ -34,6 +34,21 @@
 
 namespace planning_scene_utils{
 
+  bool get_eef_link(const std::string group_name, std::string& eef_link)
+  {
+    std::string first_char = group_name.substr(0,1);
+
+    if (first_char == "r"){
+        eef_link = "r_hand";
+    }else if(first_char == "l"){
+        eef_link = "l_hand";
+    }else{
+        ROS_ERROR("Group name %s does not start with l or r. Cannot infer endeffector to use, aborting", group_name.c_str());
+        return false;
+    }
+    return true;
+  }
+
   bool getEndeffectorTransform(const std::string& group_name,
                                const planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor,
                                Eigen::Affine3d& transform)
@@ -43,20 +58,11 @@ namespace planning_scene_utils{
 
     std::string start_pose_link;
 
-    std::string first_char = group_name.substr(0,1);
-
-    if (first_char == "r"){
-        start_pose_link = "r_hand";
-    }else if(first_char == "l"){
-        start_pose_link = "l_hand";
-    }else{
-        ROS_ERROR("Group name %s does not start with l or r. Cannot infer endeffector to use, aborting", group_name.c_str());
-        return false;
-    }
+    if (!get_eef_link(group_name, start_pose_link))
+      return false;
 
     transform = curr_state.getGlobalLinkTransform(start_pose_link);
 
-    //return curr_state.getGlobalLinkTransform(start_pose_link);
     return true;
   }
 

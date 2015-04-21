@@ -539,7 +539,6 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     return;
   }
 
-
   moveit_msgs::GetCartesianPath cart_path;
 
   std::vector <geometry_msgs::Pose> pose_vec;
@@ -626,27 +625,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     return;
   }
 
-  /*
-  plan_execution::ExecutableMotionPlan plan;
-
-  {
-    planning_scene_monitor::LockedPlanningSceneRO lscene(plan.planning_scene_monitor_);
-    robot_state::RobotState state = lscene.getPlanningSceneMonitor()->getPlanningScene()->getCurrentState();
-
-
-
-    plan_execution::ExecutableMotionPlan plan;
-    plan.plan_components_.resize(1);
-    plan.plan_components_[0].trajectory_.reset(new robot_trajectory::RobotTrajectory(
-                                                 lscene.getPlanningSceneMonitor()->getPlanningScene()->getRobotModel(),
-                                                 goal->request.group_name));
-    plan.plan_components_[0].trajectory_->setRobotTrajectoryMsg(state, result.solution);
-  }
-
-  setMoveState(MONITOR);
-
-  context_->plan_execution_->executeAndMonitor(plan);
-  */
+  //Past this point, we have either full path or allow noncomplete paths
 
   if (!goal->planning_options.plan_only){
     context_->trajectory_execution_manager_->clear();
@@ -668,6 +647,9 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     }else{
       ROS_WARN("Could not push trajectory for execution!");
     }
+  }else{
+    action_res.planned_trajectory = cart_path.response.solution;
+    action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
   }
 }
 

@@ -75,6 +75,10 @@ public:
 
   void getCollidingLinks(std::vector<std::string>& colliding_links) const;
 
+  //Retrieve links for which ghost state is different from provided joint state
+  void getDifferingLinks(const sensor_msgs::JointState state,
+                         std::vector<std::string>& differing_links);
+
   size_t getLinkIndex(const std::string& link_name) const;
 
   const moveit::core::JointModel* getJointModel(const std::string& joint_name) const;
