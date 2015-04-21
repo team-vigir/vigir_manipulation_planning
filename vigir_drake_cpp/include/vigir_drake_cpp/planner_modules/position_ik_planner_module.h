@@ -24,7 +24,7 @@ public:
 
 private:
     std::vector<RigidBodyConstraint*> buildIKConstraints(vigir_planning_msgs::RequestDrakeIK &request_message, Eigen::VectorXd &q0);
-    IKoptions *buildIKOptions(vigir_planning_msgs::RequestDrakeIK &request_message);
+    IKoptions *buildIKOptions();
 };
 
 }

@@ -151,7 +151,10 @@ add_dependencies(vigir_drake_cpp_node vigir_planning_msgs_generate_messages_cpp)
 ## Specify libraries to link a library or executable target against
  target_link_libraries(vigir_drake_cpp_node
    ${catkin_LIBRARIES}
+   drakeSplineGeneration
    drakeRigidBodyConstraint
    drakeIK
    drakeRBM
+   drakePolynomial
+   drakePiecewisePolynomial
  )

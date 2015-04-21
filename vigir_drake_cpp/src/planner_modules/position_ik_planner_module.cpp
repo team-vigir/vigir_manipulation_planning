@@ -29,7 +29,7 @@ bool PositionIKPlannerModule::plan(vigir_planning_msgs::RequestDrakeIK &request_
     q0 = messageQs2DrakeQs(q0, request_message.robot_state, received_world_transform);
 
     // build IK options and constraints
-    IKoptions *ik_options = buildIKOptions(request_message);
+    IKoptions *ik_options = buildIKOptions();
     std::vector<RigidBodyConstraint*> ik_constraints = buildIKConstraints(request_message, q0);
 
     VectorXd q_sol = VectorXd::Zero(this->getRobotModel()->num_positions);
@@ -147,13 +147,12 @@ std::vector<RigidBodyConstraint*> PositionIKPlannerModule::buildIKConstraints(vi
 }
 
 
-IKoptions *PositionIKPlannerModule::buildIKOptions(vigir_planning_msgs::RequestDrakeIK &request_message) {
+IKoptions *PositionIKPlannerModule::buildIKOptions() {
     RigidBodyManipulator *current_robot = this->getRobotModel();
     IKoptions *ik_options = new IKoptions( current_robot );
 
     Eigen::MatrixXd Q = MatrixXd::Identity(current_robot->num_positions, current_robot->num_positions);
     ik_options->setQ(Q);
-    ik_options->setQa(0.001*Q);
     ik_options->setMajorIterationsLimit(10000);
     ik_options->setIterationsLimit(500000);
     ik_options->setSuperbasicsLimit(1000);

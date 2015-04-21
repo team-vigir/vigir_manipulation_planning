@@ -1,12 +1,17 @@
 #include "vigir_drake_cpp/planner_modules/trajectory_planner_module.h"
+#include "vigir_drake_cpp/spline.h"
 
 #include "RigidBodyManipulator.h"
 #include "RigidBodyConstraint.h"
 #include "RigidBodyIK.h"
 #include "IKoptions.h"
+#include "splineGeneration.h"
+
+#include <algorithm>
 
 #include <tf/tf.h>
 #include <ros/ros.h>
+
 
 namespace vigir_drake_cpp {
   
@@ -23,14 +28,14 @@ bool TrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeTrajectory &
     // get trajectory duration infos and selected time steps
     double duration = request_message.duration;
 
-    // check trajectory every 0.5s
+    // check trajectory points between start and end point
     std::vector<double> t_vec;
-    for ( double t = 0.0; t < duration; t+=0.5) {
+    for ( double t = 0.0; t < duration; t+=duration/NUM_TIME_STEPS) {
         t_vec.push_back(t);
     }
-    if ( t_vec[ t_vec.size()-1 ] < duration ) {
+    /*if ( t_vec[ t_vec.size()-1 ] < duration ) {
         t_vec.push_back(duration);
-    }
+    }*/
 
     // stay at q0 for nominal trajectory
     bool received_world_transform = false;
@@ -43,12 +48,13 @@ bool TrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeTrajectory &
 
     // build list of constraints from message    
     std::vector<RigidBodyConstraint*> constraints = buildIKConstraints(request_message, q0);
-    IKoptions *ik_options = buildIKOptions();
+    IKoptions *ik_options = buildIKOptions(duration);
 
     // run inverse kinematics
-    MatrixXd q_sol(this->getRobotModel()->num_positions,t_vec.size());
-    MatrixXd qdot_sol(this->getRobotModel()->num_positions,t_vec.size());
-    MatrixXd qddot_sol(this->getRobotModel()->num_positions,t_vec.size());
+    int nq = this->getRobotModel()->num_positions;
+    MatrixXd q_sol(nq,t_vec.size());
+    MatrixXd qdot_sol(nq,t_vec.size());
+    MatrixXd qddot_sol(nq,t_vec.size());
 
 
     int info;
@@ -67,6 +73,51 @@ bool TrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeTrajectory &
     }
 
     if ( success ) {
+        // generate spline from result matrices
+        std::vector<double> response_t_vec;
+        double time_step = 1.0 / request_message.trajectory_sample_rate;
+        for ( double t = 0.0; t < duration; t+=time_step) {
+            response_t_vec.push_back(t);
+        }
+        if ( response_t_vec[ response_t_vec.size()-1 ] < duration ) {
+            response_t_vec.push_back(duration);
+        }
+
+        std::vector<int> spline_segment_orders( t_vec.size()-1);
+        std::fill(spline_segment_orders.begin(), spline_segment_orders.end(), 3);
+
+        SplineInformation result_trajectory_info(spline_segment_orders, t_vec);
+        for ( int i = 0; i < q_sol.cols()-1; i++ ) {
+            result_trajectory_info.addValueConstraint(i, ValueConstraint(0, t_vec[i], q_sol(0, i)));
+            result_trajectory_info.addValueConstraint(i, ValueConstraint(1, t_vec[i], qdot_sol(0, i)));
+            //result_trajectory_info.addValueConstraint(i, ValueConstraint(2, t_vec[i], qddot_sol(0, i)));
+            result_trajectory_info.addContinuityConstraint(ContinuityConstraint(i, i+1, 0));
+            result_trajectory_info.addContinuityConstraint(ContinuityConstraint(i, i+1, 1));
+            //result_trajectory_info.addContinuityConstraint(ContinuityConstraint(i, i+1, 2));
+        }
+        /*result_trajectory_info.addValueConstraint(t_vec.size()-1, ValueConstraint(0, t_vec[ t_vec.size()-1], q_sol(0, t_vec.size()-1)));
+        result_trajectory_info.addValueConstraint(t_vec.size()-1, ValueConstraint(1, t_vec[ t_vec.size()-1], qdot_sol(0, t_vec.size()-1)));
+        result_trajectory_info.addValueConstraint(t_vec.size()-1, ValueConstraint(2, t_vec[ t_vec.size()-1], qddot_sol(0, t_vec.size()-1)));*/
+
+
+        PiecewisePolynomial result_trajectory = generateSpline(result_trajectory_info);
+        std::cout << "original knot points = " << std::endl;
+        std::cout << "     " << q_sol.row(0) << std::endl;
+        std::cout << std::endl;
+        std::cout << "spline interpolation = " << std::endl;
+        std::cout << "t = ";
+        for ( int i = 0; i < response_t_vec.size(); i++ ) {
+            std::cout << response_t_vec[i] << ", ";
+        }
+        std::cout << std::endl;
+        std::cout << "q = ";
+        for ( int i = 0; i < response_t_vec.size(); i++ ) {
+            std::cout << result_trajectory.value( response_t_vec[i]) << ", ";
+        }
+        std::cout << std::endl;
+
+
+
         std::vector<std::string> joint_names;
         for ( int i = 0; i < request_message.motion_plan_request.goal_constraints[0].joint_constraints.size(); i++ ) {
             joint_names.push_back( request_message.motion_plan_request.goal_constraints[0].joint_constraints[i].joint_name);
@@ -89,18 +140,25 @@ std::vector<RigidBodyConstraint*> TrajectoryPlannerModule::buildIKConstraints(vi
     int l_foot_id = this->getRobotModel()->findLinkId("l_foot");
     int r_foot_id = this->getRobotModel()->findLinkId("r_foot");
 
-    Vector4d foot_pts;
-    foot_pts << 0.0,0.0,0.0,1.0;
+    //Vector4d foot_pts;
+    //foot_pts << 0.0,0.0,0.0,1.0;
+    Vector4d hom_foot_pts;
+    hom_foot_pts << 0.0,0.0,0.0,1.0;
+    Vector3d foot_pts;
+    foot_pts << 0.0,0.0,0.0;
 
     //this->getRobotModel()->use_new_kinsol = false;
-    this->getRobotModel()->doKinematics(q0);
+    VectorXd v = VectorXd::Zero(this->getRobotModel()->num_velocities);
+    this->getRobotModel()->doKinematicsNew(q0, v);
 
-    Vector7d l_foot_pos, r_foot_pos;
-    this->getRobotModel()->forwardKin(l_foot_id, foot_pts, 2, l_foot_pos);
-    this->getRobotModel()->forwardKin(r_foot_id, foot_pts, 2, r_foot_pos);
+    //this->getRobotModel()->forwardKin(l_foot_id, foot_pts, 2, l_foot_pos);
+    //this->getRobotModel()->forwardKin(r_foot_id, foot_pts, 2, r_foot_pos);
 
-    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), l_foot_id, foot_pts, l_foot_pos.block<3,1>(0,0), l_foot_pos.block<3,1>(0,0)) );
-    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), r_foot_id, foot_pts, r_foot_pos.block<3,1>(0,0), r_foot_pos.block<3,1>(0,0)) );
+    Vector7d l_foot_pos = this->getRobotModel()->forwardKinNew(foot_pts, l_foot_id, 0, 2, 0).value();
+    Vector7d r_foot_pos = this->getRobotModel()->forwardKinNew(foot_pts, r_foot_id, 0, 2, 0).value();
+
+    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), l_foot_id, hom_foot_pts, l_foot_pos.block<3,1>(0,0), l_foot_pos.block<3,1>(0,0)) );
+    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), r_foot_id, hom_foot_pts, r_foot_pos.block<3,1>(0,0), r_foot_pos.block<3,1>(0,0)) );
     constraints.push_back( new WorldQuatConstraint(this->getRobotModel(), l_foot_id, l_foot_pos.block<4,1>(3,0), 0.0));
     constraints.push_back( new WorldQuatConstraint(this->getRobotModel(), r_foot_id, l_foot_pos.block<4,1>(3,0), 0.0));
 
@@ -137,13 +195,14 @@ std::vector<RigidBodyConstraint*> TrajectoryPlannerModule::buildIKConstraints(vi
 }
 
 
-IKoptions *TrajectoryPlannerModule::buildIKOptions() {
+IKoptions *TrajectoryPlannerModule::buildIKOptions(double duration) {
     RigidBodyManipulator *current_robot = this->getRobotModel();
     IKoptions *ik_options = new IKoptions( current_robot );
 
     Eigen::MatrixXd Q = MatrixXd::Identity(current_robot->num_positions, current_robot->num_positions);
     ik_options->setQ(Q);
-    ik_options->setQa(0.001*Q);
+    ik_options->setQv(duration * Q);
+    ik_options->setQa(duration * duration * Q);
     ik_options->setMajorIterationsLimit(10000);
     ik_options->setIterationsLimit(500000);
     ik_options->setSuperbasicsLimit(1000);

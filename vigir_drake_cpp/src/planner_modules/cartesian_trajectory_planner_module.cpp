@@ -34,7 +34,7 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
 
 
     // build list of constraints from message       
-    IKoptions *ik_options = buildIKOptions();
+    IKoptions *ik_options = buildIKOptions(1.0);
     
     
     int nq = getRobotModel()->num_positions;
