@@ -203,6 +203,7 @@ private Q_SLOTS:
   void loadCartesianTrajectoryButtonClicked();
   void saveCartesianTrajectoryButtonClicked();
   void planCartesianTrajectoryButtonClicked();
+  void cartesianTrajectoryOrientationChanged();
 
   void updateWaypointData(QWidget *spinbox);
 
@@ -294,7 +295,7 @@ private:
 
   void computeCartesianPlanButtonClicked();
   QTreeWidgetItem *addWaypoint(QTreeWidgetItem *copy = NULL);
-  bool getContentFromItem(QTreeWidgetItem *waypointItem, QString &name, geometry_msgs::Pose &targetPose, QString &targetLinkName, double &targetPoseTime);
+  bool getContentFromItem(QTreeWidgetItem *waypointItem, QString &name, geometry_msgs::Pose &targetPose, QString &targetLinkName, geometry_msgs::Point &targetLinkAxis, double &targetPoseTime);
   void removeWaypoint(QTreeWidgetItem *item);
   void clearWaypoints();
 

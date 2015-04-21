@@ -468,6 +468,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
       drake_request_msg.trajectory_request.waypoints = goal->extended_planning_options.target_poses;
       drake_request_msg.trajectory_request.waypoint_times = goal->extended_planning_options.target_pose_times;
       drake_request_msg.trajectory_request.target_link_names = goal->extended_planning_options.target_link_names;
+      drake_request_msg.trajectory_request.target_link_axis = goal->extended_planning_options.target_link_axis;
       drake_request_msg.trajectory_request.free_joint_names = joint_model_group->getJointModelNames();
       drake_request_msg.trajectory_request.target_orientation_type = goal->extended_planning_options.target_orientation_type;
       drake_request_msg.trajectory_request.trajectory_sample_rate = goal->extended_planning_options.trajectory_sample_rate;
@@ -786,6 +787,7 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
         drake_request_msg.trajectory_request.waypoints = goal->extended_planning_options.target_poses;
         drake_request_msg.trajectory_request.waypoint_times = goal->extended_planning_options.target_pose_times;
         drake_request_msg.trajectory_request.target_link_names = goal->extended_planning_options.target_link_names;
+        drake_request_msg.trajectory_request.target_link_axis = goal->extended_planning_options.target_link_axis;
         drake_request_msg.trajectory_request.free_joint_names = joint_model_group->getJointModelNames();
         drake_request_msg.trajectory_request.target_orientation_type = goal->extended_planning_options.target_orientation_type;
         drake_request_msg.trajectory_request.trajectory_sample_rate = goal->extended_planning_options.trajectory_sample_rate;
