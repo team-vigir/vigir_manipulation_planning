@@ -6,10 +6,12 @@ function [ trajectory, success ] = calcIKTrajectory( visualizer, robot_model, q0
     if ( duration <= 0 ) % set default duration, if it is not set correctly
         duration = 5;
     end
-    t = 0:0.5:duration;
-    f ( t(end) < duration )
-        t(end+1) = duration;
-    end
+    
+    num_steps = 3;
+    t = 0:duration/num_steps:duration;
+    %if ( t(end) < duration )
+    %    t(end+1) = duration;
+    %end
 
     % stay at q0 for nominal trajectory
     q_lin = interp1([0, duration], [q0, q0]', t)';
