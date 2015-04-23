@@ -34,7 +34,7 @@
 
 <node name="right_robotiq_fake_joint_publisher" pkg="vigir_robotiq_grasp_controller" type="robotiq_fake_joints_node">
 <param name="hand_prefix" value="right"/>
-<param name="fake_time"   value="30"/>
+<param name="fake_time"   value="120"/>
 </node>
 
 </launch>
