@@ -75,14 +75,16 @@ bool TrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeTrajectory &
 
     if ( success ) {
         // generate spline from result matrices
-        std::vector<double> response_t_vec;
         double time_step = 1.0 / request_message.trajectory_sample_rate;
-        for ( double t = 0.0; t < duration; t+=time_step) {
-            response_t_vec.push_back(t);
+        int num_steps = (duration / time_step) + 0.5;
+        Eigen::VectorXd response_t(num_steps+1);
+
+        for ( int i = 0; i <= num_steps; i++) {
+            response_t(i) = i*time_step;
         }
-        if ( response_t_vec[ response_t_vec.size()-1 ] < duration ) {
-            response_t_vec.push_back(duration);
-        }
+
+        Eigen::VectorXd input_t = Map<VectorXd>(t_vec.data(), t_vec.size());
+        interpolateTrajectory(q_sol, input_t, response_t);
 
         std::vector<std::string> joint_names;
         for ( int i = 0; i < request_message.motion_plan_request.goal_constraints[0].joint_constraints.size(); i++ ) {
@@ -260,6 +262,24 @@ vigir_planning_msgs::ResultDrakeTrajectory TrajectoryPlannerModule::buildTraject
     result_trajectory_msg.is_valid = true;
 
    return result_trajectory_msg;
+}
+
+void TrajectoryPlannerModule::interpolateTrajectory(Eigen::MatrixXd &input_q, Eigen::VectorXd &input_t, Eigen::VectorXd &knot_t)
+{
+    assert(input_q.cols() == input_t.rows());
+    Eigen::MatrixXd data_points(input_q.rows()+1, input_q.cols());
+    data_points.row(0) = input_t.transpose();
+    data_points.block(1,0, input_q.rows(), input_q.cols()) = input_q;
+
+    const TrajectorySpline q_spline = SplineFitting<TrajectorySpline>::Interpolate(data_points, input_t.rows()-1);
+
+
+    for ( int i = 0; i < knot_t.rows(); i++ ) {
+      double spline_pos = (knot_t(i) - input_t.minCoeff())/(input_t.maxCoeff() - input_t.minCoeff());
+      const MatrixXd values = q_spline.derivatives(spline_pos, 2); // compute position and derivatives at time points
+
+      std::cout << "(" << knot_t(i) << ", " << values.transpose() << ")" << std::endl << std::endl;
+    }
 }
 
 }

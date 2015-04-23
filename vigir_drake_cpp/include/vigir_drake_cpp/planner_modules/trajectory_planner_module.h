@@ -15,10 +15,7 @@ class IKoptions;
 
 namespace vigir_drake_cpp {
 
-typedef Eigen::Spline<double,NUM_POSITIONS> SplineNd;
-typedef SplineNd::PointType SplinePointType;
-typedef SplineNd::KnotVectorType SplineKnotVectorType;
-typedef SplineNd::ControlPointVectorType SplineControlPointVectorType;
+typedef Eigen::Spline<double,NUM_POSITIONS+1> TrajectorySpline;
   
 class TrajectoryPlannerModule : public PlannerModule
 {
@@ -32,6 +29,7 @@ protected:
     std::vector<RigidBodyConstraint*> buildIKConstraints(vigir_planning_msgs::RequestDrakeTrajectory &request_message, Eigen::VectorXd &q0);
     IKoptions *buildIKOptions(double duration);
     vigir_planning_msgs::ResultDrakeTrajectory buildTrajectoryResultMsg(Eigen::MatrixXd &q_sol, Eigen::MatrixXd &qd_sol, Eigen::MatrixXd &qdd_sol, std::vector<double> t_vec,std::vector<std::string> &joint_names, bool send_world_transform);
+    void interpolateTrajectory(Eigen::MatrixXd &input_q, Eigen::VectorXd &input_t, Eigen::VectorXd &knot_t);
 
 private:
     const int NUM_TIME_STEPS = 3;
