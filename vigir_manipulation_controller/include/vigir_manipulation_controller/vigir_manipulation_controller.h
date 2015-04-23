@@ -59,6 +59,10 @@
 #include <flor_atlas_msgs/AtlasHandMass.h>
 #include <flor_control_msgs/FlorControlModeCommand.h>
 
+#include <actionlib/client/simple_action_client.h>
+#include <vigir_planning_msgs/MoveAction.h>
+#include <vigir_planning_msgs/ExtendedPlanningOptions.h>
+
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>

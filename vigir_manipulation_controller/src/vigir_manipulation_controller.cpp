@@ -618,11 +618,38 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
 {
     flor_planning_msgs::CartesianMotionRequest cmd;
 
+    actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> move_action_client("/vigir_move_group",true);
+
+
+
+    ROS_INFO("Waiting for move action server to start.");
+    if(!move_action_client.waitForServer(ros::Duration(5))){
+        ROS_ERROR("Move group client timed out");
+        return;
+    }
+
+    ROS_INFO("Action server started, sending goal.");
+    vigir_planning_msgs::MoveGoal move_goal;
+
+    move_goal.extended_planning_options.target_motion_type           = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
+    move_goal.extended_planning_options.avoid_collisions             = false;
+    move_goal.extended_planning_options.keep_endeffector_orientation = affordance.keep_orientation;
+    move_goal.request.group_name                                     = this->planning_group_;
+    move_goal.request.allowed_planning_time                          = 1.0;
+    move_goal.request.num_planning_attempts                          = 1;
+
+
+
+
+
     cmd.header.frame_id = "/world";
     cmd.header.stamp = ros::Time::now();
 
-    for(int waypoint=0; waypoint< affordance.waypoints.size(); waypoint++)
+    for(int waypoint=0; waypoint< affordance.waypoints.size(); waypoint++){
         cmd.waypoints.push_back(affordance.waypoints[waypoint].pose);
+        move_goal.extended_planning_options.target_frame = affordance.waypoints[waypoint].header.frame_id;
+        move_goal.extended_planning_options.target_poses.push_back(affordance.waypoints[waypoint].pose);
+    }
 
     // get position of the wrist in world coordinates
     geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
@@ -648,6 +675,16 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
             cmd.waypoints[i].orientation.y = last_wrist_pose_msg_.pose.orientation.y;
             cmd.waypoints[i].orientation.z = last_wrist_pose_msg_.pose.orientation.z;
             cmd.waypoints[i].orientation.w = last_wrist_pose_msg_.pose.orientation.w;
+
+            move_goal.extended_planning_options.target_poses[i].position.x = cmd.waypoints[i].position.x + diff_vector.getX();
+            move_goal.extended_planning_options.target_poses[i].position.y = cmd.waypoints[i].position.y + diff_vector.getY();
+            move_goal.extended_planning_options.target_poses[i].position.z = cmd.waypoints[i].position.z + diff_vector.getZ();
+            move_goal.extended_planning_options.target_poses[i].orientation.x = last_wrist_pose_msg_.pose.orientation.x;
+            move_goal.extended_planning_options.target_poses[i].orientation.y = last_wrist_pose_msg_.pose.orientation.y;
+            move_goal.extended_planning_options.target_poses[i].orientation.z = last_wrist_pose_msg_.pose.orientation.z;
+            move_goal.extended_planning_options.target_poses[i].orientation.w = last_wrist_pose_msg_.pose.orientation.w;
+
+
         }
         else
         {
@@ -663,6 +700,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
             poseTransform(waypoint, hand_T_palm_.inverse());
 
             cmd.waypoints[i] = waypoint;
+            move_goal.extended_planning_options.target_poses[i] = waypoint;
         }
 
     }
@@ -671,7 +709,21 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
 
     cmd.planning_group = this->planning_group_;
 
-    cartesian_plan_request_pub_.publish(cmd);
+    //cartesian_plan_request_pub_.publish(cmd);
+
+
+    move_action_client.sendGoal(move_goal);
+
+    //wait for the action to return
+    bool finished_before_timeout = move_action_client.waitForResult(ros::Duration(30.0));
+
+    if (finished_before_timeout)
+    {
+        actionlib::SimpleClientGoalState state = move_action_client.getState();
+        ROS_INFO("Action finished: %s",state.toString().c_str());
+    }
+    else
+        ROS_ERROR("Action did not finish before the time out.");
 }
 
 
