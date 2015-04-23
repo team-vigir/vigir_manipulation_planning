@@ -69,7 +69,7 @@ VectorXd PlannerModule::messageQs2DrakeQs(VectorXd &q0, moveit_msgs::RobotState 
         result_qs[2] = world_transform.translation.z;
 
         tf::Quaternion rotation_quat(world_transform.rotation.x, world_transform.rotation.y, world_transform.rotation.z, world_transform.rotation.w);
-        tf::Matrix3x3(rotation_quat).getRPY(result_qs[3], result_qs[4], result_qs[5]);
+        tf::Matrix3x3(rotation_quat).getRPY(result_qs[3], result_qs[4], result_qs[5], 2);
 
         received_world_transform = true;
     }
@@ -79,6 +79,16 @@ VectorXd PlannerModule::messageQs2DrakeQs(VectorXd &q0, moveit_msgs::RobotState 
     }
 
     return result_qs;
+}
+
+void PlannerModule::printSortedQs(MatrixXd &qs) {
+    for ( int i = 0; i < this->getRobotModel()->bodies.size(); i++ ) {
+        int pos = this->getRobotModel()->bodies[i]->position_num_start;
+        if ( pos >= 0 && pos < this->getRobotModel()->num_positions)
+            std::cout << this->getRobotModel()->bodies[i]->jointname << "   " << qs.row(pos)<< std::endl;
+        else
+            std::cout << this->getRobotModel()->bodies[i]->jointname << "    no matching q for position_num = " << pos <<std::endl;
+    }
 }
 
 }

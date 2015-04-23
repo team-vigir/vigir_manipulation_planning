@@ -31,19 +31,19 @@ bool TrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeTrajectory &
 
     // check trajectory points between start and end point
     std::vector<double> t_vec;
-    for ( double t = 0.0; t < duration; t+=duration/NUM_TIME_STEPS) {
+    for ( double t = 0.0; t <= duration; t+=duration/NUM_TIME_STEPS) {
         t_vec.push_back(t);
     }
-    /*if ( t_vec[ t_vec.size()-1 ] < duration ) {
+    if ( t_vec[ t_vec.size()-1 ] < duration ) {
         t_vec.push_back(duration);
-    }*/
+    }
 
     // stay at q0 for nominal trajectory
     bool received_world_transform = false;
     VectorXd q0 = VectorXd::Zero(this->getRobotModel()->num_positions);
     q0 = messageQs2DrakeQs(q0, request_message.current_state, received_world_transform);
 
-    VectorXd qdot_0 = VectorXd::Zero(this->getRobotModel()->num_velocities);
+    VectorXd qd_0 = VectorXd::Zero(this->getRobotModel()->num_velocities);
     MatrixXd q_seed = q0.replicate(1, t_vec.size());
     MatrixXd q_nom = q_seed;
 
@@ -54,13 +54,13 @@ bool TrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeTrajectory &
     // run inverse kinematics
     int nq = this->getRobotModel()->num_positions;
     MatrixXd q_sol(nq,t_vec.size());
-    MatrixXd qdot_sol(nq,t_vec.size());
-    MatrixXd qddot_sol(nq,t_vec.size());
+    MatrixXd qd_sol(nq,t_vec.size());
+    MatrixXd qdd_sol(nq,t_vec.size());
 
 
     int info;
     std::vector<std::string> infeasible_constraints;
-    inverseKinTraj(this->getRobotModel(),t_vec.size(),t_vec.data(),qdot_0,q_seed,q_nom,constraints.size(),constraints.data(),q_sol,qdot_sol,qddot_sol,info,infeasible_constraints,*ik_options);
+    inverseKinTraj(this->getRobotModel(),t_vec.size(),t_vec.data(),qd_0,q_seed,q_nom,constraints.size(),constraints.data(),q_sol,qd_sol,qdd_sol,info,infeasible_constraints,*ik_options);
 
     bool success = true;
     if(info>10) { // something went wrong
@@ -83,14 +83,14 @@ bool TrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeTrajectory &
             response_t(i) = i*time_step;
         }
 
-        Eigen::VectorXd input_t = Map<VectorXd>(t_vec.data(), t_vec.size());
-        interpolateTrajectory(q_sol, input_t, response_t);
+        Eigen::VectorXd interpolated_t = Map<VectorXd>(t_vec.data(), t_vec.size());
+        interpolateTrajectory(q_sol, interpolated_t, response_t, q_sol, qd_sol, qdd_sol);
 
         std::vector<std::string> joint_names;
         for ( int i = 0; i < request_message.motion_plan_request.goal_constraints[0].joint_constraints.size(); i++ ) {
             joint_names.push_back( request_message.motion_plan_request.goal_constraints[0].joint_constraints[i].joint_name);
         }
-        result_message = buildTrajectoryResultMsg(q_sol, qdot_sol, qddot_sol, t_vec, joint_names, received_world_transform);
+        result_message = buildTrajectoryResultMsg(q_sol, qd_sol, qdd_sol, response_t, joint_names, received_world_transform);
     }
     else {
         // return an invalid message
@@ -118,10 +118,6 @@ std::vector<RigidBodyConstraint*> TrajectoryPlannerModule::buildIKConstraints(vi
     //this->getRobotModel()->use_new_kinsol = false;
     VectorXd v = VectorXd::Zero(this->getRobotModel()->num_velocities);
     this->getRobotModel()->doKinematicsNew(q0, v);
-
-    //this->getRobotModel()->forwardKin(l_foot_id, foot_pts, 2, l_foot_pos);
-    //this->getRobotModel()->forwardKin(r_foot_id, foot_pts, 2, r_foot_pos);
-
     Vector7d l_foot_pos = this->getRobotModel()->forwardKinNew(foot_pts, l_foot_id, 0, 2, 0).value();
     Vector7d r_foot_pos = this->getRobotModel()->forwardKinNew(foot_pts, r_foot_id, 0, 2, 0).value();
 
@@ -180,18 +176,19 @@ IKoptions *TrajectoryPlannerModule::buildIKOptions(double duration) {
     return ik_options;
 }
 
-vigir_planning_msgs::ResultDrakeTrajectory TrajectoryPlannerModule::buildTrajectoryResultMsg(Eigen::MatrixXd &q_sol, Eigen::MatrixXd &qd_sol, Eigen::MatrixXd &qdd_sol, std::vector<double> t_vec, std::vector<std::string> &joint_names, bool send_world_transform) {
+vigir_planning_msgs::ResultDrakeTrajectory TrajectoryPlannerModule::buildTrajectoryResultMsg(Eigen::MatrixXd &q_sol, Eigen::MatrixXd &qd_sol, Eigen::MatrixXd &qdd_sol, Eigen::VectorXd &t_vec, std::vector<std::string> &joint_names, bool send_world_transform) {
     vigir_planning_msgs::ResultDrakeTrajectory result_trajectory_msg;
     moveit_msgs::RobotTrajectory result_trajectory;
 
+    int num_time_points = q_sol.cols();
 
-    result_trajectory.joint_trajectory.points.resize(t_vec.size());
+    result_trajectory.joint_trajectory.points.resize(num_time_points);
 
     int num_joints = joint_names.size();
 
-    MatrixXd q_sol_selected(num_joints, t_vec.size());
-    MatrixXd qd_sol_selected(num_joints, t_vec.size());
-    MatrixXd qdd_sol_selected(num_joints, t_vec.size());
+    MatrixXd q_sol_selected(num_joints, num_time_points);
+    MatrixXd qd_sol_selected(num_joints, num_time_points);
+    MatrixXd qdd_sol_selected(num_joints, num_time_points);
     for ( int i = 0; i < num_joints; i++ ) {
         std::string joint_name = joint_names[i];
         result_trajectory.joint_trajectory.joint_names.push_back(joint_name);
@@ -204,7 +201,7 @@ vigir_planning_msgs::ResultDrakeTrajectory TrajectoryPlannerModule::buildTraject
         qdd_sol_selected.row(i) = qdd_sol.row(joint_idx);
     }
 
-    for ( int i = 0; i < t_vec.size(); i++ ) {
+    for ( int i = 0; i < num_time_points; i++ ) {
         VectorXd q_values = q_sol_selected.col(i);
         VectorXd qd_values = qd_sol_selected.col(i);
         VectorXd qdd_values = qdd_sol_selected.col(i);
@@ -264,21 +261,29 @@ vigir_planning_msgs::ResultDrakeTrajectory TrajectoryPlannerModule::buildTraject
    return result_trajectory_msg;
 }
 
-void TrajectoryPlannerModule::interpolateTrajectory(Eigen::MatrixXd &input_q, Eigen::VectorXd &input_t, Eigen::VectorXd &knot_t)
+void TrajectoryPlannerModule::interpolateTrajectory(Eigen::MatrixXd &input_q, Eigen::VectorXd &input_t, Eigen::VectorXd &interpolated_t, Eigen::MatrixXd &interpolated_q, Eigen::MatrixXd &interpolated_qd, Eigen::MatrixXd &interpolated_qdd)
 {
     assert(input_q.cols() == input_t.rows());
     Eigen::MatrixXd data_points(input_q.rows()+1, input_q.cols());
     data_points.row(0) = input_t.transpose();
     data_points.block(1,0, input_q.rows(), input_q.cols()) = input_q;
 
+    interpolated_q.resize(input_q.rows(), interpolated_t.rows());
+    interpolated_qd.resize(input_q.rows(), interpolated_t.rows());
+    interpolated_qdd.resize(input_q.rows(), interpolated_t.rows());
+
     const TrajectorySpline q_spline = SplineFitting<TrajectorySpline>::Interpolate(data_points, input_t.rows()-1);
 
 
-    for ( int i = 0; i < knot_t.rows(); i++ ) {
-      double spline_pos = (knot_t(i) - input_t.minCoeff())/(input_t.maxCoeff() - input_t.minCoeff());
+    for ( int i = 0; i < interpolated_t.rows(); i++ ) {
+      double spline_pos = (interpolated_t(i) - input_t.minCoeff())/(input_t.maxCoeff() - input_t.minCoeff());
       const MatrixXd values = q_spline.derivatives(spline_pos, 2); // compute position and derivatives at time points
 
-      std::cout << "(" << knot_t(i) << ", " << values.transpose() << ")" << std::endl << std::endl;
+      interpolated_q.col(i)   = values.block(1, 0, interpolated_q.rows(), 1);
+      interpolated_qd.col(i)  = values.block(1, 1, interpolated_q.rows(), 1);
+      //interpolated_qdd.col(i) = values.block(1, 2, interpolated_q.rows(), 1);
+
+      //std::cout << "(" << interpolated_t(i) << ", " << values.transpose() << ")" << std::endl << std::endl;
     }
 }
 

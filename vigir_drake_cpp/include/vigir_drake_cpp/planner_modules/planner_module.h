@@ -34,7 +34,7 @@ protected:
     RigidBodyManipulator *getRobotModel();
     Eigen::VectorXd messageQs2DrakeQs(Eigen::VectorXd &q0, moveit_msgs::RobotState &robot_state, bool &received_world_transform);
     Eigen::MatrixXd drakeQs2MessageQs(Eigen::MatrixXd &model_qs, moveit_msgs::RobotState &request_state);
-
+    void printSortedQs(Eigen::MatrixXd &qs);
 private:
     RigidBodyManipulator *robot_model_;
 };

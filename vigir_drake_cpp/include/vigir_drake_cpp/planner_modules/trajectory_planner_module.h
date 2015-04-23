@@ -28,8 +28,8 @@ public:
 protected:
     std::vector<RigidBodyConstraint*> buildIKConstraints(vigir_planning_msgs::RequestDrakeTrajectory &request_message, Eigen::VectorXd &q0);
     IKoptions *buildIKOptions(double duration);
-    vigir_planning_msgs::ResultDrakeTrajectory buildTrajectoryResultMsg(Eigen::MatrixXd &q_sol, Eigen::MatrixXd &qd_sol, Eigen::MatrixXd &qdd_sol, std::vector<double> t_vec,std::vector<std::string> &joint_names, bool send_world_transform);
-    void interpolateTrajectory(Eigen::MatrixXd &input_q, Eigen::VectorXd &input_t, Eigen::VectorXd &knot_t);
+    vigir_planning_msgs::ResultDrakeTrajectory buildTrajectoryResultMsg(Eigen::MatrixXd &q, Eigen::MatrixXd &qd, Eigen::MatrixXd &qdd, Eigen::VectorXd &t, std::vector<std::string> &joint_names, bool send_world_transform);
+    void interpolateTrajectory(Eigen::MatrixXd &input_q, Eigen::VectorXd &input_t, Eigen::VectorXd &interpolated_t, Eigen::MatrixXd &interpolated_q, Eigen::MatrixXd &interpolated_qd, Eigen::MatrixXd &interpolated_qdd);
 
 private:
     const int NUM_TIME_STEPS = 3;

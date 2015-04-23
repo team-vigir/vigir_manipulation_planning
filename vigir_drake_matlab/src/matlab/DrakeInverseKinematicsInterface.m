@@ -206,7 +206,7 @@ classdef DrakeInverseKinematicsInterface
             nq = obj.robot_model.getNumPositions();
             q0 = zeros(nq, 1);
             q0 = obj.messageQ2ModelQ(q0, event.message.current_state);
-            
+                        
             % get floating base position from message
             world_virtual_joints = strfind(event.message.current_state.multi_dof_joint_state.joint_names, 'world_virtual_joint');
             world_virtual_joints_idx = find(~cellfun(@isempty,world_virtual_joints));
@@ -224,6 +224,9 @@ classdef DrakeInverseKinematicsInterface
                 ros.log('WARN', 'Did not receive unique world joint position...');
                 send_world_joint = false;
             end
+            
+            disp( 'q0 = ' );
+            obj.printSortedQs(q0);
             
             % calculate trajectory            
             [trajectory, success] = calcIKCartesianTrajectory(obj.robot_visualizer, obj.robot_model, q0, event.message);
@@ -299,6 +302,12 @@ classdef DrakeInverseKinematicsInterface
             qs = qqdot_values(1:nq, :);
             qds = qqdot_values(nq+1:2*nq, :);
             
+            disp('Result Qs: ');
+            obj.printSortedQs(qs);
+            
+            disp('Result QDs: ');
+            obj.printSortedQs(qds);
+            
             % build result message from trajectory
             result_message = vigir_planning_msgs.ResultDrakeTrajectory;
             result_message.result_trajectory = moveit_msgs.RobotTrajectory;
@@ -354,6 +363,25 @@ classdef DrakeInverseKinematicsInterface
             end
             
             result_message.is_valid = 1;
+        end
+        
+            
+        function printSortedQs(obj, qs)
+            for i = 1:length(obj.robot_model.body)
+                pos = obj.robot_model.body(i).position_num;
+                                
+                if ( any(pos < 1) || any(pos > length(qs)) )
+                    disp( [ obj.robot_model.body(i).jointname '   no matching q for position_num = ' num2str(pos) ] );
+                else
+                    if ( length(pos) > 1 )
+                        disp( obj.robot_model.body(i).jointname )
+                        disp( num2str( qs(pos, :) ));
+                        disp( '================');
+                    else
+                        disp( [ obj.robot_model.body(i).jointname '   ' num2str( qs(pos, :) )] );
+                    end
+                end
+            end
         end
     end
 end

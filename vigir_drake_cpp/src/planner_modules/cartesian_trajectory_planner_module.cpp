@@ -31,11 +31,9 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
     VectorXd q0 = VectorXd::Zero(this->getRobotModel()->num_positions);
     q0 = messageQs2DrakeQs(q0, request_message.current_state, received_world_transform);
 
-
-
-    // build list of constraints from message       
-    IKoptions *ik_options = buildIKOptions(1.0);
-    
+    std::cout << "q0 = " << std::endl;
+    MatrixXd printQ = q0;
+    printSortedQs(printQ);
     
     int nq = getRobotModel()->num_positions;
     int num_steps = waypoints.size();
@@ -46,29 +44,30 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
     MatrixXd qd_sol(nq,0);
     MatrixXd qdd_sol(nq,0);
     std::vector<double> t_sol;
-    
-    double time_step = 1.0 / request_message.trajectory_sample_rate;
+        
     for ( int i = 1; i < num_steps; i++ ) {
         Waypoint *current_start_point = waypoints[i-1];
         Waypoint *current_target_point = waypoints[i];
+
+        double time_step = (current_target_point->waypoint_time - current_start_point->waypoint_time) / NUM_TIME_STEPS;
         
         // check trajectory every time_step seconds
         std::vector<double> t_vec;
-        for ( double t = current_start_point->waypoint_time; t < current_target_point->waypoint_time; t+=time_step) {
+        /*for ( double t = current_start_point->waypoint_time; t < current_target_point->waypoint_time - 0.5*time_step; t+=time_step) {
             t_vec.push_back(t);
             t_sol.push_back(t);
-        }
-        if ( t_vec[ t_vec.size()-1 ] < current_target_point->waypoint_time ) {
-            t_vec.push_back(current_target_point->waypoint_time);
-            t_sol.push_back(current_target_point->waypoint_time);
-        }
-
-        // remove last entry because it will be added in the next step
-        t_sol.pop_back();
+        }*/
+        t_vec.push_back(current_start_point->waypoint_time);
+        t_vec.push_back(current_target_point->waypoint_time);
+        t_sol.push_back(current_start_point->waypoint_time);
         
         VectorXd qdot_0 = VectorXd::Zero(this->getRobotModel()->num_velocities);
         MatrixXd q_seed = q0.replicate(1, t_vec.size());
         MatrixXd q_nom = q_seed;
+
+        // build list of constraints from message
+        double duration = current_target_point->waypoint_time - current_start_point->waypoint_time;
+        IKoptions *ik_options = buildIKOptions(duration);
 
         // build constraints
         std::vector<RigidBodyConstraint*> constraints = buildIKConstraints(request_message, current_start_point, current_target_point, q0);
@@ -115,7 +114,28 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
     }
 
     if ( success ) {
-        result_message = buildTrajectoryResultMsg(q_sol, qd_sol, qdd_sol, t_sol, request_message.free_joint_names, received_world_transform);
+        // generate spline from result matrices
+        double time_step = 1.0 / request_message.trajectory_sample_rate;
+        double duration = waypoints[ waypoints.size()-1]->waypoint_time;
+        int num_steps = (duration / time_step) + 0.5;
+        Eigen::VectorXd response_t(num_steps+1);
+
+        for ( int i = 0; i <= num_steps; i++) {
+            response_t(i) = i*time_step;
+        }
+
+        std::cout << "result_q = " << std::endl;
+        printSortedQs(q_sol);
+
+        std::cout << "result_qd = " << std::endl;
+        printSortedQs(qd_sol);
+
+        Eigen::VectorXd interpolated_t = Map<VectorXd>(t_sol.data(), t_sol.size());
+        interpolateTrajectory(q_sol, interpolated_t, response_t, q_sol, qd_sol, qdd_sol);
+
+
+
+        result_message = buildTrajectoryResultMsg(q_sol, qd_sol, qdd_sol, response_t, request_message.free_joint_names, received_world_transform);
     }
     else {
         // return an invalid message
@@ -128,12 +148,14 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
 std::vector<RigidBodyConstraint*> CartesianTrajectoryPlannerModule::buildIKConstraints(vigir_planning_msgs::RequestDrakeCartesianTrajectory &request_message, CartesianTrajectoryPlannerModule::Waypoint *start_waypoint, CartesianTrajectoryPlannerModule::Waypoint *target_waypoint, Eigen::VectorXd &q0) {
     std::vector<RigidBodyConstraint*> constraints;
 
-    Vector2d t_span;
-    t_span << start_waypoint->waypoint_time, target_waypoint->waypoint_time;
+    Vector2d t_span_total;
+    t_span_total << start_waypoint->waypoint_time, target_waypoint->waypoint_time;
+    Vector2d t_span_target;
+    t_span_target << target_waypoint->waypoint_time, target_waypoint->waypoint_time;
 
     // avoid self-collisions
     if ( request_message.check_self_collisions ) {
-            constraints.push_back( new AllBodiesClosestDistanceConstraint(getRobotModel(), 0.01, 1e10, std::vector<int>(), std::set<std::string>(), t_span) );
+            constraints.push_back( new AllBodiesClosestDistanceConstraint(getRobotModel(), 0.01, 1e10, std::vector<int>(), std::set<std::string>(), t_span_total) );
             //constraints.push_back( new MinDistanceConstraint(getRobotModel(), 0.001, std::vector<int>(), std::set<std::string>(), t_span) );
     }
 
@@ -141,24 +163,24 @@ std::vector<RigidBodyConstraint*> CartesianTrajectoryPlannerModule::buildIKConst
     int torso_body_idx = getRobotModel()->findLinkId("utorso");
     Vector3d axis;
     axis << 0.0, 0.0, 1.0;
-    constraints.push_back(new WorldGazeDirConstraint(getRobotModel(), torso_body_idx, axis, axis, 0.1, t_span));
+    constraints.push_back(new WorldGazeDirConstraint(getRobotModel(), torso_body_idx, axis, axis, 0.1, t_span_total));
 
     // fixed foot placement
     int l_foot_id = this->getRobotModel()->findLinkId("l_foot");
     int r_foot_id = this->getRobotModel()->findLinkId("r_foot");
 
-    Vector4d foot_pts;
-    foot_pts << 0.0,0.0,0.0,1.0;
+    Vector4d hom_foot_pts;
+    hom_foot_pts << 0.0,0.0,0.0,1.0;
+    Vector3d foot_pts;
+    foot_pts << 0.0,0.0,0.0;
 
-    //this->getRobotModel()->use_new_kinsol = false;
-    this->getRobotModel()->doKinematics(q0);
+    VectorXd v = VectorXd::Zero(this->getRobotModel()->num_velocities);
+    this->getRobotModel()->doKinematicsNew(q0, v);
+    Vector7d l_foot_pos = this->getRobotModel()->forwardKinNew(foot_pts, l_foot_id, 0, 2, 0).value();
+    Vector7d r_foot_pos = this->getRobotModel()->forwardKinNew(foot_pts, r_foot_id, 0, 2, 0).value();
 
-    Vector7d l_foot_pos, r_foot_pos;
-    this->getRobotModel()->forwardKin(l_foot_id, foot_pts, 2, l_foot_pos);
-    this->getRobotModel()->forwardKin(r_foot_id, foot_pts, 2, r_foot_pos);
-
-    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), l_foot_id, foot_pts, l_foot_pos.block<3,1>(0,0), l_foot_pos.block<3,1>(0,0)) );
-    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), r_foot_id, foot_pts, r_foot_pos.block<3,1>(0,0), r_foot_pos.block<3,1>(0,0)) );
+    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), l_foot_id, hom_foot_pts, l_foot_pos.block<3,1>(0,0), l_foot_pos.block<3,1>(0,0)) );
+    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), r_foot_id, hom_foot_pts, r_foot_pos.block<3,1>(0,0), r_foot_pos.block<3,1>(0,0)) );
     constraints.push_back( new WorldQuatConstraint(this->getRobotModel(), l_foot_id, l_foot_pos.block<4,1>(3,0), 0.0));
     constraints.push_back( new WorldQuatConstraint(this->getRobotModel(), r_foot_id, l_foot_pos.block<4,1>(3,0), 0.0));
 
@@ -173,7 +195,7 @@ std::vector<RigidBodyConstraint*> CartesianTrajectoryPlannerModule::buildIKConst
     constraints.push_back( quasi_static_constraint );
 
     // add waypoint constraints
-    Vector3d goal_position_vec;
+    Vector3d goal_position_vec, target_link_axis_vec;
     Vector4d eef_pts, goal_orientation_quat;
     eef_pts << 0.0, 0.0, 0.0, 1.0;
     for ( int target_waypoint_idx = 0; target_waypoint_idx < target_waypoint->target_link_names.size(); target_waypoint_idx++ ) {
@@ -190,36 +212,38 @@ std::vector<RigidBodyConstraint*> CartesianTrajectoryPlannerModule::buildIKConst
         // get endeffector body ids and points
         int eef_body_id = getRobotModel()->findLinkId(target_link_name);
 
-        // goal position constraint
-        t_span << target_waypoint->waypoint_time, target_waypoint->waypoint_time;
+        // goal position constraint        
         goal_position_vec << target_waypoint->poses[target_waypoint_idx].position.x, target_waypoint->poses[target_waypoint_idx].position.y, target_waypoint->poses[target_waypoint_idx].position.z;
-        constraints.push_back( new WorldPositionConstraint(getRobotModel(), eef_body_id, eef_pts, goal_position_vec, goal_position_vec, t_span) );
+        constraints.push_back( new WorldPositionConstraint(getRobotModel(), eef_body_id, eef_pts, goal_position_vec, goal_position_vec, t_span_target) );
 
         // goal orientation constraint and straight line between start and target constraint
         if ( start_waypoint_idx >= 0 && start_waypoint->keep_line_and_orientation[start_waypoint_idx] == true ) {
+            goal_orientation_quat << start_waypoint->poses[start_waypoint_idx].orientation.w, start_waypoint->poses[start_waypoint_idx].orientation.x, start_waypoint->poses[start_waypoint_idx].orientation.y, start_waypoint->poses[start_waypoint_idx].orientation.z;
+            target_link_axis_vec << start_waypoint->target_link_axis[start_waypoint_idx].x, start_waypoint->target_link_axis[start_waypoint_idx].y, start_waypoint->target_link_axis[start_waypoint_idx].z;
+        }
+        else if ( target_waypoint->keep_line_and_orientation[target_waypoint_idx] == true ) {
             goal_orientation_quat << target_waypoint->poses[target_waypoint_idx].orientation.w, target_waypoint->poses[target_waypoint_idx].orientation.x, target_waypoint->poses[target_waypoint_idx].orientation.y, target_waypoint->poses[target_waypoint_idx].orientation.z;
+            target_link_axis_vec << target_waypoint->target_link_axis[target_waypoint_idx].x, target_waypoint->target_link_axis[target_waypoint_idx].y, target_waypoint->target_link_axis[target_waypoint_idx].z;
+        }
 
-            if ( request_message.target_orientation_type == vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_FULL ) {
-                constraints.push_back( new WorldQuatConstraint(getRobotModel(), eef_body_id, goal_orientation_quat, 0, t_span));
-            }
-            else if ( request_message.target_orientation_type == vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_AXIS_ONLY ) { // goal axis orientation constraint
-                Vector3d axis;
-                axis << 0.0, 1.0, 0.0;
-                constraints.push_back( new WorldGazeOrientConstraint(getRobotModel(), eef_body_id, axis, goal_orientation_quat, 0.05, M_PI, t_span ));
-            }
+        if ( request_message.target_orientation_type == vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_FULL ) {
+           constraints.push_back( new WorldQuatConstraint(getRobotModel(), eef_body_id, goal_orientation_quat, 0, t_span_target));
+        }
+        else if ( request_message.target_orientation_type == vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_AXIS_ONLY ) { // goal axis orientation constraint
+           constraints.push_back( new WorldGazeOrientConstraint(getRobotModel(), eef_body_id, target_link_axis_vec, goal_orientation_quat, 0.05, M_PI, t_span_target ));
+        }
 
+        if ( start_waypoint_idx >= 0 && start_waypoint->keep_line_and_orientation[start_waypoint_idx] == true ) {
             // line segment
             Vector4d line_start_vec, line_end_vec;
             line_start_vec << start_waypoint->poses[start_waypoint_idx].position.x, start_waypoint->poses[start_waypoint_idx].position.y, start_waypoint->poses[start_waypoint_idx].position.z, 1.0;
             line_end_vec   << target_waypoint->poses[target_waypoint_idx].position.x, target_waypoint->poses[target_waypoint_idx].position.y, target_waypoint->poses[target_waypoint_idx].position.z, 1.0;
 
-            t_span << start_waypoint->waypoint_time, target_waypoint->waypoint_time;
-
             Matrix4Xd line(4,2);
             line << line_start_vec, line_end_vec;
-            constraints.push_back( new Point2LineSegDistConstraint(getRobotModel(),eef_body_id,eef_pts,1,line,0.0,0.02,t_span) );
-
+            constraints.push_back( new Point2LineSegDistConstraint(getRobotModel(),eef_body_id,eef_pts,1,line,0.0,0.02,t_span_total) );
         }
+
     }
 
     return constraints;
@@ -247,6 +271,7 @@ std::vector<CartesianTrajectoryPlannerModule::Waypoint*> CartesianTrajectoryPlan
       
       current_waypoint->target_link_names.push_back( request_message.target_link_names[i] );
       current_waypoint->poses.push_back( request_message.waypoints[i] );
+      current_waypoint->target_link_axis.push_back( request_message.target_link_axis[i]);
       current_waypoint->waypoint_time = current_time;
       current_waypoint->keep_line_and_orientation.push_back(true);
     }

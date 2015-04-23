@@ -14,6 +14,7 @@ class CartesianTrajectoryPlannerModule : protected TrajectoryPlannerModule {
     struct Waypoint {
         std::vector<std::string> target_link_names;
         std::vector<geometry_msgs::Pose> poses;
+        std::vector<geometry_msgs::Point> target_link_axis;
         std::vector<bool> keep_line_and_orientation;
         double waypoint_time;
     };
@@ -25,9 +26,11 @@ public:
     bool plan(vigir_planning_msgs::RequestDrakeCartesianTrajectory &request_message, vigir_planning_msgs::ResultDrakeTrajectory &result_message);
     
 protected:
-    std::vector<RigidBodyConstraint*> buildIKConstraints(vigir_planning_msgs::RequestDrakeCartesianTrajectory &request_message, Waypoint *start_waypoint, Waypoint *target_waypoint, Eigen::VectorXd &q0);
-    
+    std::vector<RigidBodyConstraint*> buildIKConstraints(vigir_planning_msgs::RequestDrakeCartesianTrajectory &request_message, Waypoint *start_waypoint, Waypoint *target_waypoint, Eigen::VectorXd &q0);    
     std::vector<CartesianTrajectoryPlannerModule::Waypoint*> extractOrderedWaypoints(vigir_planning_msgs::RequestDrakeCartesianTrajectory &request_message);
+
+private:
+    const int NUM_TIME_STEPS = 3;
 };
 
 }
