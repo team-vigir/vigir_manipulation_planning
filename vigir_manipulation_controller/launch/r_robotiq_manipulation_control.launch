@@ -31,4 +31,10 @@
     <remap from="planner_status"       to="/grasp_planning/r_hand/status" />
     <remap from="use_torso"            to="/flor/ocs/ghost/state_use_torso" />
 </node>
+
+<node name="right_robotiq_fake_joint_publisher" pkg="vigir_robotiq_grasp_controller" type="robotiq_fake_joints_node">
+<param name="hand_prefix" value="right"/>
+<param name="fake_time"   value="30"/>
+</node>
+
 </launch>
