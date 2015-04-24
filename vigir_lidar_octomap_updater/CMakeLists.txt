@@ -11,12 +11,13 @@ find_package(catkin REQUIRED COMPONENTS
   laser_geometry
   laser_filters
   vigir_perception_msgs
+  sensor_msgs
 )
 
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES vigir_lidar_octomap_updater
-  CATKIN_DEPENDS moveit_ros_perception pluginlib roscpp vigir_perception_msgs
+  CATKIN_DEPENDS moveit_ros_perception pluginlib roscpp vigir_perception_msgs sensor_msgs
 #  DEPENDS system_lib
 )
 
