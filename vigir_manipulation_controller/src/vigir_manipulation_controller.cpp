@@ -351,12 +351,12 @@ void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::Gras
                 if(grasp.final_pose){
                     this->wrist_target_pose_.pose = grasp_pose;
                     calcWristTarget(grasp_pose.pose);  //Applies stitch transform in hand frame
+                    wrist_target_pub_.publish(wrist_target_pose_.pose);
                     poseTransform(this->wrist_target_pose_.pose.pose, hand_T_palm_);  //Transform back to palm frame
                     vigir_object_template_msgs::Affordance affordance;
                     affordance.keep_orientation = true;
                     affordance.waypoints.push_back(this->wrist_target_pose_.pose);
                     sendCartesianAffordance(affordance);
-                    wrist_target_pub_.publish(wrist_target_pose_.pose);
                 }else{
                     this->wrist_target_pose_.pose = pre_grasp_pose;
                     calcWristTarget(pre_grasp_pose.pose);
@@ -678,8 +678,6 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
             cmd.waypoints[i].orientation.z = last_wrist_pose_msg_.pose.orientation.z;
             cmd.waypoints[i].orientation.w = last_wrist_pose_msg_.pose.orientation.w;
 
-            ROS_ERROR_STREAM("cmd waypoints in " << i << " = " << std::endl << cmd.waypoints[i] );
-
             move_goal.extended_planning_options.target_poses[i].position.x = cmd.waypoints[i].position.x + diff_vector.getX();
             move_goal.extended_planning_options.target_poses[i].position.y = cmd.waypoints[i].position.y + diff_vector.getY();
             move_goal.extended_planning_options.target_poses[i].position.z = cmd.waypoints[i].position.z + diff_vector.getZ();
@@ -687,8 +685,6 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
             move_goal.extended_planning_options.target_poses[i].orientation.y = last_wrist_pose_msg_.pose.orientation.y;
             move_goal.extended_planning_options.target_poses[i].orientation.z = last_wrist_pose_msg_.pose.orientation.z;
             move_goal.extended_planning_options.target_poses[i].orientation.w = last_wrist_pose_msg_.pose.orientation.w;
-
-            ROS_ERROR_STREAM("target poses in " << i << " = " << std::endl << move_goal.extended_planning_options.target_poses[i] );
 
 
         }
