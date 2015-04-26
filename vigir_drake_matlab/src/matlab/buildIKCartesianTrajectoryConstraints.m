@@ -81,7 +81,7 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
             goal_orientation = start_waypoint.waypoints(i).orientation;
             goal_orientation_quat = [goal_orientation.w; goal_orientation.x; goal_orientation.y; goal_orientation.z];
             goal_link_axis = [start_waypoint.target_link_axis(i).x; start_waypoint.target_link_axis(i).y; start_waypoint.target_link_axis(i).z];
-        elseif ( start_waypoint.keep_line_and_orientation(current_waypoint_idx) == false && target_waypoint.keep_line_and_orientation(current_waypoint_idx) == true)
+        elseif ( target_waypoint.keep_line_and_orientation(current_waypoint_idx) == true)
             goal_orientation = target_waypoint.waypoints(i).orientation;
             goal_orientation_quat = [goal_orientation.w; goal_orientation.x; goal_orientation.y; goal_orientation.z];
             goal_link_axis = [target_waypoint.target_link_axis(i).x; target_waypoint.target_link_axis(i).y; target_waypoint.target_link_axis(i).z];

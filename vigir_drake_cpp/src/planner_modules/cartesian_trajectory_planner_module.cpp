@@ -53,10 +53,7 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
         
         // check trajectory every time_step seconds
         std::vector<double> t_vec;
-        /*for ( double t = current_start_point->waypoint_time; t < current_target_point->waypoint_time - 0.5*time_step; t+=time_step) {
-            t_vec.push_back(t);
-            t_sol.push_back(t);
-        }*/
+
         t_vec.push_back(current_start_point->waypoint_time);
         t_vec.push_back(current_target_point->waypoint_time);
         t_sol.push_back(current_start_point->waypoint_time);
