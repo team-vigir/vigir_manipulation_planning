@@ -28,6 +28,10 @@ bool PositionIKPlannerModule::plan(vigir_planning_msgs::RequestDrakeIK &request_
     bool received_world_transform = false;
     q0 = messageQs2DrakeQs(q0, request_message.robot_state, received_world_transform);
 
+    std::cout << "q0 = " << std::endl;
+    MatrixXd printQ = q0;
+    printSortedQs(printQ);
+
     // build IK options and constraints
     IKoptions *ik_options = buildIKOptions();
     std::vector<RigidBodyConstraint*> ik_constraints = buildIKConstraints(request_message, q0);
@@ -49,6 +53,10 @@ bool PositionIKPlannerModule::plan(vigir_planning_msgs::RequestDrakeIK &request_
     }
 
     if ( success ) {
+        std::cout << "q_sol = " << std::endl;
+        printQ = q_sol;
+        printSortedQs(printQ);
+
         // build result message form q values
         result_message.result_state = request_message.robot_state;
 
@@ -60,6 +68,14 @@ bool PositionIKPlannerModule::plan(vigir_planning_msgs::RequestDrakeIK &request_
 
         // extract world position and orientation
         if ( received_world_transform ) {
+            // remove old world transform while keeping potential other multi-dof joint states
+            for ( int i = 0; i < result_message.result_state.multi_dof_joint_state.joint_names.size(); i++ ) {
+                if ( result_message.result_state.multi_dof_joint_state.joint_names[i] == "world_virtual_joint") {
+                    result_message.result_state.multi_dof_joint_state.joint_names.erase(result_message.result_state.multi_dof_joint_state.joint_names.begin()+i );
+                    result_message.result_state.multi_dof_joint_state.transforms.erase(result_message.result_state.multi_dof_joint_state.transforms.begin()+i );
+                }
+            }
+
             geometry_msgs::Transform world_transform;
             world_transform.rotation = tf::createQuaternionMsgFromRollPitchYaw(q_sol(3), q_sol(4), q_sol(5));
             world_transform.translation.x = q_sol(0);
@@ -89,20 +105,18 @@ std::vector<RigidBodyConstraint*> PositionIKPlannerModule::buildIKConstraints(vi
     int l_foot_id = this->getRobotModel()->findLinkId("l_foot");
     int r_foot_id = this->getRobotModel()->findLinkId("r_foot");
 
-    Vector4d foot_pts;
-    foot_pts << 0.0,0.0,0.0,1.0;
+    Vector4d hom_foot_pts;
+    hom_foot_pts << 0.0,0.0,0.0,1.0;
+    Vector3d foot_pts;
+    foot_pts << 0.0,0.0,0.0;
 
-    //Map<VectorXd> q_map(&q0, q0.rows(), 1);
-    //Map<VectorXd> v_map(nullptr, 0, 1);
-    //this->getRobotModel()->doKinematicsNew(q0, v_map, false, false);
-    this->getRobotModel()->doKinematics(q0);
+    VectorXd v = VectorXd::Zero(this->getRobotModel()->num_velocities);
+    this->getRobotModel()->doKinematicsNew(q0, v);
+    Vector7d l_foot_pos = this->getRobotModel()->forwardKinNew(foot_pts, l_foot_id, 0, 2, 0).value();
+    Vector7d r_foot_pos = this->getRobotModel()->forwardKinNew(foot_pts, r_foot_id, 0, 2, 0).value();
 
-    Vector7d l_foot_pos, r_foot_pos;
-    this->getRobotModel()->forwardKin(l_foot_id, foot_pts, 2, l_foot_pos);
-    this->getRobotModel()->forwardKin(r_foot_id, foot_pts, 2, r_foot_pos);
-
-    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), l_foot_id, foot_pts, l_foot_pos.block<3,1>(0,0), l_foot_pos.block<3,1>(0,0)) );
-    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), r_foot_id, foot_pts, r_foot_pos.block<3,1>(0,0), r_foot_pos.block<3,1>(0,0)) );
+    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), l_foot_id, hom_foot_pts, l_foot_pos.block<3,1>(0,0), l_foot_pos.block<3,1>(0,0)) );
+    constraints.push_back( new WorldPositionConstraint(this->getRobotModel(), r_foot_id, hom_foot_pts, r_foot_pos.block<3,1>(0,0), r_foot_pos.block<3,1>(0,0)) );
     constraints.push_back( new WorldQuatConstraint(this->getRobotModel(), l_foot_id, l_foot_pos.block<4,1>(3,0), 0.0));
     constraints.push_back( new WorldQuatConstraint(this->getRobotModel(), r_foot_id, l_foot_pos.block<4,1>(3,0), 0.0));
 
@@ -142,6 +156,26 @@ std::vector<RigidBodyConstraint*> PositionIKPlannerModule::buildIKConstraints(vi
 
         constraints.push_back( new WorldQuatConstraint(this->getRobotModel(), eef_body_id, goal_orientation_quat, 0) );
     }
+
+    // handle joint group
+    PostureConstraint *posture_constraint = new PostureConstraint(this->getRobotModel());
+    for ( auto &current_body : this->getRobotModel()->bodies ) {
+        if ( current_body->jointname == "" || current_body->jointname == "base")
+            continue;
+
+        if ( std::find( request_message.free_joint_names.begin(), request_message.free_joint_names.end(), current_body->jointname ) == request_message.free_joint_names.end() ) {
+            // not a free joint => fix position
+            int current_joint_idx = current_body->position_num_start;
+            if ( current_joint_idx >= q0.rows())
+                continue;
+
+            Eigen::VectorXd joint_limits(1);
+            joint_limits << q0(current_joint_idx);
+            posture_constraint->setJointLimits(1, &current_joint_idx, joint_limits, joint_limits);
+        }
+    }
+
+    constraints.push_back(posture_constraint);
 
     return constraints;
 }

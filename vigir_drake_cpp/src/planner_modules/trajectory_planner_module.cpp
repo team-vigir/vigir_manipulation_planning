@@ -108,14 +108,11 @@ std::vector<RigidBodyConstraint*> TrajectoryPlannerModule::buildIKConstraints(vi
     int l_foot_id = this->getRobotModel()->findLinkId("l_foot");
     int r_foot_id = this->getRobotModel()->findLinkId("r_foot");
 
-    //Vector4d foot_pts;
-    //foot_pts << 0.0,0.0,0.0,1.0;
     Vector4d hom_foot_pts;
     hom_foot_pts << 0.0,0.0,0.0,1.0;
     Vector3d foot_pts;
     foot_pts << 0.0,0.0,0.0;
 
-    //this->getRobotModel()->use_new_kinsol = false;
     VectorXd v = VectorXd::Zero(this->getRobotModel()->num_velocities);
     this->getRobotModel()->doKinematicsNew(q0, v);
     Vector7d l_foot_pos = this->getRobotModel()->forwardKinNew(foot_pts, l_foot_id, 0, 2, 0).value();
