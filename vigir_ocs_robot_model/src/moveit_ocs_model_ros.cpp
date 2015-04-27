@@ -294,7 +294,7 @@ void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::Strin
   joint_plan_request_pub_.publish(request);
 }
 
-void MoveItOcsModelRos::ghostStateCallback(const std_msgs::Int8::ConstPtr& msg)
+void MoveItOcsModelRos::ghostStateCallback(const std_msgs::Bool::ConstPtr& msg)
 {
     use_drake_ik_ = msg->data;
 }

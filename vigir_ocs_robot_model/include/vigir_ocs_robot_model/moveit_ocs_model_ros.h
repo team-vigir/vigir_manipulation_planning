@@ -75,7 +75,7 @@ public:
 
   void incomingPlanToJointRequestCallback(const std_msgs::String::ConstPtr& msg);
 
-  void ghostStateCallback(const std_msgs::Int8::ConstPtr& msg);
+  void ghostStateCallback(const std_msgs::Bool::ConstPtr& msg);
 
   void updateRobotStateColors();
 
