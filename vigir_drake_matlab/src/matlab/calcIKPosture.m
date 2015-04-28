@@ -2,7 +2,7 @@ function [ posture, success ] = calcIKPosture( visualizer, robot_model, q0, requ
     nq = robot_model.getNumPositions();
 
     q_seed = q0;
-    q_nom = [q0(1:6); zeros(nq-6,1)];
+    q_nom(1:6) = q0(1:6);
 
     % show start pose    
     visualizer.draw(cputime, q0);
