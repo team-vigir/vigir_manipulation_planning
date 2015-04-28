@@ -24,10 +24,11 @@ bool PositionIKPlannerModule::plan(vigir_planning_msgs::RequestDrakeIK &request_
 {
     // convert robot position to drake format
     VectorXd q_seed = VectorXd::Zero(this->getRobotModel()->num_positions);
-    VectorXd q_nom = VectorXd::Zero(this->getRobotModel()->num_positions);
 
     bool received_world_transform = false;
     q_seed = messageQs2DrakeQs(q_seed, request_message.robot_state, received_world_transform);
+
+    VectorXd q_nom = this->getNominalQ();
     q_nom.block(0, 0, 6, 1) = q_seed.block(0,0,6,1);
 
 

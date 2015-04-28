@@ -54,16 +54,18 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
         // check trajectory every time_step seconds
         std::vector<double> t_vec;
 
+        double duration = current_target_point->waypoint_time - current_start_point->waypoint_time;
         t_vec.push_back(current_start_point->waypoint_time);
+        t_vec.push_back(current_start_point->waypoint_time + duration/2.0);
         t_vec.push_back(current_target_point->waypoint_time);
         t_sol.push_back(current_start_point->waypoint_time);
+        t_sol.push_back(current_start_point->waypoint_time + duration/2.0);
         
         VectorXd qdot_0 = VectorXd::Zero(this->getRobotModel()->num_velocities);
         MatrixXd q_seed = q0.replicate(1, t_vec.size());
         MatrixXd q_nom = q_seed;
 
         // build list of constraints from message
-        double duration = current_target_point->waypoint_time - current_start_point->waypoint_time;
         IKoptions *ik_options = buildIKOptions(duration);
 
         // build constraints
@@ -83,8 +85,8 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
         qd_sol.conservativeResize(nq, qd_sol.cols() + qd_sol_part.cols()-1 );
         qdd_sol.conservativeResize(nq, qdd_sol.cols() + qdd_sol_part.cols()-1 );
         q_sol.block(0, old_q_size, nq, q_sol_part.cols()-1) = q_sol_part.block(0, 0, nq, q_sol_part.cols()-1);
-        q_sol.block(0, old_q_size, nq, qd_sol_part.cols()-1) = qd_sol_part.block(0, 0, nq, qd_sol_part.cols()-1);
-        q_sol.block(0, old_q_size, nq, qdd_sol_part.cols()-1) = qdd_sol_part.block(0, 0, nq, qdd_sol_part.cols()-1);
+        qd_sol.block(0, old_q_size, nq, qd_sol_part.cols()-1) = qd_sol_part.block(0, 0, nq, qd_sol_part.cols()-1);
+        qdd_sol.block(0, old_q_size, nq, qdd_sol_part.cols()-1) = qdd_sol_part.block(0, 0, nq, qdd_sol_part.cols()-1);
 
         // add final element at the very end
         if ( i == num_steps-1 ) {
@@ -94,11 +96,12 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
             qdd_sol.conservativeResize(nq, qdd_sol.cols() + 1 );
 
             q_sol.block(0, q_sol.cols()-1, nq, 1) = q_sol_part.block(0, q_sol_part.cols()-1, nq, 1);
-            q_sol.block(0, q_sol.cols()-1, nq, 1) = qd_sol_part.block(0, qd_sol_part.cols()-1, nq, 1);
-            q_sol.block(0, q_sol.cols()-1, nq, 1) = qdd_sol_part.block(0, qdd_sol_part.cols()-1, nq, 1);
+            qd_sol.block(0, q_sol.cols()-1, nq, 1) = qd_sol_part.block(0, qd_sol_part.cols()-1, nq, 1);
+            qdd_sol.block(0, q_sol.cols()-1, nq, 1) = qdd_sol_part.block(0, qdd_sol_part.cols()-1, nq, 1);
         }
 
-        bool success = true;
+        q0 = q_sol_part.col( q_sol_part.cols()-1 );
+
         if(info>=10) { // something went wrong
             std::string constraint_string = "";
             for (auto const& constraint : infeasible_constraints) { constraint_string += (constraint+" | "); }
@@ -120,12 +123,6 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
         for ( int i = 0; i <= num_steps; i++) {
             response_t(i) = i*time_step;
         }
-
-        std::cout << "result_q = " << std::endl;
-        printSortedQs(q_sol);
-
-        std::cout << "result_qd = " << std::endl;
-        printSortedQs(qd_sol);
 
         Eigen::VectorXd interpolated_t = Map<VectorXd>(t_sol.data(), t_sol.size());
         interpolateTrajectory(q_sol, interpolated_t, response_t, q_sol, qd_sol, qdd_sol);
@@ -238,7 +235,7 @@ std::vector<RigidBodyConstraint*> CartesianTrajectoryPlannerModule::buildIKConst
 
             Matrix4Xd line(4,2);
             line << line_start_vec, line_end_vec;
-            constraints.push_back( new Point2LineSegDistConstraint(getRobotModel(),eef_body_id,eef_pts,1,line,0.0,0.02,t_span_total) );
+            constraints.push_back( new Point2LineSegDistConstraint(getRobotModel(),eef_body_id,eef_pts,0,line,0.0,0.02,t_span_total) );
         }
 
     }

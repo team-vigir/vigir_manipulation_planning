@@ -3,6 +3,8 @@
 #include <moveit_msgs/RobotState.h>
 #include <vigir_planning_msgs/RequestDrakeIK.h>
 
+#include <sstream>
+
 #include <tf/tf.h>
 
 #include <RigidBodyManipulator.h>
@@ -14,6 +16,9 @@ namespace vigir_drake_cpp {
 PlannerModule::PlannerModule(RigidBodyManipulator *robot_model)
 {
     robot_model_ = robot_model;
+
+    q_nom = Eigen::VectorXd(robot_model->num_positions);
+    q_nom << -0.010963246226300001, 0.00053433817811300002, 0.87918889522599997, 3.1409064491353811, 3.1674250364257595, 3.1415213301084979, -4.8416051868116483e-05, 0.0015894935932010412, -0.00018978302250616252, -0.25412441522026064, -0.0098131755366921425, 0.075760267674922943, -0.46318930387496948, 0.94040477275848389, -0.45157152414321899, -0.075519748032093048, -1.3442893893127441, 1.9690395179184732, 0.47574423129844667, 0.0095752710476517677, -0.00085321138612926006, 0.022117273882031441, 0.292929194229126, 0.0098817348480224609, -0.075710050761699677, -0.46247932314872742, 0.93897950649261475, -0.45088508725166321, 0.076813079416751862, 1.3628664578170777, 1.8534582696990967, -0.48796679165649415, 0.0096058044582605362, 0.00084977783262729645, -0.025142166763544083, -0.021544275805354118, 0;
 }
 
 PlannerModule::~PlannerModule()
@@ -22,6 +27,10 @@ PlannerModule::~PlannerModule()
 
 RigidBodyManipulator *PlannerModule::getRobotModel() {
     return robot_model_;
+}
+
+Eigen::VectorXd &PlannerModule::getNominalQ() {
+    return q_nom;
 }
 
 MatrixXd PlannerModule::drakeQs2MessageQs(MatrixXd &model_qs, moveit_msgs::RobotState &request_state) {
@@ -82,13 +91,24 @@ VectorXd PlannerModule::messageQs2DrakeQs(VectorXd &q0, moveit_msgs::RobotState 
 }
 
 void PlannerModule::printSortedQs(MatrixXd &qs) {
+    std::stringstream name_stream;
+    std::stringstream position_stream;
+
     for ( int i = 0; i < this->getRobotModel()->bodies.size(); i++ ) {
         int pos = this->getRobotModel()->bodies[i]->position_num_start;
-        if ( pos >= 0 && pos < this->getRobotModel()->num_positions)
-            std::cout << this->getRobotModel()->bodies[i]->jointname << "   " << qs.row(pos)<< std::endl;
-        else
-            std::cout << this->getRobotModel()->bodies[i]->jointname << "    no matching q for position_num = " << pos <<std::endl;
+        if ( pos >= 0 && pos < this->getRobotModel()->num_positions) {
+            name_stream << this->getRobotModel()->bodies[i]->jointname << ", ";
+            position_stream << qs.row(pos) << ", ";
+        }
+        //else
+        //    std::cout << this->getRobotModel()->bodies[i]->jointname << "    no matching q for position_num = " << pos <<std::endl;
     }
+
+    std::cout << name_stream.str() << std::endl;
+    std::cout << position_stream.str() << std::endl;
+
+    std::cout << "translation = [" << qs(0) << ", " << qs(1) << ", " << qs(2) << "]" << std::endl;
+    std::cout << "orientation = [" << qs(3) << ", " << qs(4) << ", " << qs(5) << "]" << std::endl;
 }
 
 }
