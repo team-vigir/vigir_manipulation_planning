@@ -23,23 +23,26 @@ PositionIKPlannerModule::~PositionIKPlannerModule() {
 bool PositionIKPlannerModule::plan(vigir_planning_msgs::RequestDrakeIK &request_message, vigir_planning_msgs::ResultDrakeIK &result_message)
 {
     // convert robot position to drake format
-    VectorXd q0 = VectorXd::Zero(this->getRobotModel()->num_positions);
+    VectorXd q_seed = VectorXd::Zero(this->getRobotModel()->num_positions);
+    VectorXd q_nom = VectorXd::Zero(this->getRobotModel()->num_positions);
 
     bool received_world_transform = false;
-    q0 = messageQs2DrakeQs(q0, request_message.robot_state, received_world_transform);
+    q_seed = messageQs2DrakeQs(q_seed, request_message.robot_state, received_world_transform);
+    q_nom.block(0, 0, 6, 1) = q_seed.block(0,0,6,1);
+
 
     std::cout << "q0 = " << std::endl;
-    MatrixXd printQ = q0;
+    MatrixXd printQ = q_seed;
     printSortedQs(printQ);
 
     // build IK options and constraints
     IKoptions *ik_options = buildIKOptions();
-    std::vector<RigidBodyConstraint*> ik_constraints = buildIKConstraints(request_message, q0);
+    std::vector<RigidBodyConstraint*> ik_constraints = buildIKConstraints(request_message, q_seed);
 
     VectorXd q_sol = VectorXd::Zero(this->getRobotModel()->num_positions);
     int info;
     std::vector<std::string> infeasible_constraints;
-    inverseKin(this->getRobotModel(),q0,q0,ik_constraints.size(),ik_constraints.data(),q_sol,info,infeasible_constraints,*ik_options);
+    inverseKin(this->getRobotModel(),q_seed,q_nom,ik_constraints.size(),ik_constraints.data(),q_sol,info,infeasible_constraints,*ik_options);
 
     bool success = true;
     if(info>10) { // something went wrong

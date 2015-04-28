@@ -109,6 +109,9 @@ classdef DrakeInverseKinematicsInterface
             [ posture, success ] = calcIKPosture( obj.robot_visualizer, obj.robot_model, q0, event.message );
             
             if(success) % all is well
+                disp('q_sol = ');
+                obj.printSortedQs(posture);
+                
                 % build result message form q values
                 result_message = vigir_planning_msgs.ResultDrakeIK;
                 result_message.result_state = event.message.robot_state;
@@ -259,6 +262,13 @@ classdef DrakeInverseKinematicsInterface
             
         end
         
+        function visualizer = getVisualizer(obj)
+            visualizer = obj.robot_visualizer;
+        end
+        
+        function robot_model = getRobotModel(obj)
+            robot_model = obj.robot_model;
+        end        
     end
     
     methods(Access = private)
