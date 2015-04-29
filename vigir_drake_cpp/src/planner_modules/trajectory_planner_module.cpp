@@ -4,7 +4,6 @@
 #include "RigidBodyConstraint.h"
 #include "RigidBodyIK.h"
 #include "IKoptions.h"
-#include "splineGeneration.h"
 
 #include <unsupported/Eigen/Splines>
 
