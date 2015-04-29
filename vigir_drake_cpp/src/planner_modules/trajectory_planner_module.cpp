@@ -42,6 +42,10 @@ bool TrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeTrajectory &
     VectorXd q0 = VectorXd::Zero(this->getRobotModel()->num_positions);
     q0 = messageQs2DrakeQs(q0, request_message.current_state, received_world_transform);
 
+    std::cout << "q0 = " << std::endl;
+    MatrixXd printQ = q0;
+    printSortedQs(printQ);
+
     VectorXd qd_0 = VectorXd::Zero(this->getRobotModel()->num_velocities);
     MatrixXd q_seed = q0.replicate(1, t_vec.size());
     MatrixXd q_nom = q_seed;
