@@ -644,72 +644,73 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
 
 
 
-    cmd.header.frame_id = "/world";
-    cmd.header.stamp = ros::Time::now();
+//    cmd.header.frame_id = "/world";
+//    cmd.header.stamp = ros::Time::now();
 
     for(int waypoint=0; waypoint< affordance.waypoints.size(); waypoint++){
-        cmd.waypoints.push_back(affordance.waypoints[waypoint].pose);
+//        cmd.waypoints.push_back(affordance.waypoints[waypoint].pose);
         move_goal.extended_planning_options.target_frame = affordance.waypoints[waypoint].header.frame_id;
+        poseTransform(affordance.waypoints[waypoint].pose, hand_T_palm_.inverse());  //Affrodance is in palm frame, need to change to hand frame
         move_goal.extended_planning_options.target_poses.push_back(affordance.waypoints[waypoint].pose);
     }
 
     // get position of the wrist in world coordinates
-    geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
+//    geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
 
-    // get position of the marker in world coordinates
-    poseTransform(hand, hand_T_palm_);
+//    // get position of the marker in world coordinates
+//    poseTransform(hand, hand_T_palm_);
 
-    // calculate the difference between them
-    tf::Vector3 diff_vector;
-    diff_vector.setX(last_wrist_pose_msg_.pose.position.x - hand.position.x);
-    diff_vector.setY(last_wrist_pose_msg_.pose.position.y - hand.position.y);
-    diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
+//    // calculate the difference between them
+//    tf::Vector3 diff_vector;
+//    diff_vector.setX(last_wrist_pose_msg_.pose.position.x - hand.position.x);
+//    diff_vector.setY(last_wrist_pose_msg_.pose.position.y - hand.position.y);
+//    diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
 
-    for(int i = 0; i < cmd.waypoints.size(); i++)
-    {
+//    for(int i = 0; i < cmd.waypoints.size(); i++)
+//    {
         // apply the difference to each one of the waypoints
-        if(affordance.keep_orientation)
-        {
-            cmd.waypoints[i].position.x = cmd.waypoints[i].position.x + diff_vector.getX();
-            cmd.waypoints[i].position.y = cmd.waypoints[i].position.y + diff_vector.getY();
-            cmd.waypoints[i].position.z = cmd.waypoints[i].position.z + diff_vector.getZ();
-            cmd.waypoints[i].orientation.x = last_wrist_pose_msg_.pose.orientation.x;
-            cmd.waypoints[i].orientation.y = last_wrist_pose_msg_.pose.orientation.y;
-            cmd.waypoints[i].orientation.z = last_wrist_pose_msg_.pose.orientation.z;
-            cmd.waypoints[i].orientation.w = last_wrist_pose_msg_.pose.orientation.w;
+//        if(affordance.keep_orientation)
+//        {
+//            cmd.waypoints[i].position.x = cmd.waypoints[i].position.x + diff_vector.getX();
+//            cmd.waypoints[i].position.y = cmd.waypoints[i].position.y + diff_vector.getY();
+//            cmd.waypoints[i].position.z = cmd.waypoints[i].position.z + diff_vector.getZ();
+//            cmd.waypoints[i].orientation.x = last_wrist_pose_msg_.pose.orientation.x;
+//            cmd.waypoints[i].orientation.y = last_wrist_pose_msg_.pose.orientation.y;
+//            cmd.waypoints[i].orientation.z = last_wrist_pose_msg_.pose.orientation.z;
+//            cmd.waypoints[i].orientation.w = last_wrist_pose_msg_.pose.orientation.w;
 
-            move_goal.extended_planning_options.target_poses[i].position.x = cmd.waypoints[i].position.x + diff_vector.getX();
-            move_goal.extended_planning_options.target_poses[i].position.y = cmd.waypoints[i].position.y + diff_vector.getY();
-            move_goal.extended_planning_options.target_poses[i].position.z = cmd.waypoints[i].position.z + diff_vector.getZ();
-            move_goal.extended_planning_options.target_poses[i].orientation.x = last_wrist_pose_msg_.pose.orientation.x;
-            move_goal.extended_planning_options.target_poses[i].orientation.y = last_wrist_pose_msg_.pose.orientation.y;
-            move_goal.extended_planning_options.target_poses[i].orientation.z = last_wrist_pose_msg_.pose.orientation.z;
-            move_goal.extended_planning_options.target_poses[i].orientation.w = last_wrist_pose_msg_.pose.orientation.w;
+//            move_goal.extended_planning_options.target_poses[i].position.x += diff_vector.getX();
+//            move_goal.extended_planning_options.target_poses[i].position.y += diff_vector.getY();
+//            move_goal.extended_planning_options.target_poses[i].position.z += diff_vector.getZ();
+//            move_goal.extended_planning_options.target_poses[i].orientation.x = last_wrist_pose_msg_.pose.orientation.x;
+//            move_goal.extended_planning_options.target_poses[i].orientation.y = last_wrist_pose_msg_.pose.orientation.y;
+//            move_goal.extended_planning_options.target_poses[i].orientation.z = last_wrist_pose_msg_.pose.orientation.z;
+//            move_goal.extended_planning_options.target_poses[i].orientation.w = last_wrist_pose_msg_.pose.orientation.w;
 
 
-        }
-        else
-        {
-            geometry_msgs::Pose waypoint;
-            waypoint.position.x = cmd.waypoints[i].position.x;
-            waypoint.position.y = cmd.waypoints[i].position.y;
-            waypoint.position.z = cmd.waypoints[i].position.z;
-            waypoint.orientation.x = cmd.waypoints[i].orientation.x;
-            waypoint.orientation.y = cmd.waypoints[i].orientation.y;
-            waypoint.orientation.z = cmd.waypoints[i].orientation.z;
-            waypoint.orientation.w = cmd.waypoints[i].orientation.w;
+//        }
+//        else
+//        {
+//            geometry_msgs::Pose waypoint;
+//            waypoint.position.x = cmd.waypoints[i].position.x;
+//            waypoint.position.y = cmd.waypoints[i].position.y;
+//            waypoint.position.z = cmd.waypoints[i].position.z;
+//            waypoint.orientation.x = cmd.waypoints[i].orientation.x;
+//            waypoint.orientation.y = cmd.waypoints[i].orientation.y;
+//            waypoint.orientation.z = cmd.waypoints[i].orientation.z;
+//            waypoint.orientation.w = cmd.waypoints[i].orientation.w;
 
-            poseTransform(waypoint, hand_T_palm_.inverse());
+//            poseTransform(waypoint, hand_T_palm_.inverse());
 
-            cmd.waypoints[i] = waypoint;
-            move_goal.extended_planning_options.target_poses[i] = waypoint;
-        }
+//            cmd.waypoints[i] = waypoint;
 
-    }
+//        }
 
-    cmd.use_environment_obstacle_avoidance = false;
+//    }
 
-    cmd.planning_group = this->planning_group_;
+//    cmd.use_environment_obstacle_avoidance = false;
+
+//    cmd.planning_group = this->planning_group_;
 
     //cartesian_plan_request_pub_.publish(cmd);
 
