@@ -643,7 +643,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
 
 
 
-    wrist_target_pub_.publish(affordance.waypoints[0].pose);
+    wrist_target_pub_.publish(affordance.waypoints[0]);
 
 
 //    cmd.header.frame_id = "/world";
