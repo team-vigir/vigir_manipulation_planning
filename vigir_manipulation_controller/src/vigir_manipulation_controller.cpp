@@ -643,6 +643,8 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
 
 
 
+    wrist_target_pub_.publish(affordance.waypoints[0].pose);
+
 
 //    cmd.header.frame_id = "/world";
 //    cmd.header.stamp = ros::Time::now();
