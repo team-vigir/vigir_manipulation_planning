@@ -562,7 +562,8 @@ void VigirManipulationController::setStitchingObject(const flor_grasp_msgs::Temp
 }
 
 void VigirManipulationController::setDetachingObject(const flor_grasp_msgs::TemplateSelection& template_data){
-    //Add collision object with template pose and bounding box
+    //Set static transform to identity unstitching the template
+    this->palmStitch_T_hand_.setIdentity();
 
     ROS_INFO("Removing collision object :%s started",(boost::to_string(int16_t(template_data.template_id.data))).c_str());
     vigir_object_template_msgs::SetAttachedObjectTemplate srv;
