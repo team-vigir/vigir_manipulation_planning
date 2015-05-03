@@ -242,6 +242,7 @@ namespace vigir_manipulation_controller {
 
     void sendCircularAffordance(vigir_object_template_msgs::Affordance affordance);
     void sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance);
+    void sendFinalGrasp(geometry_msgs::PoseStamped final_grasp);
 
 
     // Calculate the wrist target in world frame given wrist pose in template frame
