@@ -351,11 +351,8 @@ void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::Gras
                 if(grasp.final_pose){
                     this->wrist_target_pose_.pose = grasp_pose;
                     calcWristTarget(grasp_pose.pose);  //Applies stitch transform in hand frame
-                    poseTransform(this->wrist_target_pose_.pose.pose, hand_T_palm_);  //Transform back to palm frame
-                    vigir_object_template_msgs::Affordance affordance;
-                    affordance.keep_orientation = true;
-                    affordance.waypoints.push_back(this->wrist_target_pose_.pose);
-                    sendCartesianAffordance(affordance);
+                    wrist_target_pub_.publish(wrist_target_pose_.pose);
+                    sendFinalGrasp(wrist_target_pose_.pose);
                 }else{
                     this->wrist_target_pose_.pose = pre_grasp_pose;
                     calcWristTarget(pre_grasp_pose.pose);
@@ -565,7 +562,8 @@ void VigirManipulationController::setStitchingObject(const flor_grasp_msgs::Temp
 }
 
 void VigirManipulationController::setDetachingObject(const flor_grasp_msgs::TemplateSelection& template_data){
-    //Add collision object with template pose and bounding box
+    //Set static transform to identity unstitching the template
+    this->palmStitch_T_hand_.setIdentity();
 
     ROS_INFO("Removing collision object :%s started",(boost::to_string(int16_t(template_data.template_id.data))).c_str());
     vigir_object_template_msgs::SetAttachedObjectTemplate srv;
@@ -576,13 +574,69 @@ void VigirManipulationController::setDetachingObject(const flor_grasp_msgs::Temp
         ROS_ERROR("Failed to call service request DetachObjectTemplate");
 }
 
+void VigirManipulationController::sendFinalGrasp(geometry_msgs::PoseStamped final_grasp)
+{
+    actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> move_action_client("/vigir_move_group",true);
+
+    ROS_INFO("Waiting for move action server to start.");
+    if(!move_action_client.waitForServer(ros::Duration(5))){
+        ROS_ERROR("Move group client timed out");
+        return;
+    }
+
+    ROS_INFO("Action server started, sending goal.");
+    vigir_planning_msgs::MoveGoal move_goal;
+
+    move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
+    move_goal.extended_planning_options.avoid_collisions                   = false;
+    move_goal.extended_planning_options.keep_endeffector_orientation       = false;  //Final Grasps are always sent to the correct orientation
+    move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;
+    move_goal.request.group_name                                           = this->planning_group_;
+    move_goal.request.allowed_planning_time                                = 1.0;
+    move_goal.request.num_planning_attempts                                = 1;
+
+    move_goal.extended_planning_options.target_frame = final_grasp.header.frame_id;
+    move_goal.extended_planning_options.target_poses.push_back(final_grasp.pose);
+
+    move_action_client.sendGoal(move_goal);
+
+    //wait for the action to return
+    bool finished_before_timeout = move_action_client.waitForResult(ros::Duration(30.0));
+
+    if (finished_before_timeout)
+    {
+        actionlib::SimpleClientGoalState state = move_action_client.getState();
+        ROS_INFO("Action finished: %s",state.toString().c_str());
+    }
+    else
+        ROS_ERROR("Action did not finish before the time out.");
+}
+
 void VigirManipulationController::sendCircularAffordance(vigir_object_template_msgs::Affordance affordance)
 {
-    flor_planning_msgs::CircularMotionRequest cmd;
+    actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> move_action_client("/vigir_move_group",true);
 
-    // calculating the rotation based on position of the markers
-    if(affordance.keep_orientation)
-    {
+    ROS_INFO("Waiting for move action server to start.");
+    if(!move_action_client.waitForServer(ros::Duration(5))){
+        ROS_ERROR("Move group client timed out");
+        return;
+    }
+
+    ROS_INFO("Action server started, sending goal.");
+    vigir_planning_msgs::MoveGoal move_goal;
+
+    move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION;
+    move_goal.extended_planning_options.avoid_collisions                   = false;
+    move_goal.extended_planning_options.keep_endeffector_orientation       = affordance.keep_orientation;
+    move_goal.extended_planning_options.rotation_angle                     = affordance.displacement;
+    move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;
+    move_goal.request.group_name                                           = this->planning_group_;
+    move_goal.request.allowed_planning_time                                = 1.0;
+    move_goal.request.num_planning_attempts                                = 1;
+
+    move_goal.extended_planning_options.target_frame = affordance.waypoints[0].header.frame_id;
+
+    if(affordance.keep_orientation){
         // get position of the wrist in world coordinates
         geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
 
@@ -600,78 +654,81 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
         affordance.waypoints[0].pose.position.y += diff_vector.getY();
         affordance.waypoints[0].pose.position.z += diff_vector.getZ();
     }
+    wrist_target_pub_.publish(affordance.waypoints[0]);
 
-    cmd.rotation_center_pose = affordance.waypoints[0];
+    move_goal.extended_planning_options.target_poses.push_back(affordance.waypoints[0].pose);
 
-    cmd.rotation_angle = affordance.displacement;
+    move_action_client.sendGoal(move_goal);
 
-    cmd.use_environment_obstacle_avoidance = false;
+    //wait for the action to return
+    bool finished_before_timeout = move_action_client.waitForResult(ros::Duration(30.0));
 
-    cmd.keep_endeffector_orientation = affordance.keep_orientation;
+    if (finished_before_timeout)
+    {
+        actionlib::SimpleClientGoalState state = move_action_client.getState();
+        ROS_INFO("Action finished: %s",state.toString().c_str());
+    }
+    else
+        ROS_ERROR("Action did not finish before the time out.");
 
-    cmd.planning_group = this->planning_group_;
-
-    circular_plan_request_pub_.publish(cmd);
 }
 
 void VigirManipulationController::sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance)
 {
-    flor_planning_msgs::CartesianMotionRequest cmd;
+    actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> move_action_client("/vigir_move_group",true);
 
-    cmd.header.frame_id = "/world";
-    cmd.header.stamp = ros::Time::now();
-
-    for(int waypoint=0; waypoint< affordance.waypoints.size(); waypoint++)
-        cmd.waypoints.push_back(affordance.waypoints[waypoint].pose);
-
-    // get position of the wrist in world coordinates
-    geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
-
-    // get position of the marker in world coordinates
-    poseTransform(hand, hand_T_palm_);
-
-    // calculate the difference between them
-    tf::Vector3 diff_vector;
-    diff_vector.setX(last_wrist_pose_msg_.pose.position.x - hand.position.x);
-    diff_vector.setY(last_wrist_pose_msg_.pose.position.y - hand.position.y);
-    diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
-
-    for(int i = 0; i < cmd.waypoints.size(); i++)
-    {
-        // apply the difference to each one of the waypoints
-        if(affordance.keep_orientation)
-        {
-            cmd.waypoints[i].position.x = cmd.waypoints[i].position.x + diff_vector.getX();
-            cmd.waypoints[i].position.y = cmd.waypoints[i].position.y + diff_vector.getY();
-            cmd.waypoints[i].position.z = cmd.waypoints[i].position.z + diff_vector.getZ();
-            cmd.waypoints[i].orientation.x = last_wrist_pose_msg_.pose.orientation.x;
-            cmd.waypoints[i].orientation.y = last_wrist_pose_msg_.pose.orientation.y;
-            cmd.waypoints[i].orientation.z = last_wrist_pose_msg_.pose.orientation.z;
-            cmd.waypoints[i].orientation.w = last_wrist_pose_msg_.pose.orientation.w;
-        }
-        else
-        {
-            geometry_msgs::Pose waypoint;
-            waypoint.position.x = cmd.waypoints[i].position.x;
-            waypoint.position.y = cmd.waypoints[i].position.y;
-            waypoint.position.z = cmd.waypoints[i].position.z;
-            waypoint.orientation.x = cmd.waypoints[i].orientation.x;
-            waypoint.orientation.y = cmd.waypoints[i].orientation.y;
-            waypoint.orientation.z = cmd.waypoints[i].orientation.z;
-            waypoint.orientation.w = cmd.waypoints[i].orientation.w;
-
-            poseTransform(waypoint, hand_T_palm_.inverse());
-
-            cmd.waypoints[i] = waypoint;
-        }
-
+    ROS_INFO("Waiting for move action server to start.");
+    if(!move_action_client.waitForServer(ros::Duration(5))){
+        ROS_ERROR("Move group client timed out");
+        return;
     }
 
-    cmd.use_environment_obstacle_avoidance = false;
+    ROS_INFO("Action server started, sending goal.");
+    vigir_planning_msgs::MoveGoal move_goal;
 
-    cmd.planning_group = this->planning_group_;
+    move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
+    move_goal.extended_planning_options.avoid_collisions                   = false;
+    move_goal.extended_planning_options.keep_endeffector_orientation       = true;//affordance.keep_orientation; //Cartesian affordances don't care about endeffector orientation
+    move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;
+    move_goal.request.group_name                                           = this->planning_group_;
+    move_goal.request.allowed_planning_time                                = 1.0;
+    move_goal.request.num_planning_attempts                                = 1;
 
-    cartesian_plan_request_pub_.publish(cmd);
+    for(int waypoint=0; waypoint< affordance.waypoints.size(); waypoint++){
+        move_goal.extended_planning_options.target_frame = affordance.waypoints[waypoint].header.frame_id;
+
+        // get position of the wrist in world coordinates
+        geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
+
+        // get position of the marker in world coordinates
+        poseTransform(hand, hand_T_palm_);
+
+        // calculate the difference between them
+        tf::Vector3 diff_vector;
+        diff_vector.setX(last_wrist_pose_msg_.pose.position.x - hand.position.x);
+        diff_vector.setY(last_wrist_pose_msg_.pose.position.y - hand.position.y);
+        diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
+
+        // apply the difference to the circular center
+        affordance.waypoints[waypoint].pose.position.x += diff_vector.getX();
+        affordance.waypoints[waypoint].pose.position.y += diff_vector.getY();
+        affordance.waypoints[waypoint].pose.position.z += diff_vector.getZ();
+
+        move_goal.extended_planning_options.target_poses.push_back(affordance.waypoints[waypoint].pose);
+    }
+
+    move_action_client.sendGoal(move_goal);
+
+    //wait for the action to return
+    bool finished_before_timeout = move_action_client.waitForResult(ros::Duration(30.0));
+
+    if (finished_before_timeout)
+    {
+        actionlib::SimpleClientGoalState state = move_action_client.getState();
+        ROS_INFO("Action finished: %s",state.toString().c_str());
+    }
+    else
+        ROS_ERROR("Action did not finish before the time out.");
 }
 
 

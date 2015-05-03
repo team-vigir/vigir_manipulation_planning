@@ -18,6 +18,8 @@ find_package(catkin REQUIRED COMPONENTS
   trajectory_msgs
   vigir_object_template_msgs
   vigir_planning_interface
+  vigir_planning_msgs
+  actionlib
 )
 
 #set the default path for built executables to the "bin" directory
@@ -97,7 +99,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES vigir_manipulation_controller
-  CATKIN_DEPENDS flor_control_msgs flor_grasp_msgs flor_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp urdf tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface
+  CATKIN_DEPENDS actionlib flor_control_msgs flor_grasp_msgs flor_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp urdf tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface vigir_planning_msgs
 #  DEPENDS system_lib
 )
 

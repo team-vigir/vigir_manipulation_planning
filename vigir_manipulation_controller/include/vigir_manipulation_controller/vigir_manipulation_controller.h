@@ -59,6 +59,10 @@
 #include <flor_atlas_msgs/AtlasHandMass.h>
 #include <flor_control_msgs/FlorControlModeCommand.h>
 
+#include <actionlib/client/simple_action_client.h>
+#include <vigir_planning_msgs/MoveAction.h>
+#include <vigir_planning_msgs/ExtendedPlanningOptions.h>
+
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
@@ -238,6 +242,7 @@ namespace vigir_manipulation_controller {
 
     void sendCircularAffordance(vigir_object_template_msgs::Affordance affordance);
     void sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance);
+    void sendFinalGrasp(geometry_msgs::PoseStamped final_grasp);
 
 
     // Calculate the wrist target in world frame given wrist pose in template frame

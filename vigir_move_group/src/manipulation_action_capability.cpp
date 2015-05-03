@@ -527,10 +527,12 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
 void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
 {
 
-  //Only used if keep endeffector orientation true
+  //Only used if keep endeffector orientation true or if circular motion requested
   Eigen::Affine3d eef_start_pose;
 
-  if(goal->extended_planning_options.keep_endeffector_orientation &&
+  if((goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION ||
+     (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS &&
+      goal->extended_planning_options.keep_endeffector_orientation)) &&
      !planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
                                                     context_->planning_scene_monitor_,
                                                     eef_start_pose))
