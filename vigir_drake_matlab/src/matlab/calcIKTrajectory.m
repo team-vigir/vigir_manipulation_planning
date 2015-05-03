@@ -40,4 +40,3 @@ function [ trajectory, success ] = calcIKTrajectory( visualizer, robot_model, q0
     % visualize result
     visualizer.playback(trajectory,struct('slider',true));
 end
-

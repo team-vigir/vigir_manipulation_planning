@@ -180,6 +180,10 @@ classdef DrakeInverseKinematicsInterface
             
             if(success) % all is right
                 % calculate time points for trajectory evaluation
+                if ( event.message.trajectory_sample_rate == 0.0 )
+                    event.message.trajectory_saple_rate = 4.0;
+                end
+                
                 time_steps = 1/event.message.trajectory_sample_rate;                    
                 t = 0:time_steps:event.message.duration;
                 if ( t(end) < event.message.duration )
@@ -239,6 +243,10 @@ classdef DrakeInverseKinematicsInterface
             
             if(success) % if everything is okay, send trajectory message
                 % calculate time points for trajectory evaluation
+                if ( event.message.trajectory_sample_rate == 0.0 )
+                    event.message.trajectory_saple_rate = 4.0;
+                end
+                
                 time_steps = 1/event.message.trajectory_sample_rate;
                 t = 0:time_steps:request.waypoint_times(end);
                 

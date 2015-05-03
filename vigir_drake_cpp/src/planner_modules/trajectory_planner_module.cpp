@@ -77,7 +77,11 @@ bool TrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeTrajectory &
     }
 
     if ( success ) {
-        // generate spline from result matrices
+        // generate spline from result matrices (default sample rate = 4.0Hz)
+        if ( request_message.trajectory_sample_rate == 0.0 ) {
+            request_message.trajectory_sample_rate = 4.0;
+        }
+
         double time_step = 1.0 / request_message.trajectory_sample_rate;
         int num_steps = (duration / time_step) + 0.5;
         Eigen::VectorXd response_t(num_steps+1);

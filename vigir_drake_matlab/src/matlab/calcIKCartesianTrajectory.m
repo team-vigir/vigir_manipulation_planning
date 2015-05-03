@@ -4,6 +4,10 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
 
     visualizer.draw(cputime, q0);
 
+    if ( isempty(request.waypoint_times) )
+        request.waypoint_times = estimateWaypointTimes(robot_model, q0, request.target_link_names, request.waypoints);
+    end
+    
     interpolated_waypoints = extractOrderedWaypoints(request, robot_model, q0);
     
     nq = robot_model.getNumPositions();
@@ -212,7 +216,63 @@ function interpolated_waypoints = extractOrderedWaypoints(request, robot_model, 
 %             interpolated_waypoints(current_idx).keep_line_and_orientation(end+1) = true;
 %         end
 %     end
+end
 
+function waypoint_times = estimateWaypointTimes(robot_model, q0, target_link_names, target_poses)
+    scale_factor = 8; % TODO: Where to get that from?    
 
+    kinsol = doKinematics(robot_model,q0,false,true);    
+    start_link_names = unique(target_link_names);
+    num_poses_per_time_step = length(start_link_names);
+    
+    for i = 1:num_poses_per_time_step;
+        current_link_name = target_link_names{i};
+        body_idx = robot_model.findLinkId(current_link_name);
+        
+        start_poses = forwardKin(robot_model,kinsol,body_idx,[0;0;0],0);
+        current_start_pose.position.x = start_poses(1);
+        current_start_pose.position.y = start_poses(2);
+        current_start_pose.position.z = start_poses(3);
+        current_start_pose.orientation = struct();
+        target_poses = [current_start_pose, target_poses];
+    end
+    
+    target_link_names = {start_link_names{:}, target_link_names{:}};
+      
+    num_waypoint_times = length(target_link_names);
+    num_time_steps = num_waypoint_times / num_poses_per_time_step;
+    
+    waypoint_times = zeros(1, num_waypoint_times);
+    
+    previous_waypoint_time = 0;
+    for i = 0:num_time_steps-2;
+        % calculate distance for each end-effector
+        distance = 0;
+        for j = 1:num_poses_per_time_step
+            start_pose_idx = i*num_poses_per_time_step + j;
+            target_pose_idx = (i+1)*num_poses_per_time_step+1:(i+1)*num_poses_per_time_step+num_poses_per_time_step;
+            
+            link_name = target_link_names(start_pose_idx);
+            target_pose_idx = (i+1)*num_poses_per_time_step+find(strcmpi(link_name, target_link_names(target_pose_idx)));
+            
+            
+            start_pose = [target_poses(start_pose_idx).position.x, target_poses(start_pose_idx).position.y, target_poses(start_pose_idx).position.z];
+            target_pose = [target_poses(target_pose_idx).position.x, target_poses(target_pose_idx).position.y, target_poses(target_pose_idx).position.z];
+            
+            link_distance = norm(target_pose - start_pose);
+            if ( link_distance > distance )
+                distance = link_distance;
+            end
+        end
+        
+        current_waypoint_time = previous_waypoint_time + distance * scale_factor;
+        for j = 1:num_poses_per_time_step
+            waypoint_times( (i+1)*num_poses_per_time_step + j) = current_waypoint_time;
+        end
+        
+        previous_waypoint_time = current_waypoint_time;
+    end
+    
+    waypoint_times = waypoint_times(num_poses_per_time_step+1:end);
 end
 

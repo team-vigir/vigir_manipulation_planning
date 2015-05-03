@@ -23,9 +23,6 @@ CartesianTrajectoryPlannerModule::~CartesianTrajectoryPlannerModule()
 
 bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCartesianTrajectory &request_message, vigir_planning_msgs::ResultDrakeTrajectory &result_message)
 {
-
-    std::vector<Waypoint*> waypoints = extractOrderedWaypoints(request_message);
-    
     // stay at q0 for nominal trajectory
     bool received_world_transform = false;
     VectorXd q0 = VectorXd::Zero(this->getRobotModel()->num_positions);
@@ -34,6 +31,19 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
     std::cout << "q0 = " << std::endl;
     MatrixXd printQ = q0;
     printSortedQs(printQ);
+
+    if ( request_message.waypoint_times.empty() ) {
+        request_message.waypoint_times = estimateWaypointTimes(q0, request_message.target_link_names, request_message.waypoints);
+        if ( request_message.waypoint_times.empty() ) { // request was invalid
+            return false;
+        }
+    }
+
+    std::vector<Waypoint*> waypoints = extractOrderedWaypoints(request_message);
+    
+
+
+
     
     int nq = getRobotModel()->num_positions;
     int num_steps = waypoints.size();
@@ -114,7 +124,10 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
     }
 
     if ( success ) {
-        // generate spline from result matrices
+        // generate spline from result matrices (default sample rate = 4.0Hz)
+        if ( request_message.trajectory_sample_rate == 0.0 ) {
+            request_message.trajectory_sample_rate = 4.0;
+        }
         double time_step = 1.0 / request_message.trajectory_sample_rate;
         double duration = waypoints[ waypoints.size()-1]->waypoint_time;
         int num_steps = (duration / time_step) + 0.5;
@@ -280,5 +293,85 @@ std::vector<CartesianTrajectoryPlannerModule::Waypoint*> CartesianTrajectoryPlan
     return waypoint_vec;
 }
 
+std::vector<double> CartesianTrajectoryPlannerModule::estimateWaypointTimes(Eigen::VectorXd &q0, std::vector<std::string> &target_link_names, std::vector<geometry_msgs::Pose> &target_poses) {
+    std::vector<double> waypoint_times;
+    double scale_factor = 8.0;
+
+    Vector3d body_pts;
+    body_pts << 0.0,0.0,0.0;
+
+    VectorXd v = VectorXd::Zero(this->getRobotModel()->num_velocities);
+    this->getRobotModel()->doKinematicsNew(q0, v);
+
+    std::set<std::string> link_names;
+    link_names.insert( target_link_names.begin(), target_link_names.end());
+
+    // insert current pose as first waypoint
+    int num_poses_per_time_step = link_names.size();
+    for ( auto link_name : link_names ) {
+        int body_idx = this->getRobotModel()->findLinkId(link_name);
+        Vector3d start_pose = this->getRobotModel()->forwardKinNew(body_pts, body_idx, 0, 0, 0).value();
+
+        geometry_msgs::Pose target_pose;
+        target_pose.position.x = start_pose(0);
+        target_pose.position.y = start_pose(1);
+        target_pose.position.z = start_pose(2);
+
+        target_poses.insert(target_poses.begin(), target_pose);
+    }
+
+    target_link_names.insert(target_link_names.begin(), link_names.begin(), link_names.end());
+    int num_waypoint_times = target_link_names.size();
+    int num_time_steps = num_waypoint_times / num_poses_per_time_step;
+
+    waypoint_times.assign(num_waypoint_times, 0.0);
+    double previous_waypoint_time = 0.0;
+
+    for ( int i = 0; i < num_time_steps-2; i++ ) {
+        // calculate distance for each end-effector
+        double distance = 0.0;
+        for ( int j = 0; j < num_poses_per_time_step; j++ ) {
+            int start_pose_idx = i*num_poses_per_time_step + j;
+            int target_pose_idx = -1;
+
+            std::string link_name = target_link_names[start_pose_idx];
+
+            // find corresponding target pose
+            for ( int k = (i+1)*num_poses_per_time_step; k < (i+1)*num_poses_per_time_step+num_poses_per_time_step; k++ ) {
+                if ( target_link_names[k] == link_name) {
+                    target_pose_idx = k;
+                }
+            }
+
+            if ( target_pose_idx == -1 ) {
+                ROS_ERROR("Did not find corresponding target pose for %s in time step %d", link_name.c_str(), i+1);
+                return std::vector<double>();
+            }
+
+            Vector3d start_pose;
+            start_pose << target_poses[start_pose_idx].position.x,target_poses[start_pose_idx].position.y,target_poses[start_pose_idx].position.z;
+            Vector3d target_pose;
+            target_pose << target_poses[target_pose_idx].position.x,target_poses[target_pose_idx].position.y,target_poses[target_pose_idx].position.z;
+            double current_distance = (target_pose - start_pose).norm();
+
+            if ( current_distance > distance ) {
+                distance = current_distance;
+            }
+        }
+
+        double current_waypoint_time = previous_waypoint_time + distance * scale_factor;
+        for ( int j = 0; j < num_poses_per_time_step; j++ ) {
+            waypoint_times[ i*num_poses_per_time_step + j ] = current_waypoint_time;
+        }
+
+        previous_waypoint_time = current_waypoint_time;
+    }
+
+    for ( int i = 0; i < num_poses_per_time_step; i++ ) {
+        waypoint_times.erase(waypoint_times.begin());
+    }
+
+    return waypoint_times;
 }
 
+}
