@@ -588,7 +588,7 @@ void VigirManipulationController::sendFinalGrasp(geometry_msgs::PoseStamped fina
 
     move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
     move_goal.extended_planning_options.avoid_collisions                   = false;
-    move_goal.extended_planning_options.keep_endeffector_orientation       = false;
+    move_goal.extended_planning_options.keep_endeffector_orientation       = false;  //Final Grasps are always sent to the correct orientation
     move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;
@@ -613,41 +613,6 @@ void VigirManipulationController::sendFinalGrasp(geometry_msgs::PoseStamped fina
 
 void VigirManipulationController::sendCircularAffordance(vigir_object_template_msgs::Affordance affordance)
 {
-//    flor_planning_msgs::CircularMotionRequest cmd;
-
-//    // calculating the rotation based on position of the markers
-//    if(affordance.keep_orientation)
-//    {
-//        // get position of the wrist in world coordinates
-//        geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
-
-//        // get position of the marker in world coordinates
-//        poseTransform(hand, hand_T_palm_);
-
-//        // calculate the difference between them
-//        tf::Vector3 diff_vector;
-//        diff_vector.setX(last_wrist_pose_msg_.pose.position.x - hand.position.x);
-//        diff_vector.setY(last_wrist_pose_msg_.pose.position.y - hand.position.y);
-//        diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
-
-//        // apply the difference to the circular center
-//        affordance.waypoints[0].pose.position.x += diff_vector.getX();
-//        affordance.waypoints[0].pose.position.y += diff_vector.getY();
-//        affordance.waypoints[0].pose.position.z += diff_vector.getZ();
-//    }
-
-//    cmd.rotation_center_pose = affordance.waypoints[0];
-
-//    cmd.rotation_angle = affordance.displacement;
-
-//    cmd.use_environment_obstacle_avoidance = false;
-
-//    cmd.keep_endeffector_orientation = affordance.keep_orientation;
-
-//    cmd.planning_group = this->planning_group_;
-
-//    circular_plan_request_pub_.publish(cmd);
-
     actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> move_action_client("/vigir_move_group",true);
 
     ROS_INFO("Waiting for move action server to start.");
@@ -722,7 +687,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
 
     move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
     move_goal.extended_planning_options.avoid_collisions                   = false;
-    move_goal.extended_planning_options.keep_endeffector_orientation       = true;//affordance.keep_orientation;
+    move_goal.extended_planning_options.keep_endeffector_orientation       = true;//affordance.keep_orientation; //Cartesian affordances don't care about endeffector orientation
     move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;
