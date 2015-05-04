@@ -531,6 +531,8 @@ void VigirManipulationController::processTemplateMassData(geometry_msgs::PoseSta
         template_P.setZ(0.0);
     }
     com_.header.frame_id    = "/"+this->wrist_name_;
+    com_.header.stamp       = ros::Time::now();
+    com_.header.seq++;
     com_.pose.orientation.w = 1.0;
 
     if (fabs(template_P.getX()) < 1.0 && fabs(template_P.getY()) < 1.0 && fabs(template_P.getZ()) < 1.0) //CoM sanity check, we don't consider positions over 1 meter.
