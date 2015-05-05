@@ -40,11 +40,7 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
     }
 
     std::vector<Waypoint*> waypoints = extractOrderedWaypoints(request_message);
-    
-
-
-
-    
+        
     int nq = getRobotModel()->num_positions;
     int num_steps = waypoints.size();
     bool success = true;
@@ -293,7 +289,7 @@ std::vector<CartesianTrajectoryPlannerModule::Waypoint*> CartesianTrajectoryPlan
     return waypoint_vec;
 }
 
-std::vector<double> CartesianTrajectoryPlannerModule::estimateWaypointTimes(Eigen::VectorXd &q0, std::vector<std::string> &target_link_names, std::vector<geometry_msgs::Pose> &target_poses) {
+std::vector<double> CartesianTrajectoryPlannerModule::estimateWaypointTimes(Eigen::VectorXd &q0, std::vector<std::string> target_link_names, std::vector<geometry_msgs::Pose> target_poses) {
     std::vector<double> waypoint_times;
     double scale_factor = 8.0;
 
@@ -327,7 +323,7 @@ std::vector<double> CartesianTrajectoryPlannerModule::estimateWaypointTimes(Eige
     waypoint_times.assign(num_waypoint_times, 0.0);
     double previous_waypoint_time = 0.0;
 
-    for ( int i = 0; i < num_time_steps-2; i++ ) {
+    for ( int i = 0; i < num_time_steps-1; i++ ) {
         // calculate distance for each end-effector
         double distance = 0.0;
         for ( int j = 0; j < num_poses_per_time_step; j++ ) {
@@ -340,6 +336,7 @@ std::vector<double> CartesianTrajectoryPlannerModule::estimateWaypointTimes(Eige
             for ( int k = (i+1)*num_poses_per_time_step; k < (i+1)*num_poses_per_time_step+num_poses_per_time_step; k++ ) {
                 if ( target_link_names[k] == link_name) {
                     target_pose_idx = k;
+                    break;
                 }
             }
 
@@ -361,13 +358,15 @@ std::vector<double> CartesianTrajectoryPlannerModule::estimateWaypointTimes(Eige
 
         double current_waypoint_time = previous_waypoint_time + distance * scale_factor;
         for ( int j = 0; j < num_poses_per_time_step; j++ ) {
-            waypoint_times[ i*num_poses_per_time_step + j ] = current_waypoint_time;
+            waypoint_times[ (i+1)*num_poses_per_time_step + j ] = current_waypoint_time;
         }
 
         previous_waypoint_time = current_waypoint_time;
     }
 
+    // cleanup temporary additions
     for ( int i = 0; i < num_poses_per_time_step; i++ ) {
+        target_poses.erase(target_poses.begin());
         waypoint_times.erase(waypoint_times.begin());
     }
 

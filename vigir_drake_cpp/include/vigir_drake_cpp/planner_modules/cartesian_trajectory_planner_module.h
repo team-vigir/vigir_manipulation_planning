@@ -28,7 +28,7 @@ public:
 protected:
     std::vector<RigidBodyConstraint*> buildIKConstraints(vigir_planning_msgs::RequestDrakeCartesianTrajectory &request_message, Waypoint *start_waypoint, Waypoint *target_waypoint, Eigen::VectorXd &q0);    
     std::vector<CartesianTrajectoryPlannerModule::Waypoint*> extractOrderedWaypoints(vigir_planning_msgs::RequestDrakeCartesianTrajectory &request_message);
-    std::vector<double> estimateWaypointTimes(Eigen::VectorXd &q0, std::vector<std::string> &target_link_names, std::vector<geometry_msgs::Pose> &target_waypoints);
+    std::vector<double> estimateWaypointTimes(Eigen::VectorXd &q0, std::vector<std::string> target_link_names, std::vector<geometry_msgs::Pose> target_waypoints);
 
 private:
     const int NUM_TIME_STEPS = 3;
