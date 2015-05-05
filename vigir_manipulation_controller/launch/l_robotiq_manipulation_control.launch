@@ -23,7 +23,7 @@
     <remap from="grasp_status"         to="/grasp_control/l_hand/grasp_status" />
     <remap from="link_states"          to="/grasp_control/l_hand/tactile_feedback" />
     <remap from="hand_status"          to="/grasp_control/l_hand/hand_status" />
-    <remap from="hand_mass"            to="/grasp_control/l_hand/hand_mass" />
+    <remap from="hand_mass"            to="/grasp_control/template_mass" />
     <remap from="wrist_target"         to="/grasp_control/l_hand/target_pose" />
     <remap from="wrist_plan"           to="/grasp_control/l_hand/plan_request" />
 

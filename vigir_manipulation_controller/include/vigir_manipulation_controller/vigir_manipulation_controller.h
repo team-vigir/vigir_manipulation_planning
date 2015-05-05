@@ -159,7 +159,7 @@ namespace vigir_manipulation_controller {
     tf::Transform                              hand_T_palm_;
 //    tf::TransformListener                      listener_;
     flor_planning_msgs::PlanRequest            wrist_target_pose_;
-    flor_atlas_msgs::AtlasHandMass             hand_mass_msg_;
+    flor_atlas_msgs::AtlasHandMass             template_mass_msg_;
     geometry_msgs::PoseStamped                 com_;
 
     //Grasp status message
@@ -183,7 +183,7 @@ namespace vigir_manipulation_controller {
     ros::Publisher     template_stitch_pose_pub_ ;
     ros::Publisher     wrist_plan_pub_   ;
     ros::Publisher     grasp_status_pub_ ;
-    ros::Publisher     hand_mass_pub_ ;
+    ros::Publisher     template_mass_pub_ ;
     ros::Publisher     tactile_feedback_pub_;
     ros::Publisher     circular_plan_request_pub_;
     ros::Publisher     cartesian_plan_request_pub_;
@@ -192,7 +192,6 @@ namespace vigir_manipulation_controller {
     ros::Subscriber    moveToPose_sub_;       ///< Current template and grasp selection message
     ros::Subscriber    grasp_command_sub_;         ///< Releasgrasp_joint_controller.e grasp and reset the initial finger positions
     ros::Subscriber    template_stitch_sub_;       ///< Current template pose to be stitched
-    ros::Subscriber    attach_object_sub_;         ///< Attach current template
     ros::Subscriber    detach_object_sub_;         ///< Detach current template
     ros::Subscriber    affordance_command_sub_;    ///< Circulat and Cartesian affordance
     ros::Subscriber    update_hand_marker_sub_;    ///< Update the pose of the marker to control the end-effector
@@ -205,7 +204,6 @@ namespace vigir_manipulation_controller {
 
     ros::ServiceClient inst_grasp_info_client_;
     ros::ServiceClient template_info_client_;
-    ros::ServiceClient attach_object_client_;
     ros::ServiceClient stitch_object_client_;
     ros::ServiceClient detach_object_client_;
 
@@ -230,13 +228,12 @@ namespace vigir_manipulation_controller {
     void updateWristTarget();
 
     void updateGraspStatus(); // call to publish latest grasp data
-    void updateHandMass(); // call to publish latest grasp data
-    void processHandMassData(const tf::Transform& hand_T_template, float &template_mass, tf::Vector3 &template_com);
+    void updateTemplateMass(); // call to publish latest grasp data
+    void processTemplateMassData(geometry_msgs::PoseStamped &template_pose, float &template_mass, geometry_msgs::Point &template_com);
     void handStatusCallback(const flor_grasp_msgs::HandStatus msg);
 
     void requestInstantiatedGraspService(const uint16_t& requested_template_type);
 
-    void setAttachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
     void setDetachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
     void setStitchingObject(const flor_grasp_msgs::TemplateSelection& template_data);
 
