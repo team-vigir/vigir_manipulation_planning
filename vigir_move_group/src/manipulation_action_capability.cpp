@@ -604,7 +604,9 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   cart_path.request.waypoints = pose_vec;
 
   cart_path.request.header.stamp = ros::Time::now();
-  cart_path.request.header.frame_id = goal->extended_planning_options.target_frame;
+
+  //We already converted to planning frame ("world" per default) in the preceding part, so use that.
+  cart_path.request.header.frame_id = context_->planning_scene_monitor_->getRobotModel()->getModelFrame();
 
   cart_path.request.jump_threshold = 2.0;
   cart_path.request.max_step = 0.01;
