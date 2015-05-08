@@ -245,6 +245,7 @@ namespace vigir_manipulation_controller {
     // Calculate the wrist target in world frame given wrist pose in template frame
     int calcWristTarget(const geometry_msgs::Pose& wrist_pose);
     int poseTransform(geometry_msgs::Pose& input_pose, tf::Transform transform);
+    int poseTransform(tf::Transform transform, geometry_msgs::Pose& input_pose);
 
   };
 

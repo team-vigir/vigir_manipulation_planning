@@ -433,6 +433,31 @@ int VigirManipulationController::poseTransform(geometry_msgs::Pose& input_pose, 
     return 0;
 }
 
+int VigirManipulationController::poseTransform(tf::Transform transform, geometry_msgs::Pose& input_pose)
+{
+    tf::Transform output_transform;    //describes hand in object's frame
+    tf::Transform input_transform;       //describes palm_from_graspit in object's frame
+
+    input_transform.setRotation(tf::Quaternion(input_pose.orientation.x,input_pose.orientation.y,input_pose.orientation.z,input_pose.orientation.w));
+    input_transform.setOrigin(tf::Vector3(input_pose.position.x,input_pose.position.y,input_pose.position.z) );
+
+    output_transform = transform * input_transform;
+
+    tf::Quaternion output_quat;
+    tf::Vector3    output_vector;
+    output_quat   = output_transform.getRotation();
+    output_vector = output_transform.getOrigin();
+
+    input_pose.position.x    = output_vector.getX();
+    input_pose.position.y    = output_vector.getY();
+    input_pose.position.z    = output_vector.getZ();
+    input_pose.orientation.x = output_quat.getX();
+    input_pose.orientation.y = output_quat.getY();
+    input_pose.orientation.z = output_quat.getZ();
+    input_pose.orientation.w = output_quat.getW();
+    return 0;
+}
+
 void VigirManipulationController::setGraspStatus(const RobotStatusCodes::StatusCode &status, const RobotStatusCodes::StatusLevel &severity)
 {
     if ((RobotStatusCodes::NO_ERROR == this->grasp_status_code_)  || (RobotStatusCodes::GRASP_CONTROLLER_OK == this->grasp_status_code_))
@@ -729,34 +754,30 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
 
     move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
     move_goal.extended_planning_options.avoid_collisions                   = false;
-    move_goal.extended_planning_options.keep_endeffector_orientation       = true;//affordance.keep_orientation; //Cartesian affordances don't care about endeffector orientation
+    move_goal.extended_planning_options.keep_endeffector_orientation       = true;  //Cartesian Affordances don't care about end effector orientation
     move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;
     move_goal.request.num_planning_attempts                                = 1;
 
-    for(int waypoint=0; waypoint< affordance.waypoints.size(); waypoint++){
-        move_goal.extended_planning_options.target_frame = affordance.waypoints[waypoint].header.frame_id;
 
-        // get position of the wrist in world coordinates
-        geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
 
-        // get position of the marker in world coordinates
-        poseTransform(hand, hand_T_palm_);
+    geometry_msgs::Pose wrist_pose = last_wrist_pose_msg_.pose;
 
-        // calculate the difference between them
-        tf::Vector3 diff_vector;
-        diff_vector.setX(last_wrist_pose_msg_.pose.position.x - hand.position.x);
-        diff_vector.setY(last_wrist_pose_msg_.pose.position.y - hand.position.y);
-        diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
+    tf::Transform world_T_wrist;       //describes wrist in world frame
 
-        // apply the difference to the circular center
-        affordance.waypoints[waypoint].pose.position.x += diff_vector.getX();
-        affordance.waypoints[waypoint].pose.position.y += diff_vector.getY();
-        affordance.waypoints[waypoint].pose.position.z += diff_vector.getZ();
+    world_T_wrist.setRotation(tf::Quaternion(wrist_pose.orientation.x,wrist_pose.orientation.y,wrist_pose.orientation.z,wrist_pose.orientation.w));
+    world_T_wrist.setOrigin(tf::Vector3(0.0,0.0,0.0) ); //we are only using the rotation part
 
-        move_goal.extended_planning_options.target_poses.push_back(affordance.waypoints[waypoint].pose);
-    }
+    // get affordance in wrist frame
+    poseTransform(world_T_wrist.inverse(), affordance.waypoints[0].pose);
+
+    affordance.waypoints[0].header.frame_id = this->wrist_name_;
+
+    wrist_target_pub_.publish(affordance.waypoints[0]);
+
+    move_goal.extended_planning_options.target_frame = this->wrist_name_;
+    move_goal.extended_planning_options.target_poses.push_back(affordance.waypoints[0].pose);
 
     move_action_client.sendGoal(move_goal);
 
