@@ -760,19 +760,39 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
     move_goal.request.allowed_planning_time                                = 1.0;
     move_goal.request.num_planning_attempts                                = 1;
 
+    float norm = sqrt((affordance.waypoints[0].pose.position.x * affordance.waypoints[0].pose.position.x) +
+                      (affordance.waypoints[0].pose.position.y * affordance.waypoints[0].pose.position.y) +
+                      (affordance.waypoints[0].pose.position.z * affordance.waypoints[0].pose.position.z));
+    if(norm != 0){
+        affordance.waypoints[0].pose.position.x /= norm;
+        affordance.waypoints[0].pose.position.y /= norm;
+        affordance.waypoints[0].pose.position.z /= norm;
+    }else{
+        ROS_INFO("Norm is ZERO!");
+        affordance.waypoints[0].pose.position.x = 0 ;
+        affordance.waypoints[0].pose.position.y = 0 ;
+        affordance.waypoints[0].pose.position.z = 0 ;
+    }
+
+    affordance.waypoints[0].pose.position.x *= affordance.displacement;
+    affordance.waypoints[0].pose.position.y *= affordance.displacement;
+    affordance.waypoints[0].pose.position.z *= affordance.displacement;
 
 
-    geometry_msgs::Pose wrist_pose = last_wrist_pose_msg_.pose;
+    if(affordance.waypoints[0].header.frame_id == "/world"){
 
-    tf::Transform world_T_wrist;       //describes wrist in world frame
+        geometry_msgs::Pose wrist_pose = last_wrist_pose_msg_.pose;
 
-    world_T_wrist.setRotation(tf::Quaternion(wrist_pose.orientation.x,wrist_pose.orientation.y,wrist_pose.orientation.z,wrist_pose.orientation.w));
-    world_T_wrist.setOrigin(tf::Vector3(0.0,0.0,0.0) ); //we are only using the rotation part
+        tf::Transform world_T_wrist;       //describes wrist in world frame
 
-    // get affordance in wrist frame
-    poseTransform(world_T_wrist.inverse(), affordance.waypoints[0].pose);
+        world_T_wrist.setRotation(tf::Quaternion(wrist_pose.orientation.x,wrist_pose.orientation.y,wrist_pose.orientation.z,wrist_pose.orientation.w));
+        world_T_wrist.setOrigin(tf::Vector3(0.0,0.0,0.0) ); //we are only using the rotation part
 
-    affordance.waypoints[0].header.frame_id = this->wrist_name_;
+        // get affordance in wrist frame
+        poseTransform(world_T_wrist.inverse(), affordance.waypoints[0].pose);
+
+        affordance.waypoints[0].header.frame_id = this->wrist_name_;
+    }
 
     wrist_target_pub_.publish(affordance.waypoints[0]);
 
