@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+
+<launch>
+  <!-- Bridge node to create service for drake integration -->
+  <node name="vigir_drake_cpp_node"   pkg="vigir_drake_cpp"        type="vigir_drake_cpp_node" respawn="true"/>
+</launch> 

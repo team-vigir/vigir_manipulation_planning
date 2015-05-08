@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+
+<launch>
+  <!-- Bridge node to create service for drake integration -->
+  <node name="drake_bridge_node"   pkg="vigir_drake_matlab"        type="drake_bridge_node" respawn="true"/>
+  
+  <!-- Drake-Matlab node - allowed to be killed for controlled restart -->
+  <node name="drake_matlab_node"          pkg="vigir_drake_matlab"          type="drake_matlab_node.py" output="screen" respawn="true"/> 
+</launch> 
