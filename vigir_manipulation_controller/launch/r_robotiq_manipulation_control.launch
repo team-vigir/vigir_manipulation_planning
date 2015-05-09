@@ -17,6 +17,7 @@
     <remap from="attach_object"        to="/manipulation_control/r_hand/attach_object" />
     <remap from="detach_object"        to="/manipulation_control/r_hand/detach_object" />
     <remap from="affordance_command"   to="/manipulation_control/r_hand/affordance_command" />
+    <remap from="wrist_affordance"     to="/manipulation_control/r_hand/wrist_affordance_srv" />
     <remap from="hand_marker"          to="/manipulation_control/r_hand/hand_marker" />
 
     <remap from="grasp_command"        to="/grasp_control/r_hand/grasp_command" />

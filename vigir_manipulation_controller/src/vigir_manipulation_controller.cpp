@@ -126,6 +126,9 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     stitch_object_client_      = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/stitch_object_template");
     detach_object_client_      = nh.serviceClient<vigir_object_template_msgs::SetAttachedObjectTemplate>("/detach_object_template");
 
+    //Affordance Services
+    wrist_affordance_server_   = nh.advertiseService("wrist_affordance", &VigirManipulationController::affordanceInWristFrame, this);
+
     //LOADING ROBOT MODEL FOR JOINT NAMES
     robot_model_loader_.reset(new robot_model_loader::RobotModelLoader("robot_description"));
     robot_model_ = robot_model_loader_->getModel();
@@ -811,6 +814,47 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
     }
     else
         ROS_ERROR("Action did not finish before the time out.");
+}
+
+bool VigirManipulationController::affordanceInWristFrame(vigir_object_template_msgs::GetAffordanceInWristFrame::Request &req,
+                                                         vigir_object_template_msgs::GetAffordanceInWristFrame::Response &res){
+
+    if(req.affordance.waypoints[0].header.frame_id == "/world"){
+        float norm = sqrt((req.affordance.waypoints[0].pose.position.x * req.affordance.waypoints[0].pose.position.x) +
+                          (req.affordance.waypoints[0].pose.position.y * req.affordance.waypoints[0].pose.position.y) +
+                          (req.affordance.waypoints[0].pose.position.z * req.affordance.waypoints[0].pose.position.z));
+        if(norm != 0){
+            req.affordance.waypoints[0].pose.position.x /= norm;
+            req.affordance.waypoints[0].pose.position.y /= norm;
+            req.affordance.waypoints[0].pose.position.z /= norm;
+        }else{
+            ROS_INFO("Norm is ZERO!");
+            req.affordance.waypoints[0].pose.position.x = 0 ;
+            req.affordance.waypoints[0].pose.position.y = 0 ;
+            req.affordance.waypoints[0].pose.position.z = 0 ;
+        }
+
+        req.affordance.waypoints[0].pose.position.x *= req.affordance.displacement;
+        req.affordance.waypoints[0].pose.position.y *= req.affordance.displacement;
+        req.affordance.waypoints[0].pose.position.z *= req.affordance.displacement;
+
+        geometry_msgs::Pose wrist_pose = last_wrist_pose_msg_.pose;
+
+        tf::Transform world_T_wrist;       //describes wrist in world frame
+
+        world_T_wrist.setRotation(tf::Quaternion(wrist_pose.orientation.x,wrist_pose.orientation.y,wrist_pose.orientation.z,wrist_pose.orientation.w));
+        world_T_wrist.setOrigin(tf::Vector3(0.0,0.0,0.0) ); //we are only using the rotation part
+
+        // get affordance in wrist frame
+        poseTransform(world_T_wrist.inverse(), req.affordance.waypoints[0].pose);
+
+        res.wrist_affordance.header.frame_id = this->wrist_name_;
+        res.wrist_affordance.header.stamp    = ros::Time::now();
+        res.wrist_affordance.pose            = req.affordance.waypoints[0].pose;
+    }else{
+        ROS_ERROR("GetAffordanceInWristFrame Service failed, affordance is in %s frame, not in /world frame", req.affordance.waypoints[0].header.frame_id.c_str());
+        return false;
+    }
 }
 
 
