@@ -77,6 +77,7 @@ move_group::MoveGroupManipulationAction::MoveGroupManipulationAction() :
   MoveGroupCapability("VigirManipulationAction"),
   move_state_(IDLE)
 {
+  time_param_.reset(new trajectory_processing::IterativeParabolicTimeParameterization());
 }
 
 void move_group::MoveGroupManipulationAction::initialize()
@@ -97,7 +98,7 @@ void move_group::MoveGroupManipulationAction::initialize()
 
   drake_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyTrajectory>("drake_planner/request_whole_body_trajectory");
   drake_cartesian_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyCartesianTrajectory>("drake_planner/request_whole_body_cartesian_trajectory");
-  drake_trajectory_result_pub_ = root_node_handle_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10);
+  trajectory_result_display_pub_ = root_node_handle_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10);
 }
 
 void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal)
@@ -415,7 +416,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakePlanOnly(
     result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
     result_trajectory_display_msg.trajectory_start = current_state_msg;
     result_trajectory_display_msg.model_id = robot_model->getName();
-    drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+    trajectory_result_display_pub_.publish(result_trajectory_display_msg);
   }
 
   action_res.error_code = res.error_code_;
@@ -528,7 +529,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
     result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
     result_trajectory_display_msg.trajectory_start = current_state_msg;
     result_trajectory_display_msg.model_id = robot_model->getName();
-    drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+    trajectory_result_display_pub_.publish(result_trajectory_display_msg);
   }
 
   action_res.error_code = res.error_code_;
@@ -701,7 +702,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   cart_path.request.group_name = goal->request.group_name;
 
   setMoveState(PLANNING);
-  this->computeCartesianPath(cart_path.request, cart_path.response);
+  this->computeCartesianPath(cart_path.request, cart_path.response, goal->request.max_velocity_scaling_factor);
 
   {
     planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
@@ -825,7 +826,7 @@ bool move_group::MoveGroupManipulationAction::planUsingDrake(const vigir_plannin
       result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
       result_trajectory_display_msg.trajectory_start = current_state_msg;
       result_trajectory_display_msg.model_id = robot_model->getName();
-      drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+      trajectory_result_display_pub_.publish(result_trajectory_display_msg);
     }
     plan.error_code_ = res.error_code_;
     return solved;
@@ -934,7 +935,7 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
       result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
       result_trajectory_display_msg.trajectory_start = current_state_msg;
       result_trajectory_display_msg.model_id = robot_model->getName();
-      drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+      trajectory_result_display_pub_.publish(result_trajectory_display_msg);
     }
     plan.error_code_ = res.error_code_;
     return solved;
@@ -1080,7 +1081,9 @@ void move_group::MoveGroupManipulationAction::setMoveState(MoveGroupState state)
 }
 
 // This is basically a copy of the original MoveIt! cartesian planner with minor mods
-bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req, moveit_msgs::GetCartesianPath::Response &res)
+bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req,
+                                                                   moveit_msgs::GetCartesianPath::Response &res,
+                                                                   double max_velocity_scaling_factor)
 {
   /*
   if (marker_array_pub_.getNumSubscribers() > 0){
@@ -1200,11 +1203,10 @@ bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::
           for (std::size_t i = 0 ; i < traj_filtered.size() ; ++i)
             rt.addSuffixWayPoint(traj_filtered[i], 0.2); // \todo make 0.2 a param; better: compute time stemps based on eef distance and param m/s speed for eef;
 
-          /*
-          if (!time_param_.computeTimeStamps(rt, planner_configuration_.trajectory_time_factor.data)){
+
+          if (!time_param_->computeTimeStamps(rt, max_velocity_scaling_factor)){
             ROS_WARN("Time parametrization for the solution path failed.");
           }
-          */
 
           //trajectory_utils::removeZeroDurationJointTrajectoryPoints(rt);
 
