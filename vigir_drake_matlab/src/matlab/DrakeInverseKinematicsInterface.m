@@ -18,6 +18,7 @@ classdef DrakeInverseKinematicsInterface
     
     methods
         function obj = DrakeInverseKinematicsInterface
+            addpath('/usr/local/MATLAB/R2014a/ros/indigo/matlab');
             % load message packages
             moveit_msgs;
             vigir_planning_msgs;
@@ -56,7 +57,11 @@ classdef DrakeInverseKinematicsInterface
             %obj.robot_model = loadCollisionFilterGroupsFromSRDFString(obj.robot_model,srdf_string);
             
             % construct visualizer
-            obj.robot_visualizer = obj.robot_model.constructVisualizer();
+            if ( strcmpi(getenv('SHOW_DRAKE_VISUALIZATION'), 'TRUE' ) )
+                obj.robot_visualizer = obj.robot_model.constructVisualizer();
+            else
+                obj.robot_visualizer = [];
+            end
             
             % init IK publishers / subscribers
             obj.ik_result_publisher = ros.Publisher('/drake_planner/ik_result', 'vigir_planning_msgs/ResultDrakeIK', 1, false);

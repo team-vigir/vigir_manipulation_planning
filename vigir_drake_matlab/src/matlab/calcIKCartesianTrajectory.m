@@ -2,7 +2,9 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
     %CALCIKCARTESIANTRAJECTORY Summary of this function goes here
     %   Detailed explanation goes here
 
-    visualizer.draw(cputime, q0);
+    if ( ~isempty(visualizer) )
+        visualizer.draw(cputime, q0);
+    end
 
     if ( isempty(request.waypoint_times) )
         request.waypoint_times = estimateWaypointTimes(robot_model, q0, request.target_link_names, request.waypoints);
@@ -69,7 +71,9 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
     end
 
     % visualize result
-    visualizer.playback(trajectory,struct('slider',true));
+    if ( ~isempty(visualizer) )
+        visualizer.playback(trajectory,struct('slider',true));
+    end
 end
 
 function interpolated_waypoints = extractOrderedWaypoints(request, robot_model, q0)
