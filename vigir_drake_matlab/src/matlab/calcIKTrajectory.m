@@ -22,7 +22,9 @@ function [ trajectory, success ] = calcIKTrajectory( visualizer, robot_model, q0
     [trajectory,info_mex,infeasible_constraints] = inverseKinTraj(robot_model, t, q_seed_traj, q_nom_traj, activeConstraints{:},ikoptions);
 
     % visualize result
-    visualizer.playback(trajectory,struct('slider',true));
+    if ( ~isempty(visualizer) )
+        visualizer.playback(trajectory,struct('slider',true));
+    end
 
     % TODO: handle failed trajectories... allow all through for now
     if(info_mex>10) % something went wrong
@@ -36,7 +38,4 @@ function [ trajectory, success ] = calcIKTrajectory( visualizer, robot_model, q0
     else
         success = true;        
     end
-    
-    % visualize result
-    visualizer.playback(trajectory,struct('slider',true));
 end

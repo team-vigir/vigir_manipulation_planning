@@ -5,7 +5,9 @@ function [ posture, success ] = calcIKPosture( visualizer, robot_model, q0, requ
     q_nom(1:6) = q0(1:6);
 
     % show start pose    
-    visualizer.draw(cputime, q0);
+    if ( ~isempty(visualizer) )
+        visualizer.draw(cputime, q0);
+    end
 
     % build list of constraints from message
     activeConstraints = buildIKConstraints(robot_model, request, q0);
@@ -15,7 +17,9 @@ function [ posture, success ] = calcIKPosture( visualizer, robot_model, q0, requ
     [posture,info_mex,infeasible_constraints] = inverseKin(robot_model,q_seed,q_nom,activeConstraints{:},ikoptions);
 
     % visualize result
-    visualizer.draw(cputime, posture);
+    if ( ~isempty(visualizer) )
+        visualizer.draw(cputime, posture);
+    end
 
     if(info_mex>10) % something went wrong
         str = sprintf('SNOPT info is %d, IK mex fails to solve the problem',info_mex);
