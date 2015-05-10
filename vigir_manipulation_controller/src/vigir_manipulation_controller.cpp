@@ -105,7 +105,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     template_stitch_pose_pub_   = nh.advertise<geometry_msgs::PoseStamped>("template_stitch_pose",  1, true);
     wrist_plan_pub_             = nh.advertise<flor_planning_msgs::PlanRequest>("wrist_plan",       1, true);
     grasp_status_pub_           = nh.advertise<flor_ocs_msgs::OCSRobotStatus>("grasp_status",       1, true);
-    template_mass_pub_              = nh.advertise<flor_atlas_msgs::AtlasHandMass>("hand_mass",         1, true);
+    template_mass_pub_          = nh.advertise<flor_atlas_msgs::AtlasHandMass>("hand_mass",         1, true);
     tactile_feedback_pub_       = nh.advertise<flor_grasp_msgs::LinkState>("link_states",           1, true);
     circular_plan_request_pub_  = nh.advertise<flor_planning_msgs::CircularMotionRequest>( "/flor/planning/upper_body/plan_circular_request",  1, false );
     cartesian_plan_request_pub_ = nh.advertise<flor_planning_msgs::CartesianMotionRequest>("/flor/planning/upper_body/plan_cartesian_request", 1, false );
@@ -189,6 +189,9 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
             hand_T_palm_ = hand_T_palm_.inverse();
         }
     }
+    //initializing grasp status
+    grasp_status_.status = RobotStatusCodes::status(RobotStatusCodes::NO_ERROR, RobotStatusCodes::OK);
+
 }
 
 ///////////////////////////////////////////////////////
@@ -587,6 +590,16 @@ void VigirManipulationController::handStatusCallback(const flor_grasp_msgs::Hand
         last_hand_status_msg_ = msg;
     }
 
+    switch(last_hand_status_msg_.hand_status ){
+    case 0: setGraspStatus(RobotStatusCodes::NO_ERROR , RobotStatusCodes::OK);
+        break;
+    case 1: setGraspStatus(RobotStatusCodes::GRASP_NO_APPENDAGE_CONTROL , RobotStatusCodes::WARNING);
+        break;
+    default: setGraspStatus(RobotStatusCodes::GRASP_NO_APPENDAGE_CONTROL , RobotStatusCodes::ERROR);
+        break;
+    }
+
+    this->updateGraspStatus();
     this->processHandTactileData();
 
     if(tactile_feedback_pub_)
@@ -762,6 +775,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;
     move_goal.request.num_planning_attempts                                = 1;
+    move_goal.request.max_velocity_scaling_factor                          = 0.5;
 
     float norm = sqrt((affordance.waypoints[0].pose.position.x * affordance.waypoints[0].pose.position.x) +
                       (affordance.waypoints[0].pose.position.y * affordance.waypoints[0].pose.position.y) +
