@@ -481,6 +481,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
       drake_request_msg.trajectory_request.target_orientation_type = goal->extended_planning_options.target_orientation_type;
       drake_request_msg.trajectory_request.trajectory_sample_rate = goal->extended_planning_options.trajectory_sample_rate;
       drake_request_msg.trajectory_request.check_self_collisions = goal->extended_planning_options.check_self_collisions;
+      drake_request_msg.trajectory_request.execute_incomplete_cartesian_plans = goal->extended_planning_options.execute_incomplete_cartesian_plans;
 
       // call service and process response
       struct timeval start_time;
@@ -885,6 +886,7 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
         drake_request_msg.trajectory_request.target_orientation_type = goal->extended_planning_options.target_orientation_type;
         drake_request_msg.trajectory_request.trajectory_sample_rate = goal->extended_planning_options.trajectory_sample_rate;
         drake_request_msg.trajectory_request.check_self_collisions = goal->extended_planning_options.check_self_collisions;
+        drake_request_msg.trajectory_request.execute_incomplete_cartesian_plans = goal->extended_planning_options.execute_incomplete_cartesian_plans;
 
         // call service and process response
         struct timeval start_time;

@@ -2,6 +2,8 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
     %CALCIKCARTESIANTRAJECTORY Summary of this function goes here
     %   Detailed explanation goes here
 
+    request.execute_incomplete_cartesian_plans = true;
+    
     if ( ~isempty(visualizer) )
         visualizer.draw(cputime, q0);
     end
@@ -20,7 +22,7 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
     start_waypoint.waypoints = struct('position', {}, 'orientation', {});
     start_waypoint.keep_line_and_orientation = zeros(length(start_waypoint.target_link_names), 1);
     % set waypoint for time = 0
-    
+
     trajectory = [];
     for i = 1:num_steps
       if (i > 1)
@@ -46,12 +48,6 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
         % run inverse kinematics (mex)
         [current_traj,info_mex,infeasible_constraints] = inverseKinTraj(robot_model, [start_waypoint.waypoint_time target_waypoint.waypoint_time], q_seed_traj, q_nom_traj, activeConstraints{:},ikoptions);
 
-        if ( isempty(trajectory) )
-            trajectory = current_traj;
-        else
-            trajectory = trajectory.append(current_traj);
-        end
-
         if(info_mex>10) % something went wrong
             ros.log('WARN', 'SNOPT calculation failed');
 
@@ -61,17 +57,27 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
             ros.log('INFO', 'Infeasible constraints:');
             str = sprintf('%s |  ', infeasible_constraints{:});
             ros.log('INFO', str);
-
-            success = false;
-            %break;
+            
+            if ( i == 1 || request.execute_incomplete_cartesian_plans == false ) % fail if incomplete paths are not allowed or the first partial step was impossible
+                success = false;     
+                break;
+            else % accept previous path, but abort at this point
+                break;
+            end                    
         end
 
+        if ( isempty(trajectory) )
+            trajectory = current_traj;
+        else
+            trajectory = trajectory.append(current_traj);
+        end
+        
         q0 = current_traj.eval(interpolated_waypoints(i).waypoint_time);
         q0 = q0(1:nq);
     end
 
     % visualize result
-    if ( ~isempty(visualizer) )
+    if ( ~isempty(visualizer) && ~isempty(trajectory))
         visualizer.playback(trajectory,struct('slider',true));
     end
 end
