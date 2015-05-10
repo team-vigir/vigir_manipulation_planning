@@ -66,6 +66,7 @@
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <tf/tfMessage.h>
 
 #include <trajectory_msgs/JointTrajectory.h>
 
@@ -74,6 +75,7 @@
 #include <vigir_object_template_msgs/SetAttachedObjectTemplate.h>
 #include <vigir_object_template_msgs/DetachObjectTemplate.h>
 #include <vigir_object_template_msgs/Affordance.h>
+#include <vigir_object_template_msgs/GetAffordanceInWristFrame.h>
 
 //#include <vigir_manipulation_planning/vigir_planning_interface/vigir_move_group_interface/include/moveit/vigir_move_group_interface/move_group.h>
 #include <moveit/vigir_move_group_interface/move_group.h>
@@ -207,6 +209,8 @@ namespace vigir_manipulation_controller {
     ros::ServiceClient stitch_object_client_;
     ros::ServiceClient detach_object_client_;
 
+    ros::ServiceServer wrist_affordance_server_;
+
     /** This function is called whenever the template needs to be stitched to the real object.
      * assump template pose is given in world frame
      */
@@ -241,6 +245,8 @@ namespace vigir_manipulation_controller {
     void sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance);
     void sendFinalGrasp(geometry_msgs::PoseStamped final_grasp);
 
+    bool affordanceInWristFrame(vigir_object_template_msgs::GetAffordanceInWristFrame::Request& req,
+                                vigir_object_template_msgs::GetAffordanceInWristFrame::Response& res);
 
     // Calculate the wrist target in world frame given wrist pose in template frame
     int calcWristTarget(const geometry_msgs::Pose& wrist_pose);

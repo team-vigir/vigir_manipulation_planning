@@ -714,6 +714,8 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     convertToMsg(tmp, action_res.trajectory_start, action_res.planned_trajectory);
   }
 
+  action_res.extended_planning_result.plan_completion_fraction = cart_path.response.fraction;
+
   if ((cart_path.response.fraction < 1.0) && !goal->extended_planning_options.execute_incomplete_cartesian_plans){
     ROS_WARN("Incomplete cartesian plan computed, fraction: %f and goal specified to not execute in that case!", cart_path.response.fraction);
     action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
