@@ -645,7 +645,7 @@ void VigirManipulationController::setDetachingObject(const flor_grasp_msgs::Temp
     srv.request.pose                 = last_wrist_pose_msg_;
     srv.request.pose.header.frame_id = this->wrist_name_;
     if (!detach_object_client_.call(srv))
-        ROS_ERROR("Failed to call service request DetachObjectTemplate");
+        ROS_ERROR("Failed to call service request SetAttachedObjectTemplate");
 
     //Manage template mass
     geometry_msgs::PoseStamped tmp_pose;
