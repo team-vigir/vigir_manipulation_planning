@@ -69,6 +69,10 @@ MoveItOcsModelRos::MoveItOcsModelRos()
 
     this->updateRobotStateColors();
 
+    ros::param::param<std::string>("~base_frame", base_frame_, "/world");
+    ros::param::param<std::string>("~l_hand_frame", l_hand_frame_, "l_hand");
+    ros::param::param<std::string>("~r_hand_frame", r_hand_frame_, "r_hand");
+    ros::param::param<std::string>("~pelvis_frame", pelvis_frame_, "pelvis");
 }
 
 void MoveItOcsModelRos::targetConfigCallback (const flor_planning_msgs::TargetConfigIkRequest::ConstPtr& msg)
@@ -123,17 +127,17 @@ void MoveItOcsModelRos::pubEndeffectorPosesTimerCallback(const ros::TimerEvent& 
 {
     geometry_msgs::PoseStamped tmp;
     tmp.header.stamp = ros::Time::now();
-    tmp.header.frame_id = "/world";
+    tmp.header.frame_id = base_frame_;
 
-    ocs_model_->getLinkPose("l_hand",tmp.pose);
+    ocs_model_->getLinkPose(l_hand_frame_,tmp.pose);
     left_hand_pose_pub_.publish(tmp);
 
-    ocs_model_->getLinkPose("r_hand",tmp.pose);
+    ocs_model_->getLinkPose(r_hand_frame_,tmp.pose);
     right_hand_pose_pub_.publish(tmp);
 
-    ocs_model_->getLinkPose("pelvis",tmp.pose);
+    ocs_model_->getLinkPose(pelvis_frame_,tmp.pose);
     pose_pub_.publish(tmp);
-    
+
     //this->onModelUpdated();
 }
 
@@ -141,11 +145,11 @@ void MoveItOcsModelRos::pubEndeffectorPosesTimerCallback(const ros::TimerEvent& 
 void MoveItOcsModelRos::onModelUpdated()
 {
     ros::Time now = ros::Time::now();
-    
+
     robot_state::robotStateToRobotStateMsg(*ocs_model_->getState(), display_state_msg_.state);
     display_state_msg_.state.joint_state.header.stamp = now;
     display_state_msg_.state.multi_dof_joint_state.header.stamp = now;
-    
+
     this->updateRobotStateColors();
 
     std::vector<std::string> colliding_links;

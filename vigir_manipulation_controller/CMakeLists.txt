@@ -127,7 +127,7 @@ src/vigir_manipulation_controller.cpp
 ## Declare a cpp library
 add_library(${PROJECT_NAME} ${SOURCE} ${HEADERS} )
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} vigir_object_template_msgs_generate_messages_cpp)
 
 ## Declare a cpp executable
 #add_executable(vigir_manipulation_controller_node ${SOURCE} ${HEADERS})
