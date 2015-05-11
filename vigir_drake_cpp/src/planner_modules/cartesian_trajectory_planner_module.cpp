@@ -23,7 +23,6 @@ CartesianTrajectoryPlannerModule::~CartesianTrajectoryPlannerModule()
 
 bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCartesianTrajectory &request_message, vigir_planning_msgs::ResultDrakeTrajectory &result_message)
 {
-    request_message.execute_incomplete_cartesian_plans = true;
     // stay at q0 for nominal trajectory
     bool received_world_transform = false;
     VectorXd q0 = VectorXd::Zero(this->getRobotModel()->num_positions);

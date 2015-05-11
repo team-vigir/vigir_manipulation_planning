@@ -1,9 +1,7 @@
 function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_model, q0, request )
     %CALCIKCARTESIANTRAJECTORY Summary of this function goes here
     %   Detailed explanation goes here
-
-    request.execute_incomplete_cartesian_plans = true;
-    
+  
     if ( ~isempty(visualizer) )
         visualizer.draw(cputime, q0);
     end
