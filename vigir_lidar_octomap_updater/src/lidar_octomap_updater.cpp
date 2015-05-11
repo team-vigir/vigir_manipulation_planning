@@ -239,12 +239,20 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
       }
       catch (tf::TransformException& ex)
       {
-        ROS_ERROR_STREAM("Transform error of sensor data: " << ex.what() << "; quitting callback");
+        ROS_ERROR_STREAM("Transform error of sensor data: " << ex.what() << "; quitting callback in LidarOctomapUpdater");
+        return;
+      }
+      catch(...)
+      {
+        ROS_ERROR_STREAM("Exception while retrieving scan transform in LidarOctomapUpdater");
         return;
       }
     }
     else
+    {
+      ROS_ERROR("No tf listener, cannot run LidarOctomapUpdater");
       return;
+    }
   }
 
   /* compute sensor origin in map frame */
@@ -252,7 +260,15 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   octomap::point3d sensor_origin(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
   Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
 
-  projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), scan_filtered_, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity|laser_geometry::channel_option::Index);
+  try
+  {
+    projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), scan_filtered_, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity|laser_geometry::channel_option::Index);
+  }
+  catch(...)
+  {
+    ROS_ERROR_STREAM("Exception while transforming scan; quitting callback in LidarOctomapUpdater");
+    return;
+  }
 
   if (!updateTransformCache(cloud_msg->header.frame_id, cloud_msg->header.stamp))
   {
