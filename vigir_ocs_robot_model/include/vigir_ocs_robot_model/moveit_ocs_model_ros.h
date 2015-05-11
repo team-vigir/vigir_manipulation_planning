@@ -124,6 +124,10 @@ protected:
 
   ros::ServiceClient whole_body_ik_client_;
   ros::Subscriber ghost_state_sub_;
+  std::string base_frame_;
+  std::string l_hand_frame_;
+  std::string r_hand_frame_;
+  std::string pelvis_frame_;
 };
 
 #endif
