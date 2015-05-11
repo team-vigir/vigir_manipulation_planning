@@ -73,7 +73,6 @@
 #include <vigir_object_template_msgs/GetInstantiatedGraspInfo.h>
 #include <vigir_object_template_msgs/GetTemplateStateAndTypeInfo.h>
 #include <vigir_object_template_msgs/SetAttachedObjectTemplate.h>
-#include <vigir_object_template_msgs/DetachObjectTemplate.h>
 #include <vigir_object_template_msgs/Affordance.h>
 #include <vigir_object_template_msgs/GetAffordanceInWristFrame.h>
 
