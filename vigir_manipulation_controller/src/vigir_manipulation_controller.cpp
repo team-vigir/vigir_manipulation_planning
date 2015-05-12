@@ -160,6 +160,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
 
     //Initializing hand transformation in palm frame to identity (no end-effector used)
     hand_T_palm_.setIdentity();
+    hand_T_marker_.setIdentity();
 
     if(!robot_model_->hasLinkModel(hand_link_)){
         ROS_WARN("Hand model does not contain %s_palm link",hand_side_.c_str());
@@ -187,6 +188,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
             tf::transformEigenToTF( hand_palm_aff,hand_T_palm_);
             //We got palm_T_hand, need to invert
             hand_T_palm_ = hand_T_palm_.inverse();
+            hand_T_marker_ = hand_T_palm_;
         }
     }
     //initializing grasp status
@@ -222,7 +224,6 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
 
 
     //Call service for template info
-    vigir_object_template_msgs::GetTemplateStateAndTypeInfo template_srv_;
     template_srv_.request.template_id = grasp_msg.template_id.data;
     template_srv_.request.hand_side = template_srv_.request.BOTH_HANDS;
     if (!template_info_client_.call(template_srv_))
@@ -377,16 +378,27 @@ void VigirManipulationController::affordanceCommandCallback(const vigir_object_t
         sendCartesianAffordance(affordance);
 }
 
-void VigirManipulationController::updateHandMarkerCallback(const geometry_msgs::Pose& hand_T_marker)
+void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8& hand_T_marker)
 {
-    hand_T_palm_.setOrigin(tf::Vector3(hand_T_marker.position.x,
-                                       hand_T_marker.position.y,
-                                       hand_T_marker.position.z));
+    int index;
 
-    hand_T_palm_.setRotation(tf::Quaternion(hand_T_marker.orientation.x,
-                                            hand_T_marker.orientation.y,
-                                            hand_T_marker.orientation.z,
-                                            hand_T_marker.orientation.w));
+    tf::Transform template_T_marker;
+
+    for(index = 0; index < template_srv_.response.template_type_information.usabilities.size(); index++)
+    {
+        if(template_srv_.response.template_type_information.usabilities[index].id == hand_T_marker.data){
+            //Grasp pose in template frame
+            template_T_marker.setRotation(tf::Quaternion(template_srv_.response.template_type_information.usabilities[index].pose.pose.orientation.x,
+                                                       template_srv_.response.template_type_information.usabilities[index].pose.pose.orientation.y,
+                                                       template_srv_.response.template_type_information.usabilities[index].pose.pose.orientation.z,
+                                                       template_srv_.response.template_type_information.usabilities[index].pose.pose.orientation.w));
+            template_T_marker.setOrigin(tf::Vector3(template_srv_.response.template_type_information.usabilities[index].pose.pose.position.x,
+                                                  template_srv_.response.template_type_information.usabilities[index].pose.pose.position.y,
+                                                  template_srv_.response.template_type_information.usabilities[index].pose.pose.position.z));
+
+            poseTransform(wrist_T_template_.pose,template_T_marker);
+        }
+    }
 }
 
 // Called because of stitching functionality
@@ -630,6 +642,7 @@ void VigirManipulationController::setStitchingObject(const flor_grasp_msgs::Temp
         ROS_ERROR("Failed to call service request SetStitchedObjectTemplate");
 
     //Manage template mass
+    wrist_T_template_ = srv.response.template_pose;
     processTemplateMassData(srv.response.template_pose, srv.response.template_mass,  srv.response.template_com);
     updateTemplateMass();
 
@@ -676,6 +689,7 @@ void VigirManipulationController::sendFinalGrasp(geometry_msgs::PoseStamped fina
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;
     move_goal.request.num_planning_attempts                                = 1;
+    move_goal.request.max_velocity_scaling_factor                          = 0.1;
 
     move_goal.extended_planning_options.target_frame = final_grasp.header.frame_id;
     move_goal.extended_planning_options.target_poses.push_back(final_grasp.pose);
@@ -715,6 +729,7 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;
     move_goal.request.num_planning_attempts                                = 1;
+    move_goal.request.max_velocity_scaling_factor                          = 0.1;
 
     move_goal.extended_planning_options.target_frame = affordance.waypoints[0].header.frame_id;
 
@@ -775,7 +790,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;
     move_goal.request.num_planning_attempts                                = 1;
-    move_goal.request.max_velocity_scaling_factor                          = 0.5;
+    move_goal.request.max_velocity_scaling_factor                          = 0.1;
 
     float norm = sqrt((affordance.waypoints[0].pose.position.x * affordance.waypoints[0].pose.position.x) +
                       (affordance.waypoints[0].pose.position.y * affordance.waypoints[0].pose.position.y) +
