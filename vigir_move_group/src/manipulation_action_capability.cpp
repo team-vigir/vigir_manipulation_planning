@@ -189,7 +189,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
         }
       }else{
         ROS_WARN("No valid IK solution found, cannot generate goal constraints!");
-        action_res.error_code.val == moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
       }
 
 
