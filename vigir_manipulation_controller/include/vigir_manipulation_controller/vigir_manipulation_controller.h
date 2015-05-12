@@ -227,7 +227,7 @@ namespace vigir_manipulation_controller {
     /** Set the current planning group to "arm only" or "arm + torso"           */
     void  graspPlanningGroupCallback(const std_msgs::Bool::ConstPtr& msg);
     void  affordanceCommandCallback(const vigir_object_template_msgs::Affordance &affordance);
-    void  updateHandMarkerCallback(const std_msgs::Int8 &hand_T_marker);
+    void  updateHandMarkerCallback(const std_msgs::Int8 &usability_id);
 
    /**
     * This function must be called to publish the updated wrist target after the template is updated.
