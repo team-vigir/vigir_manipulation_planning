@@ -156,12 +156,16 @@ namespace vigir_manipulation_controller {
 
     // Internal variables used by active controllers
     vigir_object_template_msgs::GetInstantiatedGraspInfoResponse last_grasp_res_;
+    vigir_object_template_msgs::GetTemplateStateAndTypeInfo      template_srv_;
+
     tf::Transform                              palmStitch_T_hand_;
     tf::Transform                              hand_T_palm_;
+    tf::Transform                              hand_T_marker_;
 //    tf::TransformListener                      listener_;
     flor_planning_msgs::PlanRequest            wrist_target_pose_;
     flor_atlas_msgs::AtlasHandMass             template_mass_msg_;
     geometry_msgs::PoseStamped                 com_;
+    geometry_msgs::PoseStamped                 wrist_T_template_;
 
     //Grasp status message
     flor_ocs_msgs::OCSRobotStatus              grasp_status_;
@@ -223,7 +227,7 @@ namespace vigir_manipulation_controller {
     /** Set the current planning group to "arm only" or "arm + torso"           */
     void  graspPlanningGroupCallback(const std_msgs::Bool::ConstPtr& msg);
     void  affordanceCommandCallback(const vigir_object_template_msgs::Affordance &affordance);
-    void  updateHandMarkerCallback(const geometry_msgs::Pose &hand_T_marker);
+    void  updateHandMarkerCallback(const std_msgs::Int8 &usability_id);
 
    /**
     * This function must be called to publish the updated wrist target after the template is updated.

@@ -250,7 +250,7 @@ std::vector<RigidBodyConstraint*> CartesianTrajectoryPlannerModule::buildIKConst
            constraints.push_back( new WorldQuatConstraint(getRobotModel(), eef_body_id, goal_orientation_quat, 0, t_span_target));
         }
         else if ( request_message.target_orientation_type == vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_AXIS_ONLY ) { // goal axis orientation constraint
-           constraints.push_back( new WorldGazeOrientConstraint(getRobotModel(), eef_body_id, target_link_axis_vec, goal_orientation_quat, 0.05, M_PI, t_span_target ));
+           constraints.push_back( new WorldGazeOrientConstraint(getRobotModel(), eef_body_id, target_link_axis_vec, goal_orientation_quat, 0.01, M_PI, t_span_target ));
         }
 
         if ( start_waypoint_idx >= 0 && start_waypoint->keep_line_and_orientation[start_waypoint_idx] == true ) {
