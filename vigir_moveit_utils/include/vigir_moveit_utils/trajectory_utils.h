@@ -75,7 +75,7 @@ static void removeDuplicateStates(const std::vector<robot_state::RobotStatePtr>&
   }
 
   for (int i = 1; i < size; ++i){
-    if (in[i-1]->distance(*in[i]) > threshold){
+    if (out.back()->distance(*in[i]) > threshold){
       out.push_back(in[i]);
     }
   }
