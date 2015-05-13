@@ -253,7 +253,7 @@ void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String
 
       pose_plan_request_pub_.publish(plan_request);
     }else{
-      ROS_ERROR("Couldn't send plan request due to wrong link name in message: %s", link_name.c_str());
+      ROS_ERROR("Couldn't send plan request due to wrong link name %s in message", link_name.c_str());
     }
 
 }
