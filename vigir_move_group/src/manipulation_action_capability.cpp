@@ -151,45 +151,63 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
       // For free motion, do IK and plan.
       // Consider additional joint constraints/redundant joints
 
-      moveit_msgs::Constraints goal_constraints;
-      bool found_ik = false;
-
-      {
-        planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
-        robot_state::RobotState tmp = lscene->getCurrentState();
-
-        const robot_state::JointModelGroup* joint_model_group = tmp.getJointModelGroup(goal->request.group_name);
-
-        found_ik = group_utils::setJointModelGroupFromIk(tmp,
-                                                         joint_model_group,
-                                                         goal->extended_planning_options.target_poses[0],
-                                                         goal->request.path_constraints.joint_constraints);
-
-        if (found_ik){
-          goal_constraints = kinematic_constraints::constructGoalConstraints(tmp, joint_model_group);
-        }
-      }
-
-      if (found_ik){
-        vigir_planning_msgs::MoveGoalPtr updated_goal;
-        updated_goal.reset(new vigir_planning_msgs::MoveGoal());
-        *updated_goal = *goal;
-
-        updated_goal->request.goal_constraints.push_back(goal_constraints);
-
-        if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
-        {
-          if (!goal->planning_options.plan_only)
-            ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
-          executeMoveCallback_PlanOnly(updated_goal, action_res);
-        }
-        else
-        {
-          executeMoveCallback_PlanAndExecute(updated_goal, action_res);
-        }
+      if (goal->extended_planning_options.target_poses.size() > 1){
+        ROS_ERROR("For FREE MOTION, only a single target pose is supported, but I got %d", (int)goal->extended_planning_options.target_poses.size());
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
       }else{
-        ROS_WARN("No valid IK solution found, cannot generate goal constraints!");
-        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
+
+        geometry_msgs::PoseStamped goal_pose_planning_frame;
+
+        goal_pose_planning_frame.pose = goal->extended_planning_options.target_poses[0];
+        goal_pose_planning_frame.header.frame_id = goal->extended_planning_options.target_frame;
+
+        if (this->performTransform(goal_pose_planning_frame, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))
+        {
+
+          moveit_msgs::Constraints goal_constraints;
+          bool found_ik = false;
+
+          {
+            planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
+            robot_state::RobotState tmp = lscene->getCurrentState();
+
+            const robot_state::JointModelGroup* joint_model_group = tmp.getJointModelGroup(goal->request.group_name);
+
+            found_ik = group_utils::setJointModelGroupFromIk(tmp,
+                                                             joint_model_group,
+                                                             goal_pose_planning_frame.pose,
+                                                             goal->request.path_constraints.joint_constraints);
+
+            if (found_ik){
+              goal_constraints = kinematic_constraints::constructGoalConstraints(tmp, joint_model_group);
+            }
+          }
+
+          if (found_ik){
+            vigir_planning_msgs::MoveGoalPtr updated_goal;
+            updated_goal.reset(new vigir_planning_msgs::MoveGoal());
+            *updated_goal = *goal;
+
+            updated_goal->request.goal_constraints.push_back(goal_constraints);
+
+            if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
+            {
+              if (!goal->planning_options.plan_only)
+                ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
+              executeMoveCallback_PlanOnly(updated_goal, action_res);
+            }
+            else
+            {
+              executeMoveCallback_PlanAndExecute(updated_goal, action_res);
+            }
+          }else{
+            ROS_WARN("No valid IK solution found, cannot generate goal constraints!");
+            action_res.error_code.val = moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
+          }
+        }else{
+          ROS_ERROR("Invalid target frame %s requested for cartesian planning!", goal->extended_planning_options.target_frame.c_str());
+          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        }
       }
 
 
@@ -584,31 +602,36 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCircularM
       rotation_pose.header.frame_id = goal->extended_planning_options.target_frame;
 
       //Can easily transform goal pose to arbitrary target frame
-      this->performTransform(rotation_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame());
+      if (this->performTransform(rotation_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))
+      {
 
 
-      Eigen::Affine3d rotation_center;
-      tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
+        Eigen::Affine3d rotation_center;
+        tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
 
-      std::vector <geometry_msgs::Pose> pose_vec;
-      constrained_motion_utils::getCircularArcPoses(rotation_center,
+        std::vector <geometry_msgs::Pose> pose_vec;
+        constrained_motion_utils::getCircularArcPoses(rotation_center,
                                                       eef_start_pose,
                                                       pose_vec,
                                                       0.2,
                                                       goal->extended_planning_options.rotation_angle,
                                                       goal->extended_planning_options.keep_endeffector_orientation);
 
-      // make a copy of goal, so I can modify it
-      vigir_planning_msgs::MoveGoalPtr new_goal( new vigir_planning_msgs::MoveGoal( *goal ) );
+        // make a copy of goal, so I can modify it
+        vigir_planning_msgs::MoveGoalPtr new_goal( new vigir_planning_msgs::MoveGoal( *goal ) );
 
-      new_goal->extended_planning_options.target_poses = pose_vec;
-      new_goal->extended_planning_options.target_link_names.assign(pose_vec.size(), eef_link_name);
-      if ( new_goal->extended_planning_options.target_link_axis.empty() == false ) {
+        new_goal->extended_planning_options.target_poses = pose_vec;
+        new_goal->extended_planning_options.target_link_names.assign(pose_vec.size(), eef_link_name);
+        if ( new_goal->extended_planning_options.target_link_axis.empty() == false ) {
           new_goal->extended_planning_options.target_link_axis.assign(pose_vec.size(), goal->extended_planning_options.target_link_axis[0]);
-      }
+        }
 
-      // call default cartesian motion handler
-      executeMoveCallback_DrakeCartesianPlanOnly(new_goal, action_res);
+        // call default cartesian motion handler
+        executeMoveCallback_DrakeCartesianPlanOnly(new_goal, action_res);
+      }else{
+        ROS_ERROR("Invalid target frame %s requested for drake circular planning!", goal->extended_planning_options.target_frame.c_str());
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+      }
     }
   catch(std::runtime_error &ex)
   {

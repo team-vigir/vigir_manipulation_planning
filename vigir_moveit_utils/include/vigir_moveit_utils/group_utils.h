@@ -84,6 +84,14 @@ namespace group_utils{
   }
 
 
+  /**
+   * @brief setJointModelGroupFromIk Set Ik for joint model group
+   * @param state The state that will contain the joint angles computed by ik
+   * @param group The group to use
+   * @param goal_pose The goal pose. Note that this has to be converted into the planning frame
+   * @param torso_joint_position_constraints_ A vector of position constraints (default empty)
+   * @return Indicates if IK successful or not
+   */
   static bool setJointModelGroupFromIk(robot_state::RobotState &state,
                                        const robot_model::JointModelGroup* group,
                                        const geometry_msgs::Pose& goal_pose,
