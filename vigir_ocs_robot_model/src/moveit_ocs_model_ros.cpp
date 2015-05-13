@@ -242,15 +242,19 @@ void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String
     target_pose.header.stamp = ros::Time::now();
     target_pose.header.frame_id = "/world";
 
-    ocs_model_->getLinkPose(link_name,target_pose.pose);
+    if (ocs_model_->getLinkPose(link_name,target_pose.pose))
+    {
 
-    flor_planning_msgs::PlanRequest plan_request;
+      flor_planning_msgs::PlanRequest plan_request;
 
-    plan_request.pose = target_pose;
-    plan_request.use_environment_obstacle_avoidance.data = true;
-    plan_request.planning_group.data = group_name;
+      plan_request.pose = target_pose;
+      plan_request.use_environment_obstacle_avoidance.data = true;
+      plan_request.planning_group.data = group_name;
 
-    pose_plan_request_pub_.publish(plan_request);
+      pose_plan_request_pub_.publish(plan_request);
+    }else{
+      ROS_ERROR("Couldn't send plan request due to wrong link name in message: %s", link_name.c_str());
+    }
 
 }
 

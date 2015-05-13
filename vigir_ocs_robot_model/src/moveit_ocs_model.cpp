@@ -70,12 +70,17 @@ bool MoveItOcsModel::getManipulationMetrics(const std::string& group_name,
  */
 bool MoveItOcsModel::getLinkPose(const std::string& link_name, geometry_msgs::Pose& pose) const
 {
-  const Eigen::Affine3d& link_state = robot_state_->getGlobalLinkTransform(link_name);
+  if (robot_model_->hasLinkModel(link_name)){
+    const Eigen::Affine3d& link_state = robot_state_->getGlobalLinkTransform(link_name);
 
-  //transform_utils::eigenPose2Msg (link_state, pose);
-  tf::poseEigenToMsg(link_state, pose);
 
-  return true;
+    //transform_utils::eigenPose2Msg (link_state, pose);
+    tf::poseEigenToMsg(link_state, pose);
+    return true;
+  }else{
+    ROS_ERROR("Tried to lookup pose for link %s which doesn't exist", link_name.c_str());
+    return false;
+  }
 }
 
 bool MoveItOcsModel::getJointPose(const std::string& joint_name, geometry_msgs::Pose& pose) const
