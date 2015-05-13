@@ -42,10 +42,9 @@ VigirManipulationController::VigirManipulationController():
 }
 
 VigirManipulationController::~VigirManipulationController()
-  {
+{
   std::cout << "Shutting down the manipulation controller ..." << std::endl;
-  }
-
+}
 
 void VigirManipulationController::initializeManipulationController(ros::NodeHandle &nh, ros::NodeHandle &nhp)
   {
@@ -55,7 +54,6 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
         ROS_ERROR(" Did not find parameter /robot_description");
         return;
     }
-
     // which hand are we controlling
     if (!nhp.getParam("wrist_name", this->wrist_name_)){
         ROS_ERROR(" Did not find wrist_name parameter - using r_hand as default");
@@ -78,14 +76,33 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
         ROS_INFO("Joint group parameters received, hand: %s", this->joint_group_.c_str());
 
 
-
-    this->hand_id_            = 1;
-    this->hand_side_          = "right";
-    this->planning_group_     = "r_arm_group";
-    if ("l_hand" == this->wrist_name_){
-        this->hand_id_        = -1;
-        this->hand_side_      = "left";
-        this->planning_group_ = "l_arm_group";
+    bool isRight = false;
+    if(nhp.getParam("is_right", isRight))
+    {
+        if(isRight)
+        {
+            //hack hack hack, planning group shouldn't be hardcoded
+            hand_id_ = 1;
+            hand_side_ = "right";
+            planning_group_ = "r_arm_group";
+        }
+        else
+        {
+            hand_id_ = -1;
+            hand_side_ = "left";
+            planning_group_ = "l_arm_group";
+        }
+    }
+    else
+    {
+        this->hand_id_            = 1;
+        this->hand_side_          = "right";
+        this->planning_group_     = "r_arm_group";
+        if ("l_hand" == this->wrist_name_){
+            this->hand_id_        = -1;
+            this->hand_side_      = "left";
+            this->planning_group_ = "l_arm_group";
+        }
     }
 
     // Not sure why this waiting is performed in the original joint control tutorial
