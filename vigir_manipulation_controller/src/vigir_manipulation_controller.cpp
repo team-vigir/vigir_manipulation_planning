@@ -643,7 +643,7 @@ void VigirManipulationController::handStatusCallback(const flor_grasp_msgs::Hand
         break;
     case 1: setGraspStatus(RobotStatusCodes::GRASP_NO_APPENDAGE_CONTROL , RobotStatusCodes::WARNING);
         break;
-    default: setGraspStatus(RobotStatusCodes::GRASP_NO_APPENDAGE_CONTROL , RobotStatusCodes::ERROR);
+    default: setGraspStatus(RobotStatusCodes::NO_ERROR , RobotStatusCodes::OK);
         break;
     }
 
@@ -765,7 +765,7 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;
     move_goal.request.num_planning_attempts                                = 1;
-    move_goal.request.max_velocity_scaling_factor                          = 0.1;
+    move_goal.request.max_velocity_scaling_factor                          = 0.03;
 
     move_goal.extended_planning_options.target_frame = affordance.waypoints[0].header.frame_id;
 
@@ -826,7 +826,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;
     move_goal.request.num_planning_attempts                                = 1;
-    move_goal.request.max_velocity_scaling_factor                          = 0.1;
+    move_goal.request.max_velocity_scaling_factor                          = 0.03;
 
     float norm = sqrt((affordance.waypoints[0].pose.position.x * affordance.waypoints[0].pose.position.x) +
                       (affordance.waypoints[0].pose.position.y * affordance.waypoints[0].pose.position.y) +
