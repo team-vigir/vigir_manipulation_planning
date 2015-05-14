@@ -50,7 +50,8 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
     MatrixXd qd_sol(nq,0);
     MatrixXd qdd_sol(nq,0);
     std::vector<double> t_sol;
-        
+
+    int last_successful_waypoint = -1;
     for ( int i = 1; i < num_steps; i++ ) {
         Waypoint *current_start_point = waypoints[i-1];
         Waypoint *current_target_point = waypoints[i];
@@ -85,7 +86,32 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
         int info;
         std::vector<std::string> infeasible_constraints;
         inverseKinTraj(this->getRobotModel(),t_vec.size(),t_vec.data(),qdot_0,q_seed,q_nom,constraints.size(),constraints.data(),q_sol_part,qd_sol_part,qdd_sol_part,info,infeasible_constraints,*ik_options);
-        
+
+        if(info>=10) { // something went wrong
+            std::string constraint_string = "";
+            for (auto const& constraint : infeasible_constraints) { constraint_string += (constraint+" | "); }
+
+            ROS_WARN("Step %d / %d: SNOPT info is %d, IK mex fails to solve the problem", i+1, num_steps, info);
+            ROS_INFO("Infeasible constraints: %s", constraint_string.c_str());
+
+            if ( i == 1 || request_message.execute_incomplete_cartesian_plans == false) {
+                success = false;                
+                break;
+            }
+            else {
+                t_sol.erase(t_sol.end()-1, t_sol.end());
+                q_sol.conservativeResize(nq, q_sol.cols() + 1 );
+                qd_sol.conservativeResize(nq, qd_sol.cols() + 1 );
+                qdd_sol.conservativeResize(nq, qdd_sol.cols() + 1 );
+
+                q_sol.block(0, q_sol.cols()-1, nq, 1) = q0;
+                qd_sol.block(0, q_sol.cols()-1, nq, 1) = MatrixXd::Zero(nq, 1);
+                qdd_sol.block(0, q_sol.cols()-1, nq, 1) = MatrixXd::Zero(nq, 1);
+                break;
+            }
+
+        }
+
         int old_q_size = q_sol.cols();
         q_sol.conservativeResize(nq, q_sol.cols() + q_sol_part.cols()-1 );
         qd_sol.conservativeResize(nq, qd_sol.cols() + qd_sol_part.cols()-1 );
@@ -107,16 +133,7 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
         }
 
         q0 = q_sol_part.col( q_sol_part.cols()-1 );
-
-        if(info>=10) { // something went wrong
-            std::string constraint_string = "";
-            for (auto const& constraint : infeasible_constraints) { constraint_string += (constraint+" | "); }
-
-            ROS_WARN("Step %d / %d: SNOPT info is %d, IK mex fails to solve the problem", i+1, num_steps, info);
-            ROS_INFO("Infeasible constraints: %s", constraint_string.c_str());
-
-            success = false;
-        }
+        last_successful_waypoint = i;
     }
 
     if ( success ) {
@@ -125,7 +142,7 @@ bool CartesianTrajectoryPlannerModule::plan(vigir_planning_msgs::RequestDrakeCar
             request_message.trajectory_sample_rate = 4.0;
         }
         double time_step = 1.0 / request_message.trajectory_sample_rate;
-        double duration = waypoints[ waypoints.size()-1]->waypoint_time;
+        double duration = waypoints[ last_successful_waypoint]->waypoint_time;
         int num_steps = (duration / time_step) + 0.5;
         Eigen::VectorXd response_t(num_steps+1);
 
@@ -233,7 +250,7 @@ std::vector<RigidBodyConstraint*> CartesianTrajectoryPlannerModule::buildIKConst
            constraints.push_back( new WorldQuatConstraint(getRobotModel(), eef_body_id, goal_orientation_quat, 0, t_span_target));
         }
         else if ( request_message.target_orientation_type == vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_AXIS_ONLY ) { // goal axis orientation constraint
-           constraints.push_back( new WorldGazeOrientConstraint(getRobotModel(), eef_body_id, target_link_axis_vec, goal_orientation_quat, 0.05, M_PI, t_span_target ));
+           constraints.push_back( new WorldGazeOrientConstraint(getRobotModel(), eef_body_id, target_link_axis_vec, goal_orientation_quat, 0.01, M_PI, t_span_target ));
         }
 
         if ( start_waypoint_idx >= 0 && start_waypoint->keep_line_and_orientation[start_waypoint_idx] == true ) {

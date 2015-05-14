@@ -77,6 +77,7 @@ move_group::MoveGroupManipulationAction::MoveGroupManipulationAction() :
   MoveGroupCapability("VigirManipulationAction"),
   move_state_(IDLE)
 {
+  time_param_.reset(new trajectory_processing::IterativeParabolicTimeParameterization());
 }
 
 void move_group::MoveGroupManipulationAction::initialize()
@@ -97,13 +98,38 @@ void move_group::MoveGroupManipulationAction::initialize()
 
   drake_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyTrajectory>("drake_planner/request_whole_body_trajectory");
   drake_cartesian_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyCartesianTrajectory>("drake_planner/request_whole_body_cartesian_trajectory");
-  drake_trajectory_result_pub_ = root_node_handle_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10);
+  trajectory_result_display_pub_ = root_node_handle_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10);
+
+
 }
 
 void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal)
 {
   setMoveState(PLANNING);
   context_->planning_scene_monitor_->updateFrameTransforms();
+
+  //planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
+  //const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
+  //  static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
+
+
+  /*
+  {
+    planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
+
+    std::vector<std::string> object_strings = context_->planning_scene_monitor_->getPlanningScene()->getCollisionWorld()->getWorld()->getObjectIds();
+
+    size_t size = object_strings.size();
+
+    const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
+
+    for (size_t i = 0; i < size; ++i){
+      context_->planning_scene_monitor_->getPlanningScene()->getAllowedCollisionMatrixNonConst().setEntry(object_strings[i], robot_model->getLinkModelNames(), !goal->extended_planning_options.avoid_collisions);
+    }
+
+    context_->planning_scene_monitor_->getPlanningScene()->getAllowedCollisionMatrixNonConst().setEntry("<octomap>", robot_model->getLinkModelNames(), !goal->extended_planning_options.avoid_collisions);
+  }
+  */
 
   vigir_planning_msgs::MoveResult action_res;
 
@@ -141,6 +167,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
     action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
   }
   
+  // Below if not using Drake and not using copy of standard MoveIt! Action
   else if (goal->extended_planning_options.target_poses.size() != 0){
 
 
@@ -149,45 +176,63 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
       // For free motion, do IK and plan.
       // Consider additional joint constraints/redundant joints
 
-      moveit_msgs::Constraints goal_constraints;
-      bool found_ik = false;
-
-      {
-        planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
-        robot_state::RobotState tmp = lscene->getCurrentState();
-
-        const robot_state::JointModelGroup* joint_model_group = tmp.getJointModelGroup(goal->request.group_name);
-
-        found_ik = group_utils::setJointModelGroupFromIk(tmp,
-                                                         joint_model_group,
-                                                         goal->extended_planning_options.target_poses[0],
-                                                         goal->request.path_constraints.joint_constraints);
-
-        if (found_ik){
-          goal_constraints = kinematic_constraints::constructGoalConstraints(tmp, joint_model_group);
-        }
-      }
-
-      if (found_ik){
-        vigir_planning_msgs::MoveGoalPtr updated_goal;
-        updated_goal.reset(new vigir_planning_msgs::MoveGoal());
-        *updated_goal = *goal;
-
-        updated_goal->request.goal_constraints.push_back(goal_constraints);
-
-        if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
-        {
-          if (!goal->planning_options.plan_only)
-            ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
-          executeMoveCallback_PlanOnly(updated_goal, action_res);
-        }
-        else
-        {
-          executeMoveCallback_PlanAndExecute(updated_goal, action_res);
-        }
+      if (goal->extended_planning_options.target_poses.size() > 1){
+        ROS_ERROR("For FREE MOTION, only a single target pose is supported, but I got %d", (int)goal->extended_planning_options.target_poses.size());
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
       }else{
-        ROS_WARN("No valid IK solution found, cannot generate goal constraints!");
-        action_res.error_code.val == moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
+
+        geometry_msgs::PoseStamped goal_pose_planning_frame;
+
+        goal_pose_planning_frame.pose = goal->extended_planning_options.target_poses[0];
+        goal_pose_planning_frame.header.frame_id = goal->extended_planning_options.target_frame;
+
+        if (this->performTransform(goal_pose_planning_frame, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))
+        {
+
+          moveit_msgs::Constraints goal_constraints;
+          bool found_ik = false;
+
+          {
+            planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
+            robot_state::RobotState tmp = lscene->getCurrentState();
+
+            const robot_state::JointModelGroup* joint_model_group = tmp.getJointModelGroup(goal->request.group_name);
+
+            found_ik = group_utils::setJointModelGroupFromIk(tmp,
+                                                             joint_model_group,
+                                                             goal_pose_planning_frame.pose,
+                                                             goal->request.path_constraints.joint_constraints);
+
+            if (found_ik){
+              goal_constraints = kinematic_constraints::constructGoalConstraints(tmp, joint_model_group);
+            }
+          }
+
+          if (found_ik){
+            vigir_planning_msgs::MoveGoalPtr updated_goal;
+            updated_goal.reset(new vigir_planning_msgs::MoveGoal());
+            *updated_goal = *goal;
+
+            updated_goal->request.goal_constraints.push_back(goal_constraints);
+
+            if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
+            {
+              if (!goal->planning_options.plan_only)
+                ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
+              executeMoveCallback_PlanOnly(updated_goal, action_res);
+            }
+            else
+            {
+              executeMoveCallback_PlanAndExecute(updated_goal, action_res);
+            }
+          }else{
+            ROS_WARN("No valid IK solution found, cannot generate goal constraints!");
+            action_res.error_code.val = moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
+          }
+        }else{
+          ROS_ERROR("Invalid target frame %s requested for cartesian planning!", goal->extended_planning_options.target_frame.c_str());
+          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        }
       }
 
 
@@ -197,6 +242,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
       executeCartesianMoveCallback_PlanAndExecute(goal, action_res);
     }
 
+  // Below forwards to standard MoveIt Action
   }else{
 
 
@@ -347,9 +393,6 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakePlanOnly(
 {
   ROS_INFO("Planning request received for MoveGroup action. Forwarding to Drake.");
 
-  planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
-  const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
-    static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
   planning_interface::MotionPlanResponse res;
 
   const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
@@ -411,11 +454,13 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakePlanOnly(
   if (res.trajectory_) {
     planned_traj_vis_->publishTrajectoryEndeffectorVis(*res.trajectory_);
 
-    moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
-    result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
-    result_trajectory_display_msg.trajectory_start = current_state_msg;
-    result_trajectory_display_msg.model_id = robot_model->getName();
-    drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+    if (trajectory_result_display_pub_.getNumSubscribers() > 0){
+      moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+      result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
+      result_trajectory_display_msg.trajectory_start = current_state_msg;
+      result_trajectory_display_msg.model_id = robot_model->getName();
+      trajectory_result_display_pub_.publish(result_trajectory_display_msg);
+    }
   }
 
   action_res.error_code = res.error_code_;
@@ -427,9 +472,6 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
 {
   ROS_INFO("Planning request received for MoveGroup action. Forwarding to Drake.");
 
-  planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
-  const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
-    static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
   planning_interface::MotionPlanResponse res;
 
   vigir_planning_msgs::RequestWholeBodyCartesianTrajectory::Response drake_response_msg;
@@ -481,6 +523,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
       drake_request_msg.trajectory_request.target_orientation_type = goal->extended_planning_options.target_orientation_type;
       drake_request_msg.trajectory_request.trajectory_sample_rate = goal->extended_planning_options.trajectory_sample_rate;
       drake_request_msg.trajectory_request.check_self_collisions = goal->extended_planning_options.check_self_collisions;
+      drake_request_msg.trajectory_request.execute_incomplete_cartesian_plans = goal->extended_planning_options.execute_incomplete_cartesian_plans;
 
       // call service and process response
       struct timeval start_time;
@@ -524,11 +567,13 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
   if (res.trajectory_) {
     planned_traj_vis_->publishTrajectoryEndeffectorVis(*res.trajectory_);
 
-    moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
-    result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
-    result_trajectory_display_msg.trajectory_start = current_state_msg;
-    result_trajectory_display_msg.model_id = robot_model->getName();
-    drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+    if (trajectory_result_display_pub_.getNumSubscribers() > 0){
+      moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+      result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
+      result_trajectory_display_msg.trajectory_start = current_state_msg;
+      result_trajectory_display_msg.model_id = robot_model->getName();
+      trajectory_result_display_pub_.publish(result_trajectory_display_msg);
+    }
   }
 
   action_res.error_code = res.error_code_;
@@ -576,31 +621,36 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCircularM
       rotation_pose.header.frame_id = goal->extended_planning_options.target_frame;
 
       //Can easily transform goal pose to arbitrary target frame
-      this->performTransform(rotation_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame());
+      if (this->performTransform(rotation_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))
+      {
 
 
-      Eigen::Affine3d rotation_center;
-      tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
+        Eigen::Affine3d rotation_center;
+        tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
 
-      std::vector <geometry_msgs::Pose> pose_vec;
-      constrained_motion_utils::getCircularArcPoses(rotation_center,
+        std::vector <geometry_msgs::Pose> pose_vec;
+        constrained_motion_utils::getCircularArcPoses(rotation_center,
                                                       eef_start_pose,
                                                       pose_vec,
                                                       0.2,
                                                       goal->extended_planning_options.rotation_angle,
                                                       goal->extended_planning_options.keep_endeffector_orientation);
 
-      // make a copy of goal, so I can modify it
-      vigir_planning_msgs::MoveGoalPtr new_goal( new vigir_planning_msgs::MoveGoal( *goal ) );
+        // make a copy of goal, so I can modify it
+        vigir_planning_msgs::MoveGoalPtr new_goal( new vigir_planning_msgs::MoveGoal( *goal ) );
 
-      new_goal->extended_planning_options.target_poses = pose_vec;
-      new_goal->extended_planning_options.target_link_names.assign(pose_vec.size(), eef_link_name);
-      if ( new_goal->extended_planning_options.target_link_axis.empty() == false ) {
+        new_goal->extended_planning_options.target_poses = pose_vec;
+        new_goal->extended_planning_options.target_link_names.assign(pose_vec.size(), eef_link_name);
+        if ( new_goal->extended_planning_options.target_link_axis.empty() == false ) {
           new_goal->extended_planning_options.target_link_axis.assign(pose_vec.size(), goal->extended_planning_options.target_link_axis[0]);
-      }
+        }
 
-      // call default cartesian motion handler
-      executeMoveCallback_DrakeCartesianPlanOnly(new_goal, action_res);
+        // call default cartesian motion handler
+        executeMoveCallback_DrakeCartesianPlanOnly(new_goal, action_res);
+      }else{
+        ROS_ERROR("Invalid target frame %s requested for drake circular planning!", goal->extended_planning_options.target_frame.c_str());
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+      }
     }
   catch(std::runtime_error &ex)
   {
@@ -701,7 +751,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   cart_path.request.group_name = goal->request.group_name;
 
   setMoveState(PLANNING);
-  this->computeCartesianPath(cart_path.request, cart_path.response);
+  this->computeCartesianPath(cart_path.request, cart_path.response, goal->request.max_velocity_scaling_factor);
 
   {
     planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
@@ -712,6 +762,16 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     tmp->setRobotTrajectoryMsg(curr_state, cart_path.response.solution);
 
     convertToMsg(tmp, action_res.trajectory_start, action_res.planned_trajectory);
+  }
+
+  action_res.extended_planning_result.plan_completion_fraction = cart_path.response.fraction;
+
+  if (trajectory_result_display_pub_.getNumSubscribers() > 0){
+    moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+    result_trajectory_display_msg.trajectory.push_back( action_res.planned_trajectory );
+    result_trajectory_display_msg.trajectory_start = action_res.trajectory_start;
+    result_trajectory_display_msg.model_id = context_->planning_scene_monitor_->getRobotModel()->getName();
+    trajectory_result_display_pub_.publish(result_trajectory_display_msg);
   }
 
   if ((cart_path.response.fraction < 1.0) && !goal->extended_planning_options.execute_incomplete_cartesian_plans){
@@ -819,11 +879,13 @@ bool move_group::MoveGroupManipulationAction::planUsingDrake(const vigir_plannin
       planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
 
       // display preview in rviz
-      moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
-      result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
-      result_trajectory_display_msg.trajectory_start = current_state_msg;
-      result_trajectory_display_msg.model_id = robot_model->getName();
-      drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+      if (trajectory_result_display_pub_.getNumSubscribers() > 0){
+        moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+        result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
+        result_trajectory_display_msg.trajectory_start = current_state_msg;
+        result_trajectory_display_msg.model_id = robot_model->getName();
+        trajectory_result_display_pub_.publish(result_trajectory_display_msg);
+      }
     }
     plan.error_code_ = res.error_code_;
     return solved;
@@ -883,6 +945,7 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
         drake_request_msg.trajectory_request.target_orientation_type = goal->extended_planning_options.target_orientation_type;
         drake_request_msg.trajectory_request.trajectory_sample_rate = goal->extended_planning_options.trajectory_sample_rate;
         drake_request_msg.trajectory_request.check_self_collisions = goal->extended_planning_options.check_self_collisions;
+        drake_request_msg.trajectory_request.execute_incomplete_cartesian_plans = goal->extended_planning_options.execute_incomplete_cartesian_plans;
 
         // call service and process response
         struct timeval start_time;
@@ -928,11 +991,13 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
       planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
 
       // display preview in rviz
-      moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
-      result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
-      result_trajectory_display_msg.trajectory_start = current_state_msg;
-      result_trajectory_display_msg.model_id = robot_model->getName();
-      drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+      if (trajectory_result_display_pub_.getNumSubscribers() > 0){
+        moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+        result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
+        result_trajectory_display_msg.trajectory_start = current_state_msg;
+        result_trajectory_display_msg.model_id = robot_model->getName();
+        trajectory_result_display_pub_.publish(result_trajectory_display_msg);
+      }
     }
     plan.error_code_ = res.error_code_;
     return solved;
@@ -1078,7 +1143,9 @@ void move_group::MoveGroupManipulationAction::setMoveState(MoveGroupState state)
 }
 
 // This is basically a copy of the original MoveIt! cartesian planner with minor mods
-bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req, moveit_msgs::GetCartesianPath::Response &res)
+bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req,
+                                                                   moveit_msgs::GetCartesianPath::Response &res,
+                                                                   double max_velocity_scaling_factor)
 {
   /*
   if (marker_array_pub_.getNumSubscribers() > 0){
@@ -1198,11 +1265,10 @@ bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::
           for (std::size_t i = 0 ; i < traj_filtered.size() ; ++i)
             rt.addSuffixWayPoint(traj_filtered[i], 0.2); // \todo make 0.2 a param; better: compute time stemps based on eef distance and param m/s speed for eef;
 
-          /*
-          if (!time_param_.computeTimeStamps(rt, planner_configuration_.trajectory_time_factor.data)){
+
+          if (!time_param_->computeTimeStamps(rt, max_velocity_scaling_factor)){
             ROS_WARN("Time parametrization for the solution path failed.");
           }
-          */
 
           //trajectory_utils::removeZeroDurationJointTrajectoryPoints(rt);
 

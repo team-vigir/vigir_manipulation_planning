@@ -2,7 +2,7 @@
   <!-- ATLAS RIGHT HAND IP = 10.66.171.23 -->
   <arg name="right_hand_name" default="192.168.121.101" />
 
-  <rosparam ns="/right_robotiq/right_robotiq_ros_controller" >robotiq_activation_time: 1</rosparam>
+  <rosparam ns="/right_robotiq/right_robotiq_ros_controller" >robotiq_activation_time: 16</rosparam>
 
   <node pkg="robotiq_s_model_control" type="SModelTcpNode.py" name="robotiq_right_hand" output="screen" respawn="true" args="$(arg right_hand_name)">  
   <remap from="SModelRobotInput"  to="/robotiq_hands/r_hand/SModelRobotInput"/>
