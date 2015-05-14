@@ -60,6 +60,8 @@ public:
 
 private:
 
+  void setupHandData();
+
   void executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal);
   void executeMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
   void executeMoveCallback_PlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
@@ -83,6 +85,9 @@ private:
                             moveit_msgs::GetCartesianPath::Response &res,
                             double max_velocity_scaling_factor);
 
+  planning_scene::PlanningSceneConstPtr getCollisionSettingsPlanningSceneDiff(const vigir_planning_msgs::MoveGoalConstPtr& goal,
+                                                                              planning_scene_monitor::LockedPlanningSceneRO& lscene) const;
+
   boost::scoped_ptr<actionlib::SimpleActionServer<vigir_planning_msgs::MoveAction> > move_action_server_;
   vigir_planning_msgs::MoveFeedback move_feedback_;
 
@@ -101,6 +106,9 @@ private:
   tf::TransformListener transform_listener_;
 
   boost::shared_ptr<trajectory_processing::IterativeParabolicTimeParameterization> time_param_;
+
+  std::vector<std::string> left_hand_links_vector_;
+  std::vector<std::string> right_hand_links_vector_;
 };
 
 }
