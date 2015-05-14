@@ -99,12 +99,37 @@ void move_group::MoveGroupManipulationAction::initialize()
   drake_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyTrajectory>("drake_planner/request_whole_body_trajectory");
   drake_cartesian_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyCartesianTrajectory>("drake_planner/request_whole_body_cartesian_trajectory");
   trajectory_result_display_pub_ = root_node_handle_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10);
+
+
 }
 
 void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal)
 {
   setMoveState(PLANNING);
   context_->planning_scene_monitor_->updateFrameTransforms();
+
+  //planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
+  //const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
+  //  static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
+
+
+  /*
+  {
+    planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
+
+    std::vector<std::string> object_strings = context_->planning_scene_monitor_->getPlanningScene()->getCollisionWorld()->getWorld()->getObjectIds();
+
+    size_t size = object_strings.size();
+
+    const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
+
+    for (size_t i = 0; i < size; ++i){
+      context_->planning_scene_monitor_->getPlanningScene()->getAllowedCollisionMatrixNonConst().setEntry(object_strings[i], robot_model->getLinkModelNames(), !goal->extended_planning_options.avoid_collisions);
+    }
+
+    context_->planning_scene_monitor_->getPlanningScene()->getAllowedCollisionMatrixNonConst().setEntry("<octomap>", robot_model->getLinkModelNames(), !goal->extended_planning_options.avoid_collisions);
+  }
+  */
 
   vigir_planning_msgs::MoveResult action_res;
 
@@ -368,9 +393,6 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakePlanOnly(
 {
   ROS_INFO("Planning request received for MoveGroup action. Forwarding to Drake.");
 
-  planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
-  const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
-    static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
   planning_interface::MotionPlanResponse res;
 
   const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
@@ -450,9 +472,6 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
 {
   ROS_INFO("Planning request received for MoveGroup action. Forwarding to Drake.");
 
-  planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
-  const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
-    static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
   planning_interface::MotionPlanResponse res;
 
   vigir_planning_msgs::RequestWholeBodyCartesianTrajectory::Response drake_response_msg;
