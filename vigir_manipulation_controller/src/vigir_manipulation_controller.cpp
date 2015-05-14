@@ -194,6 +194,14 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     //initializing grasp status
     grasp_status_.status = RobotStatusCodes::status(RobotStatusCodes::NO_ERROR, RobotStatusCodes::OK);
 
+    wrist_T_template_.pose.orientation.x = 0;
+    wrist_T_template_.pose.orientation.y = 0;
+    wrist_T_template_.pose.orientation.z = 0;
+    wrist_T_template_.pose.orientation.w = 1.0;
+    wrist_T_template_.pose.position.x = 0;
+    wrist_T_template_.pose.position.y = 0;
+    wrist_T_template_.pose.position.z = 0;
+
 }
 
 ///////////////////////////////////////////////////////
