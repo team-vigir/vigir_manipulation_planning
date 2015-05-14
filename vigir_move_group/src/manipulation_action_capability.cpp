@@ -55,6 +55,7 @@
 #include <vigir_moveit_utils/joint_constraint_utils.h>
 #include <vigir_moveit_utils/group_utils.h>
 #include <vigir_moveit_utils/planning_scene_utils.h>
+#include <vigir_moveit_utils/robot_model_utils.h>
 
 
 namespace
@@ -89,6 +90,7 @@ void move_group::MoveGroupManipulationAction::initialize()
   planned_traj_vis_.reset(new trajectory_utils::TrajectoryVisualization(pnh));
   executed_traj_vis_.reset(new trajectory_utils::TrajectoryVisualization(pnh, "eef_traj_executed", 0.0, 0.0, 1.0));
 
+  this->setupHandData();
 
   // start the move action server MOVE_ACTION
   move_action_server_.reset(new actionlib::SimpleActionServer<vigir_planning_msgs::MoveAction>(root_node_handle_, "vigir_move_group",
@@ -99,8 +101,14 @@ void move_group::MoveGroupManipulationAction::initialize()
   drake_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyTrajectory>("drake_planner/request_whole_body_trajectory");
   drake_cartesian_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyCartesianTrajectory>("drake_planner/request_whole_body_cartesian_trajectory");
   trajectory_result_display_pub_ = root_node_handle_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10);
+}
 
+void move_group::MoveGroupManipulationAction::setupHandData()
+{
+  const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
 
+  left_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,"l_hand");
+  right_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,"r_hand");
 }
 
 bool move_group::MoveGroupManipulationAction::checkGroupStateSelfCollisionFree(robot_state::RobotState *robot_state, const robot_state::JointModelGroup *joint_group, const double *joint_group_variable_values)
@@ -1400,6 +1408,93 @@ bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::
 
   return true;
 }
+
+planning_scene::PlanningSceneConstPtr move_group::MoveGroupManipulationAction::getCollisionSettingsPlanningSceneDiff(const vigir_planning_msgs::MoveGoalConstPtr& goal,
+                                                                                                                     planning_scene_monitor::LockedPlanningSceneRO& lscene) const
+{
+  const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
+        static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
+
+  const planning_scene::PlanningScenePtr extended_scene = the_scene->diff();
+
+  // We only modify extended scene if required, otherwise no copies are performed, which is preferable.
+  if ( (!goal->extended_planning_options.avoid_collisions) ||
+       ( goal->extended_planning_options.extended_planning_scene_diff.allowed_collision_pairs.size() > 0) ||
+       ( goal->extended_planning_options.extended_planning_scene_diff.forbidden_collision_pairs.size() > 0) ||
+       ( goal->extended_planning_options.extended_planning_scene_diff.allow_left_hand_environment_collision) ||
+       ( goal->extended_planning_options.extended_planning_scene_diff.allow_right_hand_environment_collision) ||
+       ( goal->extended_planning_options.extended_planning_scene_diff.allow_hands_collision_with_object_id.size() > 0))
+  {
+    collision_detection::AllowedCollisionMatrix& acm = extended_scene->getAllowedCollisionMatrixNonConst();
+
+    // Completely disable complete environment collision checks
+    if (!goal->extended_planning_options.avoid_collisions){
+      std::vector<std::string> object_strings = context_->planning_scene_monitor_->getPlanningScene()->getCollisionWorld()->getWorld()->getObjectIds();
+
+      size_t size = object_strings.size();
+
+      const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
+
+      for (size_t i = 0; i < size; ++i){
+        acm.setEntry(object_strings[i], robot_model->getLinkModelNames(), true);
+      }
+
+      acm.setEntry("<octomap>", robot_model->getLinkModelNames(), true);
+    }
+
+
+    // Selectively disable collision checks
+    const std::vector<vigir_planning_msgs::CollisionPair>& allowed_vec = goal->extended_planning_options.extended_planning_scene_diff.allowed_collision_pairs;
+
+    for (size_t i = 0; i < allowed_vec.size();++i)
+    {
+      acm.setEntry(allowed_vec[i].collision_entities[0], allowed_vec[i].collision_entities[1], true);
+    }
+
+    // Selectively enable collision checks
+    const std::vector<vigir_planning_msgs::CollisionPair>& forbidden_vec = goal->extended_planning_options.extended_planning_scene_diff.forbidden_collision_pairs;
+
+    for (size_t i = 0; i < forbidden_vec.size();++i)
+    {
+      acm.setEntry(forbidden_vec[i].collision_entities[0], forbidden_vec[i].collision_entities[1], false);
+    }
+
+    // Selectively switch off hand collision checks
+    if ((goal->extended_planning_options.extended_planning_scene_diff.allow_left_hand_environment_collision) ||
+        (goal->extended_planning_options.extended_planning_scene_diff.allow_right_hand_environment_collision))
+    {
+
+      std::vector<std::string> object_strings = context_->planning_scene_monitor_->getPlanningScene()->getCollisionWorld()->getWorld()->getObjectIds();
+
+      size_t size = object_strings.size();
+
+      if (goal->extended_planning_options.extended_planning_scene_diff.allow_left_hand_environment_collision){
+        for (size_t i = 0; i < size; ++i){
+          acm.setEntry(object_strings[i], left_hand_links_vector_, true);
+        }
+
+        acm.setEntry("<octomap>", left_hand_links_vector_, true);
+      }
+
+      if (goal->extended_planning_options.extended_planning_scene_diff.allow_right_hand_environment_collision){
+        for (size_t i = 0; i < size; ++i){
+          acm.setEntry(object_strings[i], right_hand_links_vector_, true);
+        }
+
+        acm.setEntry("<octomap>", right_hand_links_vector_, true);
+      }
+    }
+
+    if (goal->extended_planning_options.extended_planning_scene_diff.allow_hands_collision_with_object_id.size() > 0){
+      acm.setEntry(left_hand_links_vector_, goal->extended_planning_options.extended_planning_scene_diff.allow_hands_collision_with_object_id, true);
+      acm.setEntry(right_hand_links_vector_, goal->extended_planning_options.extended_planning_scene_diff.allow_hands_collision_with_object_id, true);
+    }
+  }
+
+  return extended_scene;
+}
+
+
 
 #include <class_loader/class_loader.h>
 CLASS_LOADER_REGISTER_CLASS(move_group::MoveGroupManipulationAction, move_group::MoveGroupCapability)
