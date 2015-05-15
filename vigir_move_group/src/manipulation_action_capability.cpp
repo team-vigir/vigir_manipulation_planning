@@ -170,21 +170,98 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
   // Below if not using Drake and not using copy of standard MoveIt! Action
   else if (goal->extended_planning_options.target_poses.size() != 0){
 
+      /* Implement reference point from the request
+       * Output needed: targetFrame_T_wrist.
+       * Input needed:  targetFrame_T_referencePoint. This is given in the request as targetPose, but in this case it refers to the reference point, not the wrist.
+       *                wrist_T_referencePoint.   This is the reference point in wrist frame (need to use inverse transform)
+       * targetFrame_T_wrist = targetFrame_T_referencePoint * referencePoint_T_wrist.
+       * For n waypoints:
+       *    waypoint[i] = waypoint[i] * reference_point.inverse;  //User gives point of reference in wrist frame, but need to use inverse: */
 
-    if (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION){
+      std::vector<geometry_msgs::Pose> new_target_poses;
+      vigir_planning_msgs::MoveGoalPtr new_goal;
+      //Copy directly from goal
+      *new_goal = *goal;
+
+    if(goal->extended_planning_options.reference_point.position.x    != 0.0 ||
+       goal->extended_planning_options.reference_point.position.y    != 0.0 ||
+       goal->extended_planning_options.reference_point.position.z    != 0.0 ||
+       goal->extended_planning_options.reference_point.orientation.x != 0.0 ||
+       goal->extended_planning_options.reference_point.orientation.y != 0.0 ||
+       goal->extended_planning_options.reference_point.orientation.z != 0.0 ||
+       goal->extended_planning_options.reference_point.orientation.w != 0.0 ){
+        ROS_INFO("Using reference point in the request");
+        tf::Transform wrist_T_referencePoint;
+        tf::Transform targetFrame_T_referencePoint;
+        tf::Transform targetFrame_T_wrist;
+
+        if(goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION ||
+           goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS){
+            tf::poseMsgToTF(goal->extended_planning_options.reference_point, wrist_T_referencePoint);
+
+            new_target_poses.resize(goal->extended_planning_options.target_poses.size());
+
+            for (size_t i = 0; i < goal->extended_planning_options.target_poses.size(); ++i){
+                tf::poseMsgToTF(goal->extended_planning_options.target_poses[i], targetFrame_T_referencePoint);
+                targetFrame_T_wrist = targetFrame_T_referencePoint * wrist_T_referencePoint.inverse();
+                tf::poseTFToMsg(targetFrame_T_wrist,new_target_poses[i]);
+            }
+        }else{ //Circular motions behave different when reference point is given. Waypoint is translated but not rotated.
+            if(goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION &&
+                 goal->extended_planning_options.keep_endeffector_orientation){
+                //Only used if keep endeffector orientation true or if circular motion requested
+                Eigen::Affine3d eef_start_pose;
+
+                if(!planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+                                                                  context_->planning_scene_monitor_,
+                                                                  eef_start_pose))
+                {
+                  ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
+                  action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+                  return;
+                }
+
+                geometry_msgs::PoseStamped reference_pose;
+
+                reference_pose.header.frame_id = goal->extended_planning_options.reference_point_frame;
+                reference_pose.pose            = goal->extended_planning_options.reference_point;
+
+                if (this->performTransform(reference_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))//Gets reference point in world frame
+                {
+                    geometry_msgs::Pose wristPose;
+                    tf::poseEigenToMsg(eef_start_pose,wristPose);  //Converts eef eigen pose to geometry pose
+
+                    // calculate the difference between them
+                    tf::Vector3 diff_vector;
+                    diff_vector.setX(wristPose.position.x - reference_pose.pose.position.x);
+                    diff_vector.setY(wristPose.position.y - reference_pose.pose.position.y);
+                    diff_vector.setZ(wristPose.position.z - reference_pose.pose.position.z);
+
+                    // apply the difference to the circular center
+                    new_target_poses[0].position.x += diff_vector.getX();
+                    new_target_poses[0].position.y += diff_vector.getY();
+                    new_target_poses[0].position.z += diff_vector.getZ();
+                }
+            }
+        }
+        new_goal->extended_planning_options.target_poses = new_target_poses;
+    }
+
+
+    if (new_goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION){
 
       // For free motion, do IK and plan.
       // Consider additional joint constraints/redundant joints
 
-      if (goal->extended_planning_options.target_poses.size() > 1){
-        ROS_ERROR("For FREE MOTION, only a single target pose is supported, but I got %d", (int)goal->extended_planning_options.target_poses.size());
+      if (new_goal->extended_planning_options.target_poses.size() > 1){
+        ROS_ERROR("For FREE MOTION, only a single target pose is supported, but I got %d", (int)new_goal->extended_planning_options.target_poses.size());
         action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
       }else{
 
         geometry_msgs::PoseStamped goal_pose_planning_frame;
 
-        goal_pose_planning_frame.pose = goal->extended_planning_options.target_poses[0];
-        goal_pose_planning_frame.header.frame_id = goal->extended_planning_options.target_frame;
+        goal_pose_planning_frame.pose = new_goal->extended_planning_options.target_poses[0];
+        goal_pose_planning_frame.header.frame_id = new_goal->extended_planning_options.target_frame;
 
         if (this->performTransform(goal_pose_planning_frame, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))
         {
@@ -196,12 +273,12 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
             planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
             robot_state::RobotState tmp = lscene->getCurrentState();
 
-            const robot_state::JointModelGroup* joint_model_group = tmp.getJointModelGroup(goal->request.group_name);
+            const robot_state::JointModelGroup* joint_model_group = tmp.getJointModelGroup(new_goal->request.group_name);
 
             found_ik = group_utils::setJointModelGroupFromIk(tmp,
                                                              joint_model_group,
                                                              goal_pose_planning_frame.pose,
-                                                             goal->request.path_constraints.joint_constraints);
+                                                             new_goal->request.path_constraints.joint_constraints);
 
             if (found_ik){
               goal_constraints = kinematic_constraints::constructGoalConstraints(tmp, joint_model_group);
@@ -211,13 +288,13 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
           if (found_ik){
             vigir_planning_msgs::MoveGoalPtr updated_goal;
             updated_goal.reset(new vigir_planning_msgs::MoveGoal());
-            *updated_goal = *goal;
+            *updated_goal = *new_goal;
 
             updated_goal->request.goal_constraints.push_back(goal_constraints);
 
-            if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
+            if (new_goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
             {
-              if (!goal->planning_options.plan_only)
+              if (!new_goal->planning_options.plan_only)
                 ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
               executeMoveCallback_PlanOnly(updated_goal, action_res);
             }
@@ -230,7 +307,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
             action_res.error_code.val = moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
           }
         }else{
-          ROS_ERROR("Invalid target frame %s requested for cartesian planning!", goal->extended_planning_options.target_frame.c_str());
+          ROS_ERROR("Invalid target frame %s requested for cartesian planning!", new_goal->extended_planning_options.target_frame.c_str());
           action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
         }
       }
@@ -239,7 +316,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
 
     }else{
       //Otherwise, perform cartesian motion
-      executeCartesianMoveCallback_PlanAndExecute(goal, action_res);
+      executeCartesianMoveCallback_PlanAndExecute(new_goal, action_res);
     }
 
   // Below forwards to standard MoveIt Action
