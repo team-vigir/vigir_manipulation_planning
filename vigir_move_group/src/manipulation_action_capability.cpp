@@ -181,6 +181,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
       std::vector<geometry_msgs::Pose> new_target_poses;
       vigir_planning_msgs::MoveGoalPtr new_goal;
       //Copy directly from goal
+      new_goal.reset(new vigir_planning_msgs::MoveGoal());
       *new_goal = *goal;
 
     if(goal->extended_planning_options.reference_point.position.x    != 0.0 ||
@@ -195,11 +196,13 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
         tf::Transform targetFrame_T_referencePoint;
         tf::Transform targetFrame_T_wrist;
 
+        new_target_poses = goal->extended_planning_options.target_poses;
+
         if(goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION ||
            goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS){
-            tf::poseMsgToTF(goal->extended_planning_options.reference_point, wrist_T_referencePoint);
+            ROS_INFO("Calculating new waypoints given reference point for FREE MOTIONS and CATRTESIAN WAYPOINTS");
 
-            new_target_poses.resize(goal->extended_planning_options.target_poses.size());
+            tf::poseMsgToTF(goal->extended_planning_options.reference_point, wrist_T_referencePoint);
 
             for (size_t i = 0; i < goal->extended_planning_options.target_poses.size(); ++i){
                 tf::poseMsgToTF(goal->extended_planning_options.target_poses[i], targetFrame_T_referencePoint);
@@ -207,8 +210,10 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
                 tf::poseTFToMsg(targetFrame_T_wrist,new_target_poses[i]);
             }
         }else{ //Circular motions behave different when reference point is given. Waypoint is translated but not rotated.
+
             if(goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION &&
                  goal->extended_planning_options.keep_endeffector_orientation){
+                ROS_INFO("Calculating new waypoints given reference point for CIRCULAR MOTIONS");
                 //Only used if keep endeffector orientation true or if circular motion requested
                 Eigen::Affine3d eef_start_pose;
 
@@ -238,10 +243,18 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
                     diff_vector.setZ(wristPose.position.z - reference_pose.pose.position.z);
 
                     // apply the difference to the circular center
+                    ROS_INFO("Applying difference vector to rotation axis (x: %f, y: %f, z: %f)", diff_vector.getX(), diff_vector.getY(), diff_vector.getZ());
                     new_target_poses[0].position.x += diff_vector.getX();
                     new_target_poses[0].position.y += diff_vector.getY();
                     new_target_poses[0].position.z += diff_vector.getZ();
+                    ROS_INFO("New rotation axis (x: %f, y: %f, z: %f)", new_target_poses[0].position.x, new_target_poses[0].position.y, new_target_poses[0].position.z);
+
+                }else{
+                    ROS_ERROR("Could not get reference pose (%s) into %s frame, resetting target poses.", reference_pose.header.frame_id.c_str(),
+                                                                                                          context_->planning_scene_monitor_->getRobotModel()->getModelFrame().c_str());
                 }
+            }else{  //Using circular motion without keeping end effector orientation
+                ROS_ERROR("Resetting target poses since no modification is needed when circular and not keeping end effector orientation");
             }
         }
         new_goal->extended_planning_options.target_poses = new_target_poses;
