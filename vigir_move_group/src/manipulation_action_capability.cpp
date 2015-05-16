@@ -336,15 +336,15 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
         }
     }
     else {
-    opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
+      opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
 
-    //We normally don't plan with lookaround so the below can be ignored
-    if (goal->planning_options.look_around && context_->plan_with_sensing_)
-    {
-      opt.plan_callback_ = boost::bind(&plan_execution::PlanWithSensing::computePlan, context_->plan_with_sensing_.get(), _1, opt.plan_callback_,
-                                       goal->planning_options.look_around_attempts, goal->planning_options.max_safe_execution_cost);
-      context_->plan_with_sensing_->setBeforeLookCallback(boost::bind(&MoveGroupManipulationAction::startMoveLookCallback, this));
-    }
+      //We normally don't plan with lookaround so the below can be ignored
+      if (goal->planning_options.look_around && context_->plan_with_sensing_)
+      {
+        opt.plan_callback_ = boost::bind(&plan_execution::PlanWithSensing::computePlan, context_->plan_with_sensing_.get(), _1, opt.plan_callback_,
+                                         goal->planning_options.look_around_attempts, goal->planning_options.max_safe_execution_cost);
+        context_->plan_with_sensing_->setBeforeLookCallback(boost::bind(&MoveGroupManipulationAction::startMoveLookCallback, this));
+      }
     }
 
     plan_execution::ExecutableMotionPlan plan;
@@ -370,8 +370,45 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanOnly(const
   ROS_INFO("Planning request received for MoveGroup action. Forwarding to planning pipeline.");
 
   planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
+
+  moveit_msgs::PlanningScene planning_scene_diff;
+
+  planning_scene::PlanningScenePtr extended_collision_scene = this->getCollisionSettingsPlanningSceneDiff(goal, lscene);
+
+  if (extended_collision_scene.get()){
+    //extended_collision_scene->setPlanningSceneMsg(goal->planning_options.planning_scene_diff);
+    extended_collision_scene->getPlanningSceneMsg(planning_scene_diff);
+  }else{
+    planning_scene_diff = goal->planning_options.planning_scene_diff;
+  }
+
+
   const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
-    static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
+    static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(planning_scene_diff);
+
+  /*
+  const planning_scene::PlanningSceneConstPtr &extended_collision_scene = this->getCollisionSettingsPlanningSceneDiff(goal, lscene);
+
+  const planning_scene::PlanningScenePtr final_scene = the_scene->shared_from_this();
+
+  if (extended_collision_scene.get()){
+    moveit_msgs::PlanningScene scene_msg;
+    extended_collision_scene->getPlanningSceneMsg(scene_msg);
+    final_scene->setPlanningSceneDiffMsg(scene_msg);
+  }
+  */
+
+  /*
+  if (extended_collision_scene.get()){
+    ROS_INFO("Using extended collision options.");
+    moveit_msgs::PlanningScene scene_msg;
+    extended_collision_scene->getPlanningSceneMsg(scene_msg);
+    final_scene = the_scene->diff(scene_msg);
+  }else{
+    final_scene = boost::make_shared(the_scene);
+  }
+  */
+
   planning_interface::MotionPlanResponse res;
   try
   {
@@ -1306,13 +1343,16 @@ bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::
   return true;
 }
 
-planning_scene::PlanningSceneConstPtr move_group::MoveGroupManipulationAction::getCollisionSettingsPlanningSceneDiff(const vigir_planning_msgs::MoveGoalConstPtr& goal,
-                                                                                                                     planning_scene_monitor::LockedPlanningSceneRO& lscene) const
+planning_scene::PlanningScenePtr move_group::MoveGroupManipulationAction::getCollisionSettingsPlanningSceneDiff(const vigir_planning_msgs::MoveGoalConstPtr& goal,
+                                                                                                                     planning_scene_monitor::LockedPlanningSceneRO& lscene)
 {
-  const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
-        static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
+  //const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
+  //      static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
 
-  const planning_scene::PlanningScenePtr extended_scene = the_scene->diff();
+  //const planning_scene::PlanningScenePtr extended_scene = the_scene->diff();
+
+  //lscene.getPlanningSceneMonitor()->getPlanningScene()->getAllowedCollisionMatrix().
+
 
   // We only modify extended scene if required, otherwise no copies are performed, which is preferable.
   if ( (!goal->extended_planning_options.avoid_collisions) ||
@@ -1322,7 +1362,13 @@ planning_scene::PlanningSceneConstPtr move_group::MoveGroupManipulationAction::g
        ( goal->extended_planning_options.extended_planning_scene_diff.allow_right_hand_environment_collision) ||
        ( goal->extended_planning_options.extended_planning_scene_diff.allow_hands_collision_with_object_id.size() > 0))
   {
-    collision_detection::AllowedCollisionMatrix& acm = extended_scene->getAllowedCollisionMatrixNonConst();
+    planning_scene::PlanningScenePtr planning_scene_diff (new planning_scene::PlanningScene(context_->planning_scene_monitor_->getRobotModel()));
+
+    //planning_scene_diff->getAllowedCollisionMatrixNonConst() = lscene.getPlanningSceneMonitor()->getPlanningScene()->getAllowedCollisionMatrix();
+
+    collision_detection::AllowedCollisionMatrix& acm = planning_scene_diff->getAllowedCollisionMatrixNonConst();
+
+    acm = lscene.getPlanningSceneMonitor()->getPlanningScene()->getAllowedCollisionMatrix();
 
     // Completely disable complete environment collision checks
     if (!goal->extended_planning_options.avoid_collisions){
@@ -1386,9 +1432,10 @@ planning_scene::PlanningSceneConstPtr move_group::MoveGroupManipulationAction::g
       acm.setEntry(left_hand_links_vector_, goal->extended_planning_options.extended_planning_scene_diff.allow_hands_collision_with_object_id, true);
       acm.setEntry(right_hand_links_vector_, goal->extended_planning_options.extended_planning_scene_diff.allow_hands_collision_with_object_id, true);
     }
+    return planning_scene_diff;
   }
 
-  return extended_scene;
+  return planning_scene::PlanningScenePtr();
 }
 
 

@@ -85,8 +85,8 @@ private:
                             moveit_msgs::GetCartesianPath::Response &res,
                             double max_velocity_scaling_factor);
 
-  planning_scene::PlanningSceneConstPtr getCollisionSettingsPlanningSceneDiff(const vigir_planning_msgs::MoveGoalConstPtr& goal,
-                                                                              planning_scene_monitor::LockedPlanningSceneRO& lscene) const;
+  planning_scene::PlanningScenePtr getCollisionSettingsPlanningSceneDiff(const vigir_planning_msgs::MoveGoalConstPtr& goal,
+                                                                              planning_scene_monitor::LockedPlanningSceneRO& lscene);
 
   boost::scoped_ptr<actionlib::SimpleActionServer<vigir_planning_msgs::MoveAction> > move_action_server_;
   vigir_planning_msgs::MoveFeedback move_feedback_;
