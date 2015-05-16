@@ -247,6 +247,7 @@ namespace vigir_manipulation_controller {
 
     void sendCircularAffordance(vigir_object_template_msgs::Affordance affordance);
     void sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance);
+    void sendFixedPoseAffordance(vigir_object_template_msgs::Affordance affordance);
     void sendFinalGrasp(geometry_msgs::PoseStamped final_grasp);
 
     bool affordanceInWristFrame(vigir_object_template_msgs::GetAffordanceInWristFrame::Request& req,

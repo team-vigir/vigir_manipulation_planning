@@ -389,8 +389,9 @@ void VigirManipulationController::affordanceCommandCallback(const vigir_object_t
     //Need to get latest affordance pose
     if(affordance.type == "circular")
         sendCircularAffordance(affordance);
-    else
+    else if (affordance.type == "cartesian")
         sendCartesianAffordance(affordance);
+    else sendFixedPoseAffordance(affordance);
 }
 
 void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8& usability_id)
@@ -921,6 +922,50 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
     }
     else
         ROS_ERROR("Action did not finish before the time out.");
+}
+
+void VigirManipulationController::sendFixedPoseAffordance(vigir_object_template_msgs::Affordance affordance)
+{
+    actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> move_action_client("/vigir_move_group",true);
+
+    ROS_INFO("Waiting for move action server to start.");
+    if(!move_action_client.waitForServer(ros::Duration(5))){
+        ROS_ERROR("Move group client timed out");
+        return;
+    }
+
+    ROS_INFO("Action server started, sending goal.");
+    vigir_planning_msgs::MoveGoal move_goal;
+
+    move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION;
+    move_goal.extended_planning_options.avoid_collisions                   = false;
+    move_goal.extended_planning_options.keep_endeffector_orientation       = false;
+    move_goal.extended_planning_options.rotation_angle                     = affordance.displacement;
+    move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;
+    move_goal.request.group_name                                           = this->planning_group_;
+    move_goal.request.allowed_planning_time                                = 1.0;
+    move_goal.request.num_planning_attempts                                = 1;
+    move_goal.request.max_velocity_scaling_factor                          = affordance.speed/100.0;
+
+    move_goal.extended_planning_options.target_frame = affordance.waypoints[0].header.frame_id;
+
+    wrist_target_pub_.publish(affordance.waypoints[0]);
+
+    move_goal.extended_planning_options.target_poses.push_back(affordance.waypoints[0].pose);
+
+    move_action_client.sendGoal(move_goal);
+
+    //wait for the action to return
+    bool finished_before_timeout = move_action_client.waitForResult(ros::Duration(30.0));
+
+    if (finished_before_timeout)
+    {
+        actionlib::SimpleClientGoalState state = move_action_client.getState();
+        ROS_INFO("Action finished: %s",state.toString().c_str());
+    }
+    else
+        ROS_ERROR("Action did not finish before the time out.");
+
 }
 
 bool VigirManipulationController::affordanceInWristFrame(vigir_object_template_msgs::GetAffordanceInWristFrame::Request &req,
