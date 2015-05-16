@@ -394,7 +394,14 @@ public:
 
     const robot_state::JointModelGroup* joint_model_group = tmp.getJointModelGroup(curr_group);
 
-    tmp.setVariablePositions(joint_model_group->getJointModelNames(), plan_request.position);
+    const std::vector<std::string>& joint_name_vector = joint_model_group->getActiveJointModelNames();
+
+    if (joint_name_vector.size() != plan_request.position.size()){
+      ROS_ERROR("Joint name vector and plan request joints number not the same, aborting planning to joint config!");
+      return false;
+    }
+
+    tmp.setVariablePositions(joint_name_vector, plan_request.position);
 
     goal_.request.goal_constraints.clear();
     goal_.request.goal_constraints.push_back(kinematic_constraints::constructGoalConstraints(tmp, joint_model_group));
