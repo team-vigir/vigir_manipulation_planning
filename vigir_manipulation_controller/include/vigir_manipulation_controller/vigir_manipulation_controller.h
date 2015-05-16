@@ -153,6 +153,7 @@ namespace vigir_manipulation_controller {
     std::string                                hand_side_;       // left or right
     int                                        hand_id_;         // -1=left, 1=right
     std::string                                planning_group_;
+    char                                       last_template_stitch_id_;
 
     // Internal variables used by active controllers
     vigir_object_template_msgs::GetInstantiatedGraspInfoResponse last_grasp_res_;
