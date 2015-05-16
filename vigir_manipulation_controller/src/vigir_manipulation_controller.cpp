@@ -413,6 +413,15 @@ void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8&
                                                           template_srv_.response.template_type_information.usabilities[index].pose.pose.position.y,
                                                           template_srv_.response.template_type_information.usabilities[index].pose.pose.position.z));
 
+                    ROS_INFO("template_T_marker x:%f, y:%f, z:%f, qx:%f, qy:%f, qz:%f, qw:%f",
+                              template_T_marker.getOrigin().getX(),
+                              template_T_marker.getOrigin().getY(),
+                              template_T_marker.getOrigin().getZ(),
+                              template_T_marker.getRotation().getX(),
+                              template_T_marker.getRotation().getY(),
+                              template_T_marker.getRotation().getZ(),
+                              template_T_marker.getRotation().getW());
+
                     hand_T_template.setRotation(tf::Quaternion(wrist_T_template_.pose.orientation.x,
                                                                wrist_T_template_.pose.orientation.y,
                                                                wrist_T_template_.pose.orientation.z,
@@ -420,6 +429,15 @@ void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8&
                     hand_T_template.setOrigin(tf::Vector3(wrist_T_template_.pose.position.x,
                                                           wrist_T_template_.pose.position.y,
                                                           wrist_T_template_.pose.position.z));
+
+                    ROS_INFO("hand_T_template x:%f, y:%f, z:%f, qx:%f, qy:%f, qz:%f, qw:%f",
+                              hand_T_template.getOrigin().getX(),
+                              hand_T_template.getOrigin().getY(),
+                              hand_T_template.getOrigin().getZ(),
+                              hand_T_template.getRotation().getX(),
+                              hand_T_template.getRotation().getY(),
+                              hand_T_template.getRotation().getZ(),
+                              hand_T_template.getRotation().getW());
 
                     hand_T_marker_ = hand_T_template * template_T_marker;
                     break;
@@ -435,14 +453,14 @@ void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8&
         hand_T_marker_ = hand_T_palm_;
     }
 
-//    ROS_ERROR("hand_T_marker x:%f, y:%f, z:%f, qx:%f, qy:%f, qz:%f, qw:%f",
-//              hand_T_marker_.getOrigin().getX(),
-//              hand_T_marker_.getOrigin().getY(),
-//              hand_T_marker_.getOrigin().getZ(),
-//              hand_T_marker_.getRotation().getX(),
-//              hand_T_marker_.getRotation().getY(),
-//              hand_T_marker_.getRotation().getZ(),
-//              hand_T_marker_.getRotation().getW());
+    ROS_INFO("New hand_T_marker x:%f, y:%f, z:%f, qx:%f, qy:%f, qz:%f, qw:%f",
+              hand_T_marker_.getOrigin().getX(),
+              hand_T_marker_.getOrigin().getY(),
+              hand_T_marker_.getOrigin().getZ(),
+              hand_T_marker_.getRotation().getX(),
+              hand_T_marker_.getRotation().getY(),
+              hand_T_marker_.getRotation().getZ(),
+              hand_T_marker_.getRotation().getW());
 }
 
 // Called because of stitching functionality
@@ -778,22 +796,35 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
     move_goal.extended_planning_options.target_frame = affordance.waypoints[0].header.frame_id;
 
     if(affordance.keep_orientation){
-        // get position of the wrist in world coordinates
-        geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
+//        // get position of the wrist in world coordinates
+//        geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
 
-        // get position of the marker in world coordinates
-        poseTransform(hand, hand_T_marker_);
+//        // get position of the marker in world coordinates
+//        poseTransform(hand, hand_T_marker_);
 
-        // calculate the difference between them
-        tf::Vector3 diff_vector;
-        diff_vector.setX(last_wrist_pose_msg_.pose.position.x - hand.position.x);
-        diff_vector.setY(last_wrist_pose_msg_.pose.position.y - hand.position.y);
-        diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
+//        // calculate the difference between them
+//        tf::Vector3 diff_vector;
+//        diff_vector.setX(last_wrist_pose_msg_.pose.position.x - hand.position.x);
+//        diff_vector.setY(last_wrist_pose_msg_.pose.position.y - hand.position.y);
+//        diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
 
-        // apply the difference to the circular center
-        affordance.waypoints[0].pose.position.x += diff_vector.getX();
-        affordance.waypoints[0].pose.position.y += diff_vector.getY();
-        affordance.waypoints[0].pose.position.z += diff_vector.getZ();
+//        // apply the difference to the circular center
+//        affordance.waypoints[0].pose.position.x += diff_vector.getX();
+//        affordance.waypoints[0].pose.position.y += diff_vector.getY();
+//        affordance.waypoints[0].pose.position.z += diff_vector.getZ();
+        geometry_msgs::Pose temp;
+        tf::poseTFToMsg(hand_T_marker_, temp);
+        move_goal.extended_planning_options.reference_point       = temp;
+        move_goal.extended_planning_options.reference_point_frame = this->wrist_name_;
+        ROS_ERROR("Setting reference frame to %s and reference point to x: %f, y: %f, z: %f, qx: %f, qy: %f, qz: %f, qw:%f ",
+                  move_goal.extended_planning_options.reference_point_frame.c_str(),
+                  move_goal.extended_planning_options.reference_point.position.x,
+                  move_goal.extended_planning_options.reference_point.position.y,
+                  move_goal.extended_planning_options.reference_point.position.z,
+                  move_goal.extended_planning_options.reference_point.orientation.x,
+                  move_goal.extended_planning_options.reference_point.orientation.y,
+                  move_goal.extended_planning_options.reference_point.orientation.z,
+                  move_goal.extended_planning_options.reference_point.orientation.w);
     }
     wrist_target_pub_.publish(affordance.waypoints[0]);
 
