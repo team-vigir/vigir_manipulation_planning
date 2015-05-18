@@ -133,7 +133,7 @@ public:
 
   }
 
-  void plannerConfigurationCb(const vigir_planning_msgs::PlannerConfiguration::ConstPtr& msg)
+  void plannerConfigurationCb(const vigir_planning_msgs::PlannerConfiguration::ConstPtr msg)
   {
     ROS_INFO("Received planner configuration");
     planner_configuration_ = *msg;
@@ -143,13 +143,13 @@ public:
                                                goal_.request.path_constraints.joint_constraints);
   }
 
-  void planRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr& msg)
+  void planRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr msg)
   {
     motion_source_= NO_GRASP;
     planAndMove(*msg);
   }
 
-  void lGraspRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr& msg)
+  void lGraspRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr msg)
   {
     motion_source_= LEFT_GRASP;
     planAndMove(*msg);
@@ -167,7 +167,7 @@ public:
     */
   }
 
-  void rGraspRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr& msg)
+  void rGraspRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr msg)
   {
     motion_source_= RIGHT_GRASP;
     planAndMove(*msg);
@@ -186,13 +186,13 @@ public:
     */
   }
 
-  void planJointRequestCallback(const flor_planning_msgs::PlanToJointTargetRequest::ConstPtr& msg)
+  void planJointRequestCallback(const flor_planning_msgs::PlanToJointTargetRequest::ConstPtr msg)
   {
     motion_source_= NO_GRASP;
     planAndMoveToJoints(*msg);
   }
 
-  void planCircularRequestCallback(const flor_planning_msgs::CircularMotionRequest::ConstPtr& msg)
+  void planCircularRequestCallback(const flor_planning_msgs::CircularMotionRequest::ConstPtr msg)
   {
     motion_source_= NO_GRASP;
 
@@ -220,7 +220,7 @@ public:
                                   boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));    
   }
 
-  void planCartesianRequestCallback(const flor_planning_msgs::CartesianMotionRequest::ConstPtr& msg)
+  void planCartesianRequestCallback(const flor_planning_msgs::CartesianMotionRequest::ConstPtr msg)
   {
     motion_source_= NO_GRASP;
 
@@ -246,7 +246,7 @@ public:
                                   boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));    
   }
 
-  void planExecuteCallback(const trajectory_msgs::JointTrajectory::ConstPtr& msg) const
+  void planExecuteCallback(const trajectory_msgs::JointTrajectory::ConstPtr msg) const
   {
     std::string group = this->inferGroupNameFromTrajectory(*msg);
 
@@ -258,32 +258,32 @@ public:
 
   }
 
-  void generalTrajectoryCallback(const trajectory_msgs::JointTrajectory::ConstPtr& msg)
+  void generalTrajectoryCallback(const trajectory_msgs::JointTrajectory::ConstPtr msg)
   {
     replanToGivenTrajectoryConfig(msg);
   }
 
-  void refineNeckTrajectoryCallback(const trajectory_msgs::JointTrajectory::ConstPtr& msg)
+  void refineNeckTrajectoryCallback(const trajectory_msgs::JointTrajectory::ConstPtr msg)
   {
     replanToGivenTrajectoryConfig(msg);
   }
 
-  void refineTorsoTrajectoryCallback(const trajectory_msgs::JointTrajectory::ConstPtr& msg)
+  void refineTorsoTrajectoryCallback(const trajectory_msgs::JointTrajectory::ConstPtr msg)
   {
     replanToGivenTrajectoryConfig(msg);
   }
 
-  void refineLeftArmTrajectoryCallback(const trajectory_msgs::JointTrajectory::ConstPtr& msg)
+  void refineLeftArmTrajectoryCallback(const trajectory_msgs::JointTrajectory::ConstPtr msg)
   {
     replanToGivenTrajectoryConfig(msg);
   }
 
-  void refineRightArmTrajectoryCallback(const trajectory_msgs::JointTrajectory::ConstPtr& msg)
+  void refineRightArmTrajectoryCallback(const trajectory_msgs::JointTrajectory::ConstPtr msg)
   {
     replanToGivenTrajectoryConfig(msg);
   }
 
-  bool replanToGivenTrajectoryConfig(const trajectory_msgs::JointTrajectory::ConstPtr& msg)
+  bool replanToGivenTrajectoryConfig(const trajectory_msgs::JointTrajectory::ConstPtr msg)
   {
     std::string group_name = this->inferGroupNameFromTrajectory(*msg);
 
@@ -377,7 +377,7 @@ public:
     return true;
   }
 
-  bool planAndMoveToJoints(const flor_planning_msgs::PlanToJointTargetRequest plan_request)
+  bool planAndMoveToJoints(const flor_planning_msgs::PlanToJointTargetRequest& plan_request)
   {
     goal_.request.planner_id = plan_request.planner_id;
     goal_.request.group_name = plan_request.planning_group;
