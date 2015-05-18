@@ -5,7 +5,7 @@
 
 <include file="$(find vigir_robotiq_ros_control)/launch/r_robotiq_ros_controller.launch"/>  <!--Specific ROS controller for hand (if required)-->
 <!-- -->
-<node name="right_vigir_manipulation_controller" pkg="vigir_robotiq_grasp_controller" type="vigir_robotiq_grasp_controller_node" respawn="true" ><!--output="screen"  launch-prefix="xterm -e gdb -ex r"-->
+<node name="right_vigir_manipulation_controller" pkg="vigir_robotiq_grasp_controller" type="vigir_robotiq_grasp_controller_node" respawn="true" output="screen" ><!-- launch-prefix="xterm -e gdb -ex r"-->
 
     <param name="wrist_name"  value="r_hand" />      <!--Last arm link name-->
     <param name="hand_link"   value="right_palm" />  <!--First hand link name-->

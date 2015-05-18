@@ -9,8 +9,7 @@ find_package(catkin REQUIRED)
 catkin_package(
 )
 
-#install the launch files.
 install(DIRECTORY launch
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-  PATTERN "*~" EXCLUDE  
+	DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  	FILES_MATCHING PATTERN "*.launch"
 )

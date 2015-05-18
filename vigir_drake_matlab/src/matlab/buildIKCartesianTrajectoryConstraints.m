@@ -92,11 +92,13 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
             eef_orientation_constr = WorldQuatConstraint(robot_model, eef_body_id, goal_orientation_quat, 0, [target_waypoint.waypoint_time, target_waypoint.waypoint_time]);
             activeConstraints{end+1} = eef_orientation_constr;
         elseif ( request.target_orientation_type == ORIENTATION_AXIS_ONLY ) % goal axis orientation constraint
-            direction = quat2axis(goal_orientation_quat);            
-            if ( any(direction(1:3)) )
-                eef_axis_constr = WorldGazeDirConstraint(robot_model, eef_body_id, goal_link_axis, direction(1:3), 0.05, [target_waypoint.waypoint_time, target_waypoint.waypoint_time]);
-                activeConstraints{end+1} = eef_axis_constr;
-            end
+           eef_axis_constr = WorldGazeOrientConstraint(robot_model, eef_body_id, goal_link_axis, goal_orientation_quat, 0.00, pi, [target_waypoint.waypoint_time, target_waypoint.waypoint_time]);
+           activeConstraints{end+1} = eef_axis_constr;
+            %direction = quat2axis(goal_orientation_quat);            
+            %if ( any(direction(1:3)) )
+            %    eef_axis_constr = WorldGazeDirConstraint(robot_model, eef_body_id, goal_link_axis, direction(1:3), 0.05, %target_waypoint.waypoint_time, target_waypoint.waypoint_time]);
+            %    activeConstraints{end+1} = eef_axis_constr;
+            %end
         end
 
         % setup line distance constraints between waypoints

@@ -108,3 +108,26 @@ add_dependencies(drake_bridge_node vigir_planning_msgs_generate_messages_cpp)
  target_link_libraries(drake_bridge_node
    ${catkin_LIBRARIES}
  )
+
+### Install matlab start script
+catkin_install_python(PROGRAMS
+  scripts/drake_matlab_node.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+### Install the launch files.
+install(DIRECTORY launch
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  FILES_MATCHING PATTERN "*.launch"
+)
+
+### Install matlab files
+install(DIRECTORY src/matlab
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  FILES_MATCHING PATTERN "*"
+)
+
+### Install Drake bridge node
+install(TARGETS drake_bridge_node
+   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

@@ -286,33 +286,40 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
                     world_T_palm.setOrigin(tf::Vector3(template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.x,
                                                           template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.y,
                                                           template_srv_.response.template_type_information.grasps[index].grasp_pose.pose.position.z));
+                    break;
                 }
             }
 
-            //Wrist pose in world frame
-            world_T_hand.setRotation(tf::Quaternion(this->last_wrist_pose_msg_.pose.orientation.x,
-                                                    this->last_wrist_pose_msg_.pose.orientation.y,
-                                                    this->last_wrist_pose_msg_.pose.orientation.z,
-                                                    this->last_wrist_pose_msg_.pose.orientation.w));
-            world_T_hand.setOrigin(tf::Vector3(this->last_wrist_pose_msg_.pose.position.x,
-                                               this->last_wrist_pose_msg_.pose.position.y,
-                                               this->last_wrist_pose_msg_.pose.position.z));
+            if(index >= template_srv_.response.template_type_information.grasps.size()){
+                ROS_ERROR("Grasp id:%d not found while request attaching. Returning Identity as stitch pose", grasp_msg.grasp_id.data);
+            }else{
+                //Wrist pose in world frame
+                world_T_hand.setRotation(tf::Quaternion(this->last_wrist_pose_msg_.pose.orientation.x,
+                                                        this->last_wrist_pose_msg_.pose.orientation.y,
+                                                        this->last_wrist_pose_msg_.pose.orientation.z,
+                                                        this->last_wrist_pose_msg_.pose.orientation.w));
+                world_T_hand.setOrigin(tf::Vector3(this->last_wrist_pose_msg_.pose.position.x,
+                                                   this->last_wrist_pose_msg_.pose.position.y,
+                                                   this->last_wrist_pose_msg_.pose.position.z));
 
-            //Template pose in world frame
-            world_T_template.setRotation(tf::Quaternion(template_srv_.response.template_state_information.pose.pose.orientation.x,
-                                                        template_srv_.response.template_state_information.pose.pose.orientation.y,
-                                                        template_srv_.response.template_state_information.pose.pose.orientation.z,
-                                                        template_srv_.response.template_state_information.pose.pose.orientation.w));
-            world_T_template.setOrigin(tf::Vector3(template_srv_.response.template_state_information.pose.pose.position.x,
-                                                   template_srv_.response.template_state_information.pose.pose.position.y,
-                                                   template_srv_.response.template_state_information.pose.pose.position.z));
+                //Template pose in world frame
+                world_T_template.setRotation(tf::Quaternion(template_srv_.response.template_state_information.pose.pose.orientation.x,
+                                                            template_srv_.response.template_state_information.pose.pose.orientation.y,
+                                                            template_srv_.response.template_state_information.pose.pose.orientation.z,
+                                                            template_srv_.response.template_state_information.pose.pose.orientation.w));
+                world_T_template.setOrigin(tf::Vector3(template_srv_.response.template_state_information.pose.pose.position.x,
+                                                       template_srv_.response.template_state_information.pose.pose.position.y,
+                                                       template_srv_.response.template_state_information.pose.pose.position.z));
 
-            this->palmStitch_T_hand_ = (world_T_template.inverse() * world_T_palm).inverse() * world_T_template.inverse() * world_T_hand;
+                this->palmStitch_T_hand_ = (world_T_template.inverse() * world_T_palm).inverse() * world_T_template.inverse() * world_T_hand;
 
 
-            stitch_template_pose.header.frame_id = template_srv_.response.template_state_information.pose.header.frame_id;
-            stitch_template_pose.header.seq++;
-            stitch_template_pose.header.stamp = template_srv_.response.template_state_information.pose.header.stamp;
+                stitch_template_pose.header.frame_id = template_srv_.response.template_state_information.pose.header.frame_id;
+                stitch_template_pose.header.seq++;
+                stitch_template_pose.header.stamp = template_srv_.response.template_state_information.pose.header.stamp;
+            }
+        }else{
+            ROS_ERROR("Palm not in /world frame, need to detach. Returning Identity as the stitch pose.");
         }
 
         //Publish to OCS
@@ -399,8 +406,9 @@ void VigirManipulationController::affordanceCommandCallback(const vigir_object_t
     //Need to get latest affordance pose
     if(affordance.type == "circular")
         sendCircularAffordance(affordance);
-    else
+    else if (affordance.type == "cartesian")
         sendCartesianAffordance(affordance);
+    else sendFixedPoseAffordance(affordance);
 }
 
 void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8& usability_id)
@@ -430,6 +438,15 @@ void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8&
                                                           template_srv_.response.template_type_information.usabilities[index].pose.pose.position.y,
                                                           template_srv_.response.template_type_information.usabilities[index].pose.pose.position.z));
 
+                    ROS_INFO("template_T_marker x:%f, y:%f, z:%f, qx:%f, qy:%f, qz:%f, qw:%f",
+                              template_T_marker.getOrigin().getX(),
+                              template_T_marker.getOrigin().getY(),
+                              template_T_marker.getOrigin().getZ(),
+                              template_T_marker.getRotation().getX(),
+                              template_T_marker.getRotation().getY(),
+                              template_T_marker.getRotation().getZ(),
+                              template_T_marker.getRotation().getW());
+
                     hand_T_template.setRotation(tf::Quaternion(wrist_T_template_.pose.orientation.x,
                                                                wrist_T_template_.pose.orientation.y,
                                                                wrist_T_template_.pose.orientation.z,
@@ -437,6 +454,15 @@ void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8&
                     hand_T_template.setOrigin(tf::Vector3(wrist_T_template_.pose.position.x,
                                                           wrist_T_template_.pose.position.y,
                                                           wrist_T_template_.pose.position.z));
+
+                    ROS_INFO("hand_T_template x:%f, y:%f, z:%f, qx:%f, qy:%f, qz:%f, qw:%f",
+                              hand_T_template.getOrigin().getX(),
+                              hand_T_template.getOrigin().getY(),
+                              hand_T_template.getOrigin().getZ(),
+                              hand_T_template.getRotation().getX(),
+                              hand_T_template.getRotation().getY(),
+                              hand_T_template.getRotation().getZ(),
+                              hand_T_template.getRotation().getW());
 
                     hand_T_marker_ = hand_T_template * template_T_marker;
                     break;
@@ -452,14 +478,14 @@ void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8&
         hand_T_marker_ = hand_T_palm_;
     }
 
-//    ROS_ERROR("hand_T_marker x:%f, y:%f, z:%f, qx:%f, qy:%f, qz:%f, qw:%f",
-//              hand_T_marker_.getOrigin().getX(),
-//              hand_T_marker_.getOrigin().getY(),
-//              hand_T_marker_.getOrigin().getZ(),
-//              hand_T_marker_.getRotation().getX(),
-//              hand_T_marker_.getRotation().getY(),
-//              hand_T_marker_.getRotation().getZ(),
-//              hand_T_marker_.getRotation().getW());
+    ROS_INFO("New hand_T_marker x:%f, y:%f, z:%f, qx:%f, qy:%f, qz:%f, qw:%f",
+              hand_T_marker_.getOrigin().getX(),
+              hand_T_marker_.getOrigin().getY(),
+              hand_T_marker_.getOrigin().getZ(),
+              hand_T_marker_.getRotation().getX(),
+              hand_T_marker_.getRotation().getY(),
+              hand_T_marker_.getRotation().getZ(),
+              hand_T_marker_.getRotation().getW());
 }
 
 // Called because of stitching functionality
@@ -771,6 +797,18 @@ void VigirManipulationController::sendFinalGrasp(geometry_msgs::PoseStamped fina
 
 void VigirManipulationController::sendCircularAffordance(vigir_object_template_msgs::Affordance affordance)
 {
+//    //Create message for manipulation controller
+//    template_srv_.request.template_id = last_template_stitch_id_;
+//    template_srv_.request.hand_side   = template_srv_.request.BOTH_HANDS;
+//    if (!template_info_client_.call(template_srv_))
+//    {
+//        ROS_ERROR("Failed to call service request template info");
+//    }else{
+//        affordance.waypoints = template_srv_.response.template_type_information.affordances[affordance.id].waypoints;
+//    }
+
+
+
     actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> move_action_client("/vigir_move_group",true);
 
     ROS_INFO("Waiting for move action server to start.");
@@ -790,27 +828,24 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;
     move_goal.request.num_planning_attempts                                = 1;
-    move_goal.request.max_velocity_scaling_factor                          = 0.03;
+    move_goal.request.max_velocity_scaling_factor                          = affordance.speed/100.0;
 
     move_goal.extended_planning_options.target_frame = affordance.waypoints[0].header.frame_id;
 
     if(affordance.keep_orientation){
-        // get position of the wrist in world coordinates
-        geometry_msgs::Pose hand = last_wrist_pose_msg_.pose;
-
-        // get position of the marker in world coordinates
-        poseTransform(hand, hand_T_marker_);
-
-        // calculate the difference between them
-        tf::Vector3 diff_vector;
-        diff_vector.setX(last_wrist_pose_msg_.pose.position.x - hand.position.x);
-        diff_vector.setY(last_wrist_pose_msg_.pose.position.y - hand.position.y);
-        diff_vector.setZ(last_wrist_pose_msg_.pose.position.z - hand.position.z);
-
-        // apply the difference to the circular center
-        affordance.waypoints[0].pose.position.x += diff_vector.getX();
-        affordance.waypoints[0].pose.position.y += diff_vector.getY();
-        affordance.waypoints[0].pose.position.z += diff_vector.getZ();
+        geometry_msgs::Pose temp;
+        tf::poseTFToMsg(hand_T_marker_, temp);
+        move_goal.extended_planning_options.reference_point       = temp;
+        move_goal.extended_planning_options.reference_point_frame = this->wrist_name_;
+        ROS_INFO("Setting reference frame to %s and reference point to x: %f, y: %f, z: %f, qx: %f, qy: %f, qz: %f, qw:%f ",
+                  move_goal.extended_planning_options.reference_point_frame.c_str(),
+                  move_goal.extended_planning_options.reference_point.position.x,
+                  move_goal.extended_planning_options.reference_point.position.y,
+                  move_goal.extended_planning_options.reference_point.position.z,
+                  move_goal.extended_planning_options.reference_point.orientation.x,
+                  move_goal.extended_planning_options.reference_point.orientation.y,
+                  move_goal.extended_planning_options.reference_point.orientation.z,
+                  move_goal.extended_planning_options.reference_point.orientation.w);
     }
     wrist_target_pub_.publish(affordance.waypoints[0]);
 
@@ -851,7 +886,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;
     move_goal.request.num_planning_attempts                                = 1;
-    move_goal.request.max_velocity_scaling_factor                          = 0.03;
+    move_goal.request.max_velocity_scaling_factor                          = affordance.speed/100.0;
 
     float norm = sqrt((affordance.waypoints[0].pose.position.x * affordance.waypoints[0].pose.position.x) +
                       (affordance.waypoints[0].pose.position.y * affordance.waypoints[0].pose.position.y) +
@@ -904,6 +939,50 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
     }
     else
         ROS_ERROR("Action did not finish before the time out.");
+}
+
+void VigirManipulationController::sendFixedPoseAffordance(vigir_object_template_msgs::Affordance affordance)
+{
+    actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> move_action_client("/vigir_move_group",true);
+
+    ROS_INFO("Waiting for move action server to start.");
+    if(!move_action_client.waitForServer(ros::Duration(5))){
+        ROS_ERROR("Move group client timed out");
+        return;
+    }
+
+    ROS_INFO("Action server started, sending goal.");
+    vigir_planning_msgs::MoveGoal move_goal;
+
+    move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION;
+    move_goal.extended_planning_options.avoid_collisions                   = false;
+    move_goal.extended_planning_options.keep_endeffector_orientation       = false;
+    move_goal.extended_planning_options.rotation_angle                     = affordance.displacement;
+    move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;
+    move_goal.request.group_name                                           = this->planning_group_;
+    move_goal.request.allowed_planning_time                                = 1.0;
+    move_goal.request.num_planning_attempts                                = 1;
+    move_goal.request.max_velocity_scaling_factor                          = affordance.speed/100.0;
+
+    move_goal.extended_planning_options.target_frame = affordance.waypoints[0].header.frame_id;
+
+    wrist_target_pub_.publish(affordance.waypoints[0]);
+
+    move_goal.extended_planning_options.target_poses.push_back(affordance.waypoints[0].pose);
+
+    move_action_client.sendGoal(move_goal);
+
+    //wait for the action to return
+    bool finished_before_timeout = move_action_client.waitForResult(ros::Duration(30.0));
+
+    if (finished_before_timeout)
+    {
+        actionlib::SimpleClientGoalState state = move_action_client.getState();
+        ROS_INFO("Action finished: %s",state.toString().c_str());
+    }
+    else
+        ROS_ERROR("Action did not finish before the time out.");
+
 }
 
 bool VigirManipulationController::affordanceInWristFrame(vigir_object_template_msgs::GetAffordanceInWristFrame::Request &req,
