@@ -5,28 +5,28 @@
    <Position x="0.95" y="-0.25" z="1"/>
    <Orientation w="0" x="1" y="0" z="0"/>
    <TargetLinkName value="l_hand"/>
-   <TargetLinkAxis x="0" y="1" z="0"/>
+   <TargetLinkAxis x="0" y="0" z="1"/>
    <Time value="5"/>
   </Waypoint>
   <Waypoint name="Lower Left">
    <Position x="0.95" y="0.25" z="1"/>
    <Orientation w="0" x="1" y="0" z="0"/>
    <TargetLinkName value="l_hand"/>
-   <TargetLinkAxis x="0" y="1" z="0"/>
+   <TargetLinkAxis x="0" y="0" z="1"/>
    <Time value="10"/>
   </Waypoint>
   <Waypoint name="Top">
    <Position x="0.95" y="0" z="1.5"/>
    <Orientation w="0" x="1" y="0" z="0"/>
    <TargetLinkName value="l_hand"/>
-   <TargetLinkAxis x="0" y="1" z="0"/>
+   <TargetLinkAxis x="0" y="0" z="1"/>
    <Time value="15"/>
   </Waypoint>
   <Waypoint name="Lower Right">
    <Position x="0.95" y="-0.25" z="1"/>
    <Orientation w="0" x="1" y="0" z="0"/>
    <TargetLinkName value="l_hand"/>
-   <TargetLinkAxis x="0" y="1" z="0"/>
+   <TargetLinkAxis x="0" y="0" z="1"/>
    <Time value="20"/>
   </Waypoint>
  </Waypoints>
