@@ -232,10 +232,11 @@ void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String
 
     std::string link_name;
 
+    //TODO: It would be nice to not hard code the group checks
     if (group_name == "l_arm_group" || group_name == "l_arm_with_torso_group"){
-      link_name = "l_hand";
+      link_name = l_hand_frame_;
     }else{
-      link_name = "r_hand";
+      link_name = r_hand_frame_;
     }
 
     geometry_msgs::PoseStamped target_pose;
