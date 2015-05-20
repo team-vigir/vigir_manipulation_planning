@@ -368,6 +368,7 @@ public:
     goal_.extended_planning_options.target_poses.clear();
     goal_.extended_planning_options.target_poses.push_back(plan_request.pose.pose);
     goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION;
+    goal_.extended_planning_options.avoid_collisions = !planner_configuration_.disable_collision_avoidance;
 
     move_action_client_->sendGoal(goal_,
                                   boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
@@ -384,6 +385,9 @@ public:
     goal_.request.num_planning_attempts = 1;
     goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor);
     goal_.request.allowed_planning_time = 1.0;
+
+    goal_.extended_planning_options.avoid_collisions = !planner_configuration_.disable_collision_avoidance;
+
 
     //goal_.request.goal_constraints = plan_request.position;
     //kinematic_constraints::constructGoalConstraints()
