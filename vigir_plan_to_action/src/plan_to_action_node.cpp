@@ -360,7 +360,7 @@ public:
     goal_.request.group_name = plan_request.planning_group.data;
     goal_.request.num_planning_attempts = 1;
     goal_.request.allowed_planning_time = 1.0;
-    goal_.request.max_velocity_scaling_factor = 1.0;
+    goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor);
 
     goal_.request.goal_constraints.clear();
 
@@ -382,7 +382,7 @@ public:
     goal_.request.planner_id = plan_request.planner_id;
     goal_.request.group_name = plan_request.planning_group;
     goal_.request.num_planning_attempts = 1;
-    goal_.request.max_velocity_scaling_factor = 1.0;
+    goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor);
     goal_.request.allowed_planning_time = 1.0;
 
     //goal_.request.goal_constraints = plan_request.position;
