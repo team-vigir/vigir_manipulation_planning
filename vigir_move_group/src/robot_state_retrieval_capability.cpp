@@ -51,9 +51,12 @@ bool move_group::RobotStateRetrievalCapability::getCurrentPlanningGroupState(flo
 
   const robot_state::JointModelGroup* joint_model_group = robot_model->getJointModelGroup(req.group_name);
 
-  const robot_state::RobotState& curr_state = context_->planning_scene_monitor_->getPlanningScene()->getCurrentState();
+  {
+    planning_scene_monitor::LockedPlanningSceneRO ps(context_->planning_scene_monitor_);
+    const robot_state::RobotState& curr_state = context_->planning_scene_monitor_->getPlanningScene()->getCurrentState();
 
-  curr_state.copyJointGroupPositions(joint_model_group, res.position);
+    curr_state.copyJointGroupPositions(joint_model_group, res.position);
+  }
 
   return true;
 }
