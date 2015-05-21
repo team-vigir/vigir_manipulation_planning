@@ -175,9 +175,6 @@ namespace vigir_manipulation_controller {
 
     boost::mutex                               write_data_mutex_;
 
-    moveit::planning_interface::VigirMoveGroup l_arm_group_;
-    moveit::planning_interface::VigirMoveGroup r_arm_group_;
-
     robot_model_loader::RobotModelLoaderPtr    robot_model_loader_;
     robot_model::RobotModelPtr                 robot_model_;
     std::vector<std::string>                   hand_joint_names_;
