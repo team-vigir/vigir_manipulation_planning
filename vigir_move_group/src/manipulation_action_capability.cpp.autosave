@@ -400,6 +400,10 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
   const moveit_msgs::PlanningScene &planning_scene_diff = planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff.robot_state) ?
     goal->planning_options.planning_scene_diff : clearSceneRobotState(goal->planning_options.planning_scene_diff);
 
+  //moveit_msgs::PlanningScenePtr extended_planning_scene_diff;
+  
+  
+  
   opt.replan_ = goal->planning_options.replan;
   opt.replan_attempts_ = goal->planning_options.replan_attempts;
   opt.replan_delay_ = goal->planning_options.replan_delay;
