@@ -86,7 +86,7 @@ private:
                             double max_velocity_scaling_factor);
 
   planning_scene::PlanningScenePtr getCollisionSettingsPlanningSceneDiff(const vigir_planning_msgs::MoveGoalConstPtr& goal,
-                                                                              planning_scene_monitor::LockedPlanningSceneRO& lscene);
+                                                                         planning_scene_monitor::LockedPlanningSceneRO* lscene = 0);
 
   boost::scoped_ptr<actionlib::SimpleActionServer<vigir_planning_msgs::MoveAction> > move_action_server_;
   vigir_planning_msgs::MoveFeedback move_feedback_;

@@ -438,8 +438,24 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
       }
     }
 
+    planning_scene::PlanningScenePtr extended_collision_scene = this->getCollisionSettingsPlanningSceneDiff(goal);
+
     plan_execution::ExecutableMotionPlan plan;
-    context_->plan_execution_->planAndExecute(plan, planning_scene_diff, opt);
+
+    if (extended_collision_scene.get()){
+      // Use extended collision options
+      extended_collision_scene->diff(planning_scene_diff);
+
+      moveit_msgs::PlanningScene extended_collision_scene_msg;
+      extended_collision_scene->getPlanningSceneMsg(extended_collision_scene_msg);
+
+      ROS_INFO("Proceeding with extended collision options");
+      context_->plan_execution_->planAndExecute(plan, extended_collision_scene_msg, opt);
+    }else{
+      // Proceed as per moveit default
+      ROS_INFO("Proceeding with standard plan and move");
+      context_->plan_execution_->planAndExecute(plan, planning_scene_diff, opt);
+    }
 
 
     //@TODO: We only consider first plan for visualization at the moment
@@ -464,7 +480,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanOnly(const
 
   moveit_msgs::PlanningScene planning_scene_diff;
 
-  planning_scene::PlanningScenePtr extended_collision_scene = this->getCollisionSettingsPlanningSceneDiff(goal, lscene);
+  planning_scene::PlanningScenePtr extended_collision_scene = this->getCollisionSettingsPlanningSceneDiff(goal, &lscene);
 
   if (extended_collision_scene.get()){
     //extended_collision_scene->setPlanningSceneMsg(goal->planning_options.planning_scene_diff);
@@ -727,6 +743,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCircularM
 
       if (goal->extended_planning_options.target_poses.size() != 1){
         ROS_ERROR("There has to be exactly one target pose for circular motion requests!");
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
         return;
       }
 
@@ -850,6 +867,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
 
     if (goal->extended_planning_options.target_poses.size() != 1){
       ROS_ERROR("There has to be exactly one target pose for circular motion requests!");
+      action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
       return;
     }
 
@@ -1435,7 +1453,7 @@ bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::
 }
 
 planning_scene::PlanningScenePtr move_group::MoveGroupManipulationAction::getCollisionSettingsPlanningSceneDiff(const vigir_planning_msgs::MoveGoalConstPtr& goal,
-                                                                                                                     planning_scene_monitor::LockedPlanningSceneRO& lscene)
+                                                                                                                planning_scene_monitor::LockedPlanningSceneRO* lscene)
 {
   //const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
   //      static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
@@ -1457,7 +1475,9 @@ planning_scene::PlanningScenePtr move_group::MoveGroupManipulationAction::getCol
 
     collision_detection::AllowedCollisionMatrix& acm = planning_scene_diff->getAllowedCollisionMatrixNonConst();
 
-    acm = lscene.getPlanningSceneMonitor()->getPlanningScene()->getAllowedCollisionMatrix();
+    if (lscene){
+      acm = lscene->getPlanningSceneMonitor()->getPlanningScene()->getAllowedCollisionMatrix();
+    }
 
     //collision_detection::AllowedCollisionMatrix& acm = planning_scene_diff->getAllowedCollisionMatrixNonConst();
 
