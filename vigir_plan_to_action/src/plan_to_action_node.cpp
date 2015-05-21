@@ -369,6 +369,9 @@ public:
     goal_.extended_planning_options.target_poses.push_back(plan_request.pose.pose);
     goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION;
     goal_.extended_planning_options.avoid_collisions = !planner_configuration_.disable_collision_avoidance;
+    goal_.extended_planning_options.extended_planning_scene_diff.allow_left_hand_environment_collision = !planner_configuration_.disable_left_hand_collision_avoidance;
+    goal_.extended_planning_options.extended_planning_scene_diff.allow_right_hand_environment_collision = !planner_configuration_.disable_right_hand_collision_avoidance;
+
 
     move_action_client_->sendGoal(goal_,
                                   boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
@@ -387,6 +390,8 @@ public:
     goal_.request.allowed_planning_time = 1.0;
 
     goal_.extended_planning_options.avoid_collisions = !planner_configuration_.disable_collision_avoidance;
+    goal_.extended_planning_options.extended_planning_scene_diff.allow_left_hand_environment_collision = !planner_configuration_.disable_left_hand_collision_avoidance;
+    goal_.extended_planning_options.extended_planning_scene_diff.allow_right_hand_environment_collision = !planner_configuration_.disable_right_hand_collision_avoidance;
 
 
     //goal_.request.goal_constraints = plan_request.position;
