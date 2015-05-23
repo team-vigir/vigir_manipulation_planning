@@ -21,13 +21,13 @@
     <remap from="grasp_status"         to="/grasp_control/r_hand/grasp_status" />
     <remap from="link_states"          to="/grasp_control/r_hand/tactile_feedback" />
     <remap from="hand_status"          to="/grasp_control/r_hand/hand_status" />
-    <remap from="hand_mass"            to="/grasp_control/r_hand/hand_mass" />
+    <remap from="hand_mass"            to="/grasp_control/template_mass" />
     <remap from="wrist_target"         to="/grasp_control/r_hand/target_pose" />
     <remap from="wrist_plan"           to="/grasp_control/r_hand/plan_request" />
 
     <remap from="wrist_pose"           to="/flor/r_arm_current_pose" />
     <remap from="planner_status"       to="/grasp_planning/r_hand/status" />
-    <remap from="planning_group"       to="/flor/ocs/ghost_ui_state" />
+    <remap from="use_torso"            to="/flor/ocs/ghost/state_use_torso" />
 </node>
 
 </launch>

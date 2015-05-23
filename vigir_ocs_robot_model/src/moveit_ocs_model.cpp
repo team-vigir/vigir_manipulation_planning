@@ -70,12 +70,17 @@ bool MoveItOcsModel::getManipulationMetrics(const std::string& group_name,
  */
 bool MoveItOcsModel::getLinkPose(const std::string& link_name, geometry_msgs::Pose& pose) const
 {
-  const Eigen::Affine3d& link_state = robot_state_->getGlobalLinkTransform(link_name);
+  if (robot_model_->hasLinkModel(link_name)){
+    const Eigen::Affine3d& link_state = robot_state_->getGlobalLinkTransform(link_name);
 
-  //transform_utils::eigenPose2Msg (link_state, pose);
-  tf::poseEigenToMsg(link_state, pose);
 
-  return true;
+    //transform_utils::eigenPose2Msg (link_state, pose);
+    tf::poseEigenToMsg(link_state, pose);
+    return true;
+  }else{
+    ROS_ERROR("Tried to lookup pose for link %s which doesn't exist", link_name.c_str());
+    return false;
+  }
 }
 
 bool MoveItOcsModel::getJointPose(const std::string& joint_name, geometry_msgs::Pose& pose) const
@@ -152,6 +157,28 @@ void MoveItOcsModel::getCollidingLinks(std::vector<std::string>& colliding_links
 {
   colliding_links.clear();
   planning_scene_->getCollidingLinks(colliding_links, *robot_state_);
+}
+
+void MoveItOcsModel::getDifferingLinks(const sensor_msgs::JointState state,
+                                       std::vector<std::string>& differing_links)
+{
+  const std::vector<std::string>& link_names = robot_model_->getLinkModelNames();
+
+  //tmp var used below
+  robot_state::RobotState robot_state_real(robot_model_);
+  jointStateToRobotState(state, robot_state_real);
+
+  for(int i = 0; i < link_names.size(); ++i)
+  {
+     const std::string& link_name = link_names[i];
+
+     const Eigen::Affine3d& link_state_ghost = robot_state_->getGlobalLinkTransform(link_name);
+     const Eigen::Affine3d& link_state_real  = robot_state_real.getGlobalLinkTransform(link_name);
+
+     //Checking for translation is enough
+     if((link_state_ghost.translation() - link_state_real.translation()).norm() > 0.01)
+         differing_links.push_back(link_name);
+  }
 }
 
 size_t MoveItOcsModel::getLinkIndex(const std::string& link_name) const

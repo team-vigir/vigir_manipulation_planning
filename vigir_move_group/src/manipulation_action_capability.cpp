@@ -54,6 +54,7 @@
 #include <vigir_moveit_utils/constrained_motion_utils.h>
 #include <vigir_moveit_utils/joint_constraint_utils.h>
 #include <vigir_moveit_utils/group_utils.h>
+#include <vigir_moveit_utils/planning_scene_utils.h>
 
 
 namespace
@@ -76,6 +77,7 @@ move_group::MoveGroupManipulationAction::MoveGroupManipulationAction() :
   MoveGroupCapability("VigirManipulationAction"),
   move_state_(IDLE)
 {
+  time_param_.reset(new trajectory_processing::IterativeParabolicTimeParameterization());
 }
 
 void move_group::MoveGroupManipulationAction::initialize()
@@ -94,15 +96,40 @@ void move_group::MoveGroupManipulationAction::initialize()
   move_action_server_->registerPreemptCallback(boost::bind(&MoveGroupManipulationAction::preemptMoveCallback, this));
   move_action_server_->start();
 
-  drake_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyTrajectory>("flor_drake_bridge/request_whole_body_trajectory");
-  drake_cartesian_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyCartesianTrajectory>("flor_drake_bridge/request_whole_body_cartesian_trajectory");
-  drake_trajectory_result_pub_ = root_node_handle_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10);
+  drake_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyTrajectory>("drake_planner/request_whole_body_trajectory");
+  drake_cartesian_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyCartesianTrajectory>("drake_planner/request_whole_body_cartesian_trajectory");
+  trajectory_result_display_pub_ = root_node_handle_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10);
+
+
 }
 
 void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal)
 {
   setMoveState(PLANNING);
   context_->planning_scene_monitor_->updateFrameTransforms();
+
+  //planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
+  //const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
+  //  static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
+
+
+  /*
+  {
+    planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
+
+    std::vector<std::string> object_strings = context_->planning_scene_monitor_->getPlanningScene()->getCollisionWorld()->getWorld()->getObjectIds();
+
+    size_t size = object_strings.size();
+
+    const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
+
+    for (size_t i = 0; i < size; ++i){
+      context_->planning_scene_monitor_->getPlanningScene()->getAllowedCollisionMatrixNonConst().setEntry(object_strings[i], robot_model->getLinkModelNames(), !goal->extended_planning_options.avoid_collisions);
+    }
+
+    context_->planning_scene_monitor_->getPlanningScene()->getAllowedCollisionMatrixNonConst().setEntry("<octomap>", robot_model->getLinkModelNames(), !goal->extended_planning_options.avoid_collisions);
+  }
+  */
 
   vigir_planning_msgs::MoveResult action_res;
 
@@ -123,6 +150,10 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
       {
         executeMoveCallback_DrakePlanOnly(goal, action_res);
       }
+      else if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION)
+      {
+          executeMoveCallback_DrakeCircularMotionPlanOnly(goal, action_res);
+      }
       else {
         ROS_WARN("Motion request type %d not implemented for Drake!", goal->extended_planning_options.target_motion_type);
     action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
@@ -136,62 +167,172 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
     action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
   }
   
+  // Below if not using Drake and not using copy of standard MoveIt! Action
   else if (goal->extended_planning_options.target_poses.size() != 0){
 
+      /* Implement reference point from the request
+       * Output needed: targetFrame_T_wrist.
+       * Input needed:  targetFrame_T_referencePoint. This is given in the request as targetPose, but in this case it refers to the reference point, not the wrist.
+       *                wrist_T_referencePoint.   This is the reference point in wrist frame (need to use inverse transform)
+       * targetFrame_T_wrist = targetFrame_T_referencePoint * referencePoint_T_wrist.
+       * For n waypoints:
+       *    waypoint[i] = waypoint[i] * reference_point.inverse;  //User gives point of reference in wrist frame, but need to use inverse: */
 
-    if (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION){
+      std::vector<geometry_msgs::Pose> new_target_poses;
+      vigir_planning_msgs::MoveGoalPtr new_goal;
+      //Copy directly from goal
+      new_goal.reset(new vigir_planning_msgs::MoveGoal());
+      *new_goal = *goal;
+
+    if(goal->extended_planning_options.reference_point.position.x    != 0.0 ||
+       goal->extended_planning_options.reference_point.position.y    != 0.0 ||
+       goal->extended_planning_options.reference_point.position.z    != 0.0 ||
+       goal->extended_planning_options.reference_point.orientation.x != 0.0 ||
+       goal->extended_planning_options.reference_point.orientation.y != 0.0 ||
+       goal->extended_planning_options.reference_point.orientation.z != 0.0 ||
+       goal->extended_planning_options.reference_point.orientation.w != 0.0 ){
+        ROS_INFO("Using reference point in the request");
+        tf::Transform wrist_T_referencePoint;
+        tf::Transform targetFrame_T_referencePoint;
+        tf::Transform targetFrame_T_wrist;
+
+        new_target_poses = goal->extended_planning_options.target_poses;
+
+        if(goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION ||
+           goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS){
+            ROS_INFO("Calculating new waypoints given reference point for FREE MOTIONS and CATRTESIAN WAYPOINTS");
+
+            tf::poseMsgToTF(goal->extended_planning_options.reference_point, wrist_T_referencePoint);
+
+            for (size_t i = 0; i < goal->extended_planning_options.target_poses.size(); ++i){
+                tf::poseMsgToTF(goal->extended_planning_options.target_poses[i], targetFrame_T_referencePoint);
+                targetFrame_T_wrist = targetFrame_T_referencePoint * wrist_T_referencePoint.inverse();
+                tf::poseTFToMsg(targetFrame_T_wrist,new_target_poses[i]);
+            }
+        }else{ //Circular motions behave different when reference point is given. Waypoint is translated but not rotated.
+
+            if(goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION &&
+                 goal->extended_planning_options.keep_endeffector_orientation){
+                ROS_INFO("Calculating new waypoints given reference point for CIRCULAR MOTIONS");
+                //Only used if keep endeffector orientation true or if circular motion requested
+                Eigen::Affine3d eef_start_pose;
+
+                if(!planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+                                                                  context_->planning_scene_monitor_,
+                                                                  eef_start_pose))
+                {
+                  ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
+                  action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+                  return;
+                }
+
+                geometry_msgs::PoseStamped reference_pose;
+
+                reference_pose.header.frame_id = goal->extended_planning_options.reference_point_frame;
+                reference_pose.pose            = goal->extended_planning_options.reference_point;
+
+                if (this->performTransform(reference_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))//Gets reference point in world frame
+                {
+                    geometry_msgs::Pose wristPose;
+                    tf::poseEigenToMsg(eef_start_pose,wristPose);  //Converts eef eigen pose to geometry pose
+
+                    // calculate the difference between them
+                    tf::Vector3 diff_vector;
+                    diff_vector.setX(wristPose.position.x - reference_pose.pose.position.x);
+                    diff_vector.setY(wristPose.position.y - reference_pose.pose.position.y);
+                    diff_vector.setZ(wristPose.position.z - reference_pose.pose.position.z);
+
+                    // apply the difference to the circular center
+                    ROS_INFO("Applying difference vector to rotation axis (x: %f, y: %f, z: %f)", diff_vector.getX(), diff_vector.getY(), diff_vector.getZ());
+                    new_target_poses[0].position.x += diff_vector.getX();
+                    new_target_poses[0].position.y += diff_vector.getY();
+                    new_target_poses[0].position.z += diff_vector.getZ();
+                    ROS_INFO("New rotation axis (x: %f, y: %f, z: %f)", new_target_poses[0].position.x, new_target_poses[0].position.y, new_target_poses[0].position.z);
+
+                }else{
+                    ROS_ERROR("Could not get reference pose (%s) into %s frame, resetting target poses.", reference_pose.header.frame_id.c_str(),
+                                                                                                          context_->planning_scene_monitor_->getRobotModel()->getModelFrame().c_str());
+                }
+            }else{  //Using circular motion without keeping end effector orientation
+                ROS_ERROR("Resetting target poses since no modification is needed when circular and not keeping end effector orientation");
+            }
+        }
+        new_goal->extended_planning_options.target_poses = new_target_poses;
+    }
+
+
+    if (new_goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION){
 
       // For free motion, do IK and plan.
       // Consider additional joint constraints/redundant joints
 
-      moveit_msgs::Constraints goal_constraints;
-      bool found_ik = false;
-
-      {
-        planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
-        robot_state::RobotState tmp = lscene->getCurrentState();
-
-        const robot_state::JointModelGroup* joint_model_group = tmp.getJointModelGroup(goal->request.group_name);
-
-        found_ik = group_utils::setJointModelGroupFromIk(tmp,
-                                                         joint_model_group,
-                                                         goal->extended_planning_options.target_poses[0],
-                                                         goal->request.path_constraints.joint_constraints);
-
-        if (found_ik){
-          goal_constraints = kinematic_constraints::constructGoalConstraints(tmp, joint_model_group);
-        }
-      }
-
-      if (found_ik){
-        vigir_planning_msgs::MoveGoalPtr updated_goal;
-        updated_goal.reset(new vigir_planning_msgs::MoveGoal());
-        *updated_goal = *goal;
-
-        updated_goal->request.goal_constraints.push_back(goal_constraints);
-
-        if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
-        {
-          if (!goal->planning_options.plan_only)
-            ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
-          executeMoveCallback_PlanOnly(updated_goal, action_res);
-        }
-        else
-        {
-          executeMoveCallback_PlanAndExecute(updated_goal, action_res);
-        }
+      if (new_goal->extended_planning_options.target_poses.size() > 1){
+        ROS_ERROR("For FREE MOTION, only a single target pose is supported, but I got %d", (int)new_goal->extended_planning_options.target_poses.size());
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
       }else{
-        ROS_WARN("No valid IK solution found, cannot generate goal constraints!");
-        action_res.error_code.val == moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
+
+        geometry_msgs::PoseStamped goal_pose_planning_frame;
+
+        goal_pose_planning_frame.pose = new_goal->extended_planning_options.target_poses[0];
+        goal_pose_planning_frame.header.frame_id = new_goal->extended_planning_options.target_frame;
+
+        if (this->performTransform(goal_pose_planning_frame, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))
+        {
+
+          moveit_msgs::Constraints goal_constraints;
+          bool found_ik = false;
+
+          {
+            planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
+            robot_state::RobotState tmp = lscene->getCurrentState();
+
+            const robot_state::JointModelGroup* joint_model_group = tmp.getJointModelGroup(new_goal->request.group_name);
+
+            found_ik = group_utils::setJointModelGroupFromIk(tmp,
+                                                             joint_model_group,
+                                                             goal_pose_planning_frame.pose,
+                                                             new_goal->request.path_constraints.joint_constraints);
+
+            if (found_ik){
+              goal_constraints = kinematic_constraints::constructGoalConstraints(tmp, joint_model_group);
+            }
+          }
+
+          if (found_ik){
+            vigir_planning_msgs::MoveGoalPtr updated_goal;
+            updated_goal.reset(new vigir_planning_msgs::MoveGoal());
+            *updated_goal = *new_goal;
+
+            updated_goal->request.goal_constraints.push_back(goal_constraints);
+
+            if (new_goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
+            {
+              if (!new_goal->planning_options.plan_only)
+                ROS_WARN("This instance of MoveGroup is not allowed to execute trajectories but the goal request has plan_only set to false. Only a motion plan will be computed anyway.");
+              executeMoveCallback_PlanOnly(updated_goal, action_res);
+            }
+            else
+            {
+              executeMoveCallback_PlanAndExecute(updated_goal, action_res);
+            }
+          }else{
+            ROS_WARN("No valid IK solution found, cannot generate goal constraints!");
+            action_res.error_code.val = moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
+          }
+        }else{
+          ROS_ERROR("Invalid target frame %s requested for cartesian planning!", new_goal->extended_planning_options.target_frame.c_str());
+          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        }
       }
 
 
 
     }else{
       //Otherwise, perform cartesian motion
-      executeCartesianMoveCallback_PlanAndExecute(goal, action_res);
+      executeCartesianMoveCallback_PlanAndExecute(new_goal, action_res);
     }
 
+  // Below forwards to standard MoveIt Action
   }else{
 
 
@@ -264,6 +405,10 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
         if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS)
         {
             opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planCartesianUsingDrake, this, boost::cref(goal), _1);
+        }
+        else if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION)
+        {
+            opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planCircularMotionUsingDrake, this, boost::cref(goal), _1);
         }
         else if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION) { // normal joint-level planning
             opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingDrake, this, boost::cref(goal), _1);
@@ -338,9 +483,6 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakePlanOnly(
 {
   ROS_INFO("Planning request received for MoveGroup action. Forwarding to Drake.");
 
-  planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
-  const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
-    static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
   planning_interface::MotionPlanResponse res;
 
   const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
@@ -402,11 +544,13 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakePlanOnly(
   if (res.trajectory_) {
     planned_traj_vis_->publishTrajectoryEndeffectorVis(*res.trajectory_);
 
-    moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
-    result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
-    result_trajectory_display_msg.trajectory_start = current_state_msg;
-    result_trajectory_display_msg.model_id = robot_model->getName();
-    drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+    if (trajectory_result_display_pub_.getNumSubscribers() > 0){
+      moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+      result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
+      result_trajectory_display_msg.trajectory_start = current_state_msg;
+      result_trajectory_display_msg.model_id = robot_model->getName();
+      trajectory_result_display_pub_.publish(result_trajectory_display_msg);
+    }
   }
 
   action_res.error_code = res.error_code_;
@@ -418,9 +562,6 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
 {
   ROS_INFO("Planning request received for MoveGroup action. Forwarding to Drake.");
 
-  planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_); // lock the scene so that it does not modify the world representation while diff() is called
-  const planning_scene::PlanningSceneConstPtr &the_scene = (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff)) ?
-    static_cast<const planning_scene::PlanningSceneConstPtr&>(lscene) : lscene->diff(goal->planning_options.planning_scene_diff);
   planning_interface::MotionPlanResponse res;
 
   vigir_planning_msgs::RequestWholeBodyCartesianTrajectory::Response drake_response_msg;
@@ -467,10 +608,12 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
       drake_request_msg.trajectory_request.waypoints = goal->extended_planning_options.target_poses;
       drake_request_msg.trajectory_request.waypoint_times = goal->extended_planning_options.target_pose_times;
       drake_request_msg.trajectory_request.target_link_names = goal->extended_planning_options.target_link_names;
+      drake_request_msg.trajectory_request.target_link_axis = goal->extended_planning_options.target_link_axis;
       drake_request_msg.trajectory_request.free_joint_names = joint_model_group->getJointModelNames();
       drake_request_msg.trajectory_request.target_orientation_type = goal->extended_planning_options.target_orientation_type;
       drake_request_msg.trajectory_request.trajectory_sample_rate = goal->extended_planning_options.trajectory_sample_rate;
       drake_request_msg.trajectory_request.check_self_collisions = goal->extended_planning_options.check_self_collisions;
+      drake_request_msg.trajectory_request.execute_incomplete_cartesian_plans = goal->extended_planning_options.execute_incomplete_cartesian_plans;
 
       // call service and process response
       struct timeval start_time;
@@ -514,19 +657,121 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
   if (res.trajectory_) {
     planned_traj_vis_->publishTrajectoryEndeffectorVis(*res.trajectory_);
 
-    moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
-    result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
-    result_trajectory_display_msg.trajectory_start = current_state_msg;
-    result_trajectory_display_msg.model_id = robot_model->getName();
-    drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+    if (trajectory_result_display_pub_.getNumSubscribers() > 0){
+      moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+      result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
+      result_trajectory_display_msg.trajectory_start = current_state_msg;
+      result_trajectory_display_msg.model_id = robot_model->getName();
+      trajectory_result_display_pub_.publish(result_trajectory_display_msg);
+    }
   }
 
   action_res.error_code = res.error_code_;
   action_res.planning_time = res.planning_time_;
 }
 
+void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCircularMotionPlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
+{
+  ROS_INFO("Received circular cartesian motion request! Forwarding to Drake");
+
+  try
+  {
+      //Everything OK in the beginning, this will be changed below if we encounter problems
+      action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+
+      if (goal->extended_planning_options.target_poses.size() != 1){
+        ROS_ERROR("There has to be exactly one target pose for circular motion requests!");
+        return;
+      }
+
+      //Only used if keep endeffector orientation true or if circular motion requested
+      Eigen::Affine3d eef_start_pose;
+
+      if((goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION ||
+         (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS &&
+          goal->extended_planning_options.keep_endeffector_orientation)) &&
+         !planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+                                                        context_->planning_scene_monitor_,
+                                                        eef_start_pose))
+      {
+        ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        return;
+      }
+
+      std::string eef_link_name;
+      if( ! planning_scene_utils::get_eef_link(goal->request.group_name, eef_link_name)) {
+        ROS_ERROR("Cannot get endeffector link name, circular planning not possible!");
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        return;
+      }
+
+      geometry_msgs::PoseStamped rotation_pose;
+      rotation_pose.pose = goal->extended_planning_options.target_poses[0];
+      rotation_pose.header.frame_id = goal->extended_planning_options.target_frame;
+
+      //Can easily transform goal pose to arbitrary target frame
+      if (this->performTransform(rotation_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))
+      {
+
+
+        Eigen::Affine3d rotation_center;
+        tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
+
+        std::vector <geometry_msgs::Pose> pose_vec;
+        constrained_motion_utils::getCircularArcPoses(rotation_center,
+                                                      eef_start_pose,
+                                                      pose_vec,
+                                                      0.2,
+                                                      goal->extended_planning_options.rotation_angle,
+                                                      goal->extended_planning_options.keep_endeffector_orientation);
+
+        // make a copy of goal, so I can modify it
+        vigir_planning_msgs::MoveGoalPtr new_goal( new vigir_planning_msgs::MoveGoal( *goal ) );
+
+        new_goal->extended_planning_options.target_poses = pose_vec;
+        new_goal->extended_planning_options.target_link_names.assign(pose_vec.size(), eef_link_name);
+        if ( new_goal->extended_planning_options.target_link_axis.empty() == false ) {
+          new_goal->extended_planning_options.target_link_axis.assign(pose_vec.size(), goal->extended_planning_options.target_link_axis[0]);
+        }
+
+        // call default cartesian motion handler
+        executeMoveCallback_DrakeCartesianPlanOnly(new_goal, action_res);
+      }else{
+        ROS_ERROR("Invalid target frame %s requested for drake circular planning!", goal->extended_planning_options.target_frame.c_str());
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+      }
+    }
+  catch(std::runtime_error &ex)
+  {
+    ROS_ERROR("Planning pipeline threw an exception: %s", ex.what());
+    action_res.error_code.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+  }
+  catch(...)
+  {
+    ROS_ERROR("Planning pipeline threw an exception");
+    action_res.error_code.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+  }
+}
+
 void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
 {
+
+  //Only used if keep endeffector orientation true or if circular motion requested
+  Eigen::Affine3d eef_start_pose;
+
+  if((goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION ||
+     (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS &&
+      goal->extended_planning_options.keep_endeffector_orientation)) &&
+     !planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+                                                    context_->planning_scene_monitor_,
+                                                    eef_start_pose))
+  {
+    ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
+    action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+    return;
+  }
+
   moveit_msgs::GetCartesianPath cart_path;
 
   std::vector <geometry_msgs::Pose> pose_vec;
@@ -543,6 +788,14 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
       tmp_pose.pose = goal->extended_planning_options.target_poses[i];
       tmp_pose.header.frame_id = goal->extended_planning_options.target_frame;
       this->performTransform(tmp_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame());
+
+      // Optionally set all poses to keep start orientation
+      if(goal->extended_planning_options.keep_endeffector_orientation)
+      {
+        Eigen::Affine3d oriented_pose = Eigen::Translation3d(Eigen::Vector3d(tmp_pose.pose.position.x,tmp_pose.pose.position.y,tmp_pose.pose.position.z)) * eef_start_pose.rotation();
+        tf::poseEigenToMsg(oriented_pose, tmp_pose.pose);
+      }
+
       pose_vec[i] = tmp_pose.pose;
     }
 
@@ -566,47 +819,50 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
 
     {
-      planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
-      const robot_state::RobotState& curr_state = lscene.getPlanningSceneMonitor()->getPlanningScene()->getCurrentState();
-
-      std::string start_pose_link;
-
-      std::string first_char = goal->request.group_name.substr(0,1);
-
-      if (first_char == "r"){
-        start_pose_link = "r_hand";
-      }else if(first_char == "l"){
-        start_pose_link = "l_hand";
-      }else{
-        ROS_ERROR("Group name %s does not start with l or r. Cannot infer endeffector to use, aborting", goal->request.group_name.c_str());
-        //res.status += flor_planning_msgs::GetMotionPlanForPose::Response::PLANNING_INVALID_REQUEST;
-        return;
-      }
-
-      Eigen::Affine3d start (curr_state.getGlobalLinkTransform(start_pose_link));
-
       constrained_motion_utils::getCircularArcPoses(rotation_center,
-                                                    start,
+                                                    eef_start_pose,
                                                     pose_vec,
                                                     0.2,
                                                     goal->extended_planning_options.rotation_angle,
                                                     goal->extended_planning_options.keep_endeffector_orientation);
-
     }
   }
 
   cart_path.request.waypoints = pose_vec;
 
   cart_path.request.header.stamp = ros::Time::now();
-  cart_path.request.header.frame_id = goal->extended_planning_options.target_frame;
 
-  cart_path.request.jump_threshold = 10.0;
+  //We already converted to planning frame ("world" per default) in the preceding part, so use that.
+  cart_path.request.header.frame_id = context_->planning_scene_monitor_->getRobotModel()->getModelFrame();
+
+  cart_path.request.jump_threshold = 2.0;
   cart_path.request.max_step = 0.01;
   cart_path.request.avoid_collisions = goal->extended_planning_options.avoid_collisions;
   cart_path.request.group_name = goal->request.group_name;
 
   setMoveState(PLANNING);
-  this->computeCartesianPath(cart_path.request, cart_path.response);
+  this->computeCartesianPath(cart_path.request, cart_path.response, goal->request.max_velocity_scaling_factor);
+
+  {
+    planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
+    const robot_state::RobotState& curr_state = lscene.getPlanningSceneMonitor()->getPlanningScene()->getCurrentState();
+
+    robot_trajectory::RobotTrajectoryPtr tmp;
+    tmp.reset(new robot_trajectory::RobotTrajectory(context_->planning_scene_monitor_->getRobotModel(), goal->request.group_name));
+    tmp->setRobotTrajectoryMsg(curr_state, cart_path.response.solution);
+
+    convertToMsg(tmp, action_res.trajectory_start, action_res.planned_trajectory);
+  }
+
+  action_res.extended_planning_result.plan_completion_fraction = cart_path.response.fraction;
+
+  if (trajectory_result_display_pub_.getNumSubscribers() > 0){
+    moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+    result_trajectory_display_msg.trajectory.push_back( action_res.planned_trajectory );
+    result_trajectory_display_msg.trajectory_start = action_res.trajectory_start;
+    result_trajectory_display_msg.model_id = context_->planning_scene_monitor_->getRobotModel()->getName();
+    trajectory_result_display_pub_.publish(result_trajectory_display_msg);
+  }
 
   if ((cart_path.response.fraction < 1.0) && !goal->extended_planning_options.execute_incomplete_cartesian_plans){
     ROS_WARN("Incomplete cartesian plan computed, fraction: %f and goal specified to not execute in that case!", cart_path.response.fraction);
@@ -614,46 +870,31 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     return;
   }
 
-  /*
-  plan_execution::ExecutableMotionPlan plan;
+  //Past this point, we have either full path or allow noncomplete paths
 
-  {
-    planning_scene_monitor::LockedPlanningSceneRO lscene(plan.planning_scene_monitor_);
-    robot_state::RobotState state = lscene.getPlanningSceneMonitor()->getPlanningScene()->getCurrentState();
+  if (!goal->planning_options.plan_only){
+    context_->trajectory_execution_manager_->clear();
 
-
-
-    plan_execution::ExecutableMotionPlan plan;
-    plan.plan_components_.resize(1);
-    plan.plan_components_[0].trajectory_.reset(new robot_trajectory::RobotTrajectory(
-                                                 lscene.getPlanningSceneMonitor()->getPlanningScene()->getRobotModel(),
-                                                 goal->request.group_name));
-    plan.plan_components_[0].trajectory_->setRobotTrajectoryMsg(state, result.solution);
-  }
-
-  setMoveState(MONITOR);
-
-  context_->plan_execution_->executeAndMonitor(plan);
-  */
-
-  context_->trajectory_execution_manager_->clear();
-
-  if (context_->trajectory_execution_manager_->push(cart_path.response.solution)){
-    context_->trajectory_execution_manager_->execute();
-    moveit_controller_manager::ExecutionStatus es = context_->trajectory_execution_manager_->waitForExecution();
-    if (es == moveit_controller_manager::ExecutionStatus::SUCCEEDED)
-      action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
-    else
-      if (es == moveit_controller_manager::ExecutionStatus::PREEMPTED)
-        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PREEMPTED;
+    if (context_->trajectory_execution_manager_->push(cart_path.response.solution)){
+      context_->trajectory_execution_manager_->execute();
+      moveit_controller_manager::ExecutionStatus es = context_->trajectory_execution_manager_->waitForExecution();
+      if (es == moveit_controller_manager::ExecutionStatus::SUCCEEDED)
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
       else
-        if (es == moveit_controller_manager::ExecutionStatus::TIMED_OUT)
-          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::TIMED_OUT;
+        if (es == moveit_controller_manager::ExecutionStatus::PREEMPTED)
+          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PREEMPTED;
         else
-          action_res.error_code.val = moveit_msgs::MoveItErrorCodes::CONTROL_FAILED;
-    ROS_INFO_STREAM("Execution completed: " << es.asString());
+          if (es == moveit_controller_manager::ExecutionStatus::TIMED_OUT)
+            action_res.error_code.val = moveit_msgs::MoveItErrorCodes::TIMED_OUT;
+          else
+            action_res.error_code.val = moveit_msgs::MoveItErrorCodes::CONTROL_FAILED;
+      ROS_INFO_STREAM("Execution completed: " << es.asString());
+    }else{
+      ROS_WARN("Could not push trajectory for execution!");
+    }
   }else{
-    ROS_WARN("Could not push trajectory for execution!");
+    action_res.planned_trajectory = cart_path.response.solution;
+    action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
   }
 }
 
@@ -728,11 +969,13 @@ bool move_group::MoveGroupManipulationAction::planUsingDrake(const vigir_plannin
       planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
 
       // display preview in rviz
-      moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
-      result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
-      result_trajectory_display_msg.trajectory_start = current_state_msg;
-      result_trajectory_display_msg.model_id = robot_model->getName();
-      drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+      if (trajectory_result_display_pub_.getNumSubscribers() > 0){
+        moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+        result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
+        result_trajectory_display_msg.trajectory_start = current_state_msg;
+        result_trajectory_display_msg.model_id = robot_model->getName();
+        trajectory_result_display_pub_.publish(result_trajectory_display_msg);
+      }
     }
     plan.error_code_ = res.error_code_;
     return solved;
@@ -787,10 +1030,12 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
         drake_request_msg.trajectory_request.waypoints = goal->extended_planning_options.target_poses;
         drake_request_msg.trajectory_request.waypoint_times = goal->extended_planning_options.target_pose_times;
         drake_request_msg.trajectory_request.target_link_names = goal->extended_planning_options.target_link_names;
+        drake_request_msg.trajectory_request.target_link_axis = goal->extended_planning_options.target_link_axis;
         drake_request_msg.trajectory_request.free_joint_names = joint_model_group->getJointModelNames();
         drake_request_msg.trajectory_request.target_orientation_type = goal->extended_planning_options.target_orientation_type;
         drake_request_msg.trajectory_request.trajectory_sample_rate = goal->extended_planning_options.trajectory_sample_rate;
         drake_request_msg.trajectory_request.check_self_collisions = goal->extended_planning_options.check_self_collisions;
+        drake_request_msg.trajectory_request.execute_incomplete_cartesian_plans = goal->extended_planning_options.execute_incomplete_cartesian_plans;
 
         // call service and process response
         struct timeval start_time;
@@ -836,15 +1081,101 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
       planned_traj_vis_->publishTrajectoryEndeffectorVis(*plan.plan_components_[0].trajectory_);
 
       // display preview in rviz
-      moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
-      result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
-      result_trajectory_display_msg.trajectory_start = current_state_msg;
-      result_trajectory_display_msg.model_id = robot_model->getName();
-      drake_trajectory_result_pub_.publish(result_trajectory_display_msg);
+      if (trajectory_result_display_pub_.getNumSubscribers() > 0){
+        moveit_msgs::DisplayTrajectory result_trajectory_display_msg;
+        result_trajectory_display_msg.trajectory.push_back( drake_response_msg.trajectory_result.result_trajectory );
+        result_trajectory_display_msg.trajectory_start = current_state_msg;
+        result_trajectory_display_msg.model_id = robot_model->getName();
+        trajectory_result_display_pub_.publish(result_trajectory_display_msg);
+      }
     }
     plan.error_code_ = res.error_code_;
     return solved;
 }
+
+bool move_group::MoveGroupManipulationAction::planCircularMotionUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan)
+{
+    ROS_INFO("Received circular cartesian motion request! Forwarding to Drake");
+
+    try
+    {
+        //Everything OK in the beginning, this will be changed below if we encounter problems
+        plan.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+
+        if (goal->extended_planning_options.target_poses.size() != 1){
+          ROS_ERROR("There has to be exactly one target pose for circular motion requests!");
+          plan.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+          return false;
+        }
+
+          //Only used if keep endeffector orientation true or if circular motion requested
+          Eigen::Affine3d eef_start_pose;
+
+          if((goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION ||
+             (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS &&
+              goal->extended_planning_options.keep_endeffector_orientation)) &&
+             !planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+                                                            context_->planning_scene_monitor_,
+                                                            eef_start_pose))
+          {
+            ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
+            plan.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+            return false;
+          }
+
+          std::string eef_link_name;
+          if( ! planning_scene_utils::get_eef_link(goal->request.group_name, eef_link_name)) {
+            ROS_ERROR("Cannot get endeffector link name, circular planning not possible!");
+            plan.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+            return false;
+          }
+
+          geometry_msgs::PoseStamped rotation_pose;
+          rotation_pose.pose = goal->extended_planning_options.target_poses[0];
+          rotation_pose.header.frame_id = goal->extended_planning_options.target_frame;
+
+          //Can easily transform goal pose to arbitrary target frame
+          this->performTransform(rotation_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame());
+
+
+          Eigen::Affine3d rotation_center;
+          tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
+
+          std::vector <geometry_msgs::Pose> pose_vec;
+          constrained_motion_utils::getCircularArcPoses(rotation_center,
+                                                          eef_start_pose,
+                                                          pose_vec,
+                                                          0.2,
+                                                          goal->extended_planning_options.rotation_angle,
+                                                          goal->extended_planning_options.keep_endeffector_orientation);
+
+          // make a copy of goal, so I can modify it
+          vigir_planning_msgs::MoveGoalPtr new_goal( new vigir_planning_msgs::MoveGoal( *goal ) );
+
+          new_goal->extended_planning_options.target_poses = pose_vec;
+          new_goal->extended_planning_options.target_link_names.assign(pose_vec.size(), eef_link_name);
+          if ( new_goal->extended_planning_options.target_link_axis.empty() == false ) {
+              new_goal->extended_planning_options.target_link_axis.assign(pose_vec.size(), goal->extended_planning_options.target_link_axis[0]);
+          }
+
+          // call default cartesian motion handler
+          return planCartesianUsingDrake(new_goal, plan);
+        }
+      catch(std::runtime_error &ex)
+      {
+        ROS_ERROR("Planning pipeline threw an exception: %s", ex.what());
+        plan.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        return false;
+      }
+      catch(...)
+      {
+        ROS_ERROR("Planning pipeline threw an exception");
+        plan.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        return false;
+      }
+}
+
+
 
 bool move_group::MoveGroupManipulationAction::planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan)
 {
@@ -902,7 +1233,9 @@ void move_group::MoveGroupManipulationAction::setMoveState(MoveGroupState state)
 }
 
 // This is basically a copy of the original MoveIt! cartesian planner with minor mods
-bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req, moveit_msgs::GetCartesianPath::Response &res)
+bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req,
+                                                                   moveit_msgs::GetCartesianPath::Response &res,
+                                                                   double max_velocity_scaling_factor)
 {
   /*
   if (marker_array_pub_.getNumSubscribers() > 0){
@@ -1022,11 +1355,10 @@ bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::
           for (std::size_t i = 0 ; i < traj_filtered.size() ; ++i)
             rt.addSuffixWayPoint(traj_filtered[i], 0.2); // \todo make 0.2 a param; better: compute time stemps based on eef distance and param m/s speed for eef;
 
-          /*
-          if (!time_param_.computeTimeStamps(rt, planner_configuration_.trajectory_time_factor.data)){
+
+          if (!time_param_->computeTimeStamps(rt, max_velocity_scaling_factor)){
             ROS_WARN("Time parametrization for the solution path failed.");
           }
-          */
 
           //trajectory_utils::removeZeroDurationJointTrajectoryPoints(rt);
 

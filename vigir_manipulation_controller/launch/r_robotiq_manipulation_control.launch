@@ -5,7 +5,7 @@
 
 <include file="$(find vigir_robotiq_ros_control)/launch/r_robotiq_ros_controller.launch"/>  <!--Specific ROS controller for hand (if required)-->
 <!-- -->
-<node name="right_vigir_manipulation_controller" pkg="vigir_robotiq_grasp_controller" type="vigir_robotiq_grasp_controller_node" respawn="true" ><!--output="screen"  launch-prefix="xterm -e gdb -ex r"-->
+<node name="right_vigir_manipulation_controller" pkg="vigir_robotiq_grasp_controller" type="vigir_robotiq_grasp_controller_node" respawn="true" output="screen" ><!-- launch-prefix="xterm -e gdb -ex r"-->
 
     <param name="wrist_name"  value="r_hand" />      <!--Last arm link name-->
     <param name="hand_link"   value="right_palm" />  <!--First hand link name-->
@@ -17,18 +17,25 @@
     <remap from="attach_object"        to="/manipulation_control/r_hand/attach_object" />
     <remap from="detach_object"        to="/manipulation_control/r_hand/detach_object" />
     <remap from="affordance_command"   to="/manipulation_control/r_hand/affordance_command" />
+    <remap from="wrist_affordance"     to="/manipulation_control/r_hand/wrist_affordance_srv" />
     <remap from="hand_marker"          to="/manipulation_control/r_hand/hand_marker" />
 
     <remap from="grasp_command"        to="/grasp_control/r_hand/grasp_command" />
     <remap from="grasp_status"         to="/grasp_control/r_hand/grasp_status" />
     <remap from="link_states"          to="/grasp_control/r_hand/tactile_feedback" />
     <remap from="hand_status"          to="/grasp_control/r_hand/hand_status" />
-    <remap from="hand_mass"            to="/grasp_control/r_hand/hand_mass" />
+    <remap from="hand_mass"            to="/grasp_control/template_mass" />
     <remap from="wrist_target"         to="/grasp_control/r_hand/target_pose" />
     <remap from="wrist_plan"           to="/grasp_control/r_hand/plan_request" />
 
     <remap from="wrist_pose"           to="/flor/r_arm_current_pose" />
     <remap from="planner_status"       to="/grasp_planning/r_hand/status" />
-    <remap from="planning_group"       to="/flor/ocs/ghost_ui_state" />
+    <remap from="use_torso"            to="/flor/ocs/ghost/state_use_torso" />
 </node>
+
+<node name="right_robotiq_fake_joint_publisher" pkg="vigir_robotiq_grasp_controller" type="robotiq_fake_joints_node">
+<param name="hand_prefix" value="right"/>
+<param name="fake_time"   value="120"/>
+</node>
+
 </launch>

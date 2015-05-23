@@ -36,6 +36,7 @@
 #include <flor_planning_msgs/PlanRequest.h>
 #include <vigir_planning_msgs/PlannerConfiguration.h>
 #include <flor_planning_msgs/PlanToJointTargetRequest.h>
+#include <std_msgs/Int8.h>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <moveit_msgs/RobotState.h>
@@ -56,6 +57,9 @@ public:
 
   void incomingJointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg);
 
+  void realJointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg);
+
+
   // Sets global pose of model
   void rootPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
@@ -71,6 +75,8 @@ public:
 
   void incomingPlanToJointRequestCallback(const std_msgs::String::ConstPtr& msg);
 
+  void ghostStateCallback(const std_msgs::Bool::ConstPtr& msg);
+
   void updateRobotStateColors();
 
   void setLinkColor(double r, double g, double b, double a, size_t index);
@@ -78,11 +84,16 @@ public:
   void setLinkColors(double r, double g, double b, double a);
 
 protected:
+  void setPoseWithWholeBodyIK( const std::vector< ::geometry_msgs::PoseStamped > goal_poses, const std::vector<std_msgs::String> target_link_names, const std::string& group_name);
+
   bool collision_avoidance_active_;
+  bool use_drake_ik_;
 
   boost::shared_ptr<MoveItOcsModel> ocs_model_;
 
   moveit_msgs::DisplayRobotState display_state_msg_;
+
+  sensor_msgs::JointStateConstPtr real_joint_states_;
 
   ros::Publisher pose_plan_request_pub_;
   ros::Publisher joint_plan_request_pub_;
@@ -91,19 +102,32 @@ protected:
   ros::Subscriber incoming_plan_to_joint_request_sub_;
 
   ros::Subscriber incoming_joint_states_sub_;
+  ros::Subscriber incoming_real_joint_states_sub_;
+
   ros::Subscriber pose_sub_;
   ros::Subscriber root_pose_sub_;
   ros::Subscriber torso_joint_position_constraints_sub_;
 
   ros::Publisher robot_state_vis_pub_;
+  ros::Publisher robot_state_diff_real_vis_pub_;
+
+
   ros::Publisher marker_array_pub_;
   ros::Publisher current_ghost_joint_states_pub_;
+  ros::Publisher ghost_pelvis_pose_pub_;
 
   ros::Publisher left_hand_pose_pub_;
   ros::Publisher right_hand_pose_pub_;
   ros::Publisher pose_pub_;
 
   ros::Timer ee_pose_pub_timer_;
+
+  ros::ServiceClient whole_body_ik_client_;
+  ros::Subscriber ghost_state_sub_;
+  std::string base_frame_;
+  std::string l_hand_frame_;
+  std::string r_hand_frame_;
+  std::string pelvis_frame_;
 };
 
 #endif

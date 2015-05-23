@@ -4,37 +4,40 @@
 <launch>
 
 <!-- -->
-<!--<node name="left_vigir_manipulation_controller"  pkg="thor_vt_hand_grasp_controller" type="thor_vt_hand_grasp_controller_node" respawn="true" >--><!-- output="screen" launch-prefix="xterm -e gdb -ex r"-->
+<node name="left_vigir_manipulation_controller"  pkg="thor_vt_hand_grasp_controller" type="thor_vt_hand_grasp_controller_node" respawn="true" ><!-- output="screen" launch-prefix="xterm -e gdb -ex r"-->
 
-    <!--<param name="wrist_name"  value="l_hand" /> -->     <!--Last arm link name-->
-    <!--<param name="hand_link"   value="left_palm"  />-->  <!--First hand link name-->
-    <!--<param name="joint_group" value="left_hand"  />-->  <!--Hand joint group specified in SRDF-->
+    <param name="wrist_name"  value="l_hand" />      <!--Last arm link name-->
+    <param name="hand_link"   value="l_palm" />  <!--First hand link name-->
+    <param name="joint_group" value="l_hand_group" />  <!--Hand joint group specified in SRDF-->
 
-    <!--<remap from="template_stitch_pose" to="/manipulation_control/l_hand/template_stitch_pose" />
+    <remap from="template_stitch_pose" to="/manipulation_control/l_hand/template_stitch_pose" />
     <remap from="template_stitch"      to="/manipulation_control/l_hand/template_stitch_request" />
     <remap from="move_to_pose"         to="/manipulation_control/l_hand/move_to_pose" />
     <remap from="attach_object"        to="/manipulation_control/l_hand/attach_object" />
     <remap from="detach_object"        to="/manipulation_control/l_hand/detach_object" />
     <remap from="affordance_command"   to="/manipulation_control/l_hand/affordance_command" />
+    <remap from="wrist_affordance"     to="/manipulation_control/l_hand/wrist_affordance_srv" />
     <remap from="hand_marker"          to="/manipulation_control/l_hand/hand_marker" />
 
     <remap from="grasp_command"        to="/grasp_control/l_hand/grasp_command" />
     <remap from="grasp_status"         to="/grasp_control/l_hand/grasp_status" />
     <remap from="link_states"          to="/grasp_control/l_hand/tactile_feedback" />
     <remap from="hand_status"          to="/grasp_control/l_hand/hand_status" />
-    <remap from="hand_mass"            to="/grasp_control/l_hand/hand_mass" />
+    <remap from="hand_mass"            to="/grasp_control/template_mass" />
     <remap from="wrist_target"         to="/grasp_control/l_hand/target_pose" />
     <remap from="wrist_plan"           to="/grasp_control/l_hand/plan_request" />
 
     <remap from="wrist_pose"           to="/flor/l_arm_current_pose" />
     <remap from="planner_status"       to="/grasp_planning/l_hand/status" />
-    <remap from="planning_group"       to="/flor/ocs/ghost_ui_state" />
-</node>-->
+    <remap from="use_torso"            to="/flor/ocs/ghost/state_use_torso" />
+</node>
 
   <node name    = "start_left_controller"
         pkg     = "thor_vt_hand_ros_control"
         type    = "start_controller_script"
-        args    = "left_hand_traj_controller" /><!--
+        args    = "left_hand_traj_controller"  /><!--
         output  = "screen"    />-->
+
+  <node name="vt_hand_fake_joint_publisher" pkg="thor_vt_hand_grasp_controller" type="vt_hand_fake_joints_node" respawn="true" />
 
 </launch>

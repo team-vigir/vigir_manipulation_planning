@@ -66,6 +66,7 @@ private:
 
   void executeMoveCallback_DrakePlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
   void executeMoveCallback_DrakeCartesianPlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
+  void executeMoveCallback_DrakeCircularMotionPlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
 
   void executeCartesianMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
   void startMoveExecutionCallback();
@@ -75,9 +76,12 @@ private:
   bool planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan);
   bool planUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
   bool planCartesianUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
+  bool planCircularMotionUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
 
   // Mostly copy of MoveGroup CartesianPath service with modifications
-  bool computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req, moveit_msgs::GetCartesianPath::Response &res);
+  bool computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req,
+                            moveit_msgs::GetCartesianPath::Response &res,
+                            double max_velocity_scaling_factor);
 
   boost::scoped_ptr<actionlib::SimpleActionServer<vigir_planning_msgs::MoveAction> > move_action_server_;
   vigir_planning_msgs::MoveFeedback move_feedback_;
@@ -92,13 +96,12 @@ private:
   ros::ServiceClient drake_trajectory_srv_client_;
   ros::ServiceClient drake_cartesian_trajectory_srv_client_;
 
-  ros::Publisher drake_trajectory_result_pub_;
+  ros::Publisher trajectory_result_display_pub_;
 
   tf::TransformListener transform_listener_;
-  trajectory_processing::IterativeParabolicTimeParameterization time_param_;
+
+  boost::shared_ptr<trajectory_processing::IterativeParabolicTimeParameterization> time_param_;
 };
-
-
 
 }
 

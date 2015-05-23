@@ -18,6 +18,8 @@ find_package(catkin REQUIRED COMPONENTS
   trajectory_msgs
   vigir_object_template_msgs
   vigir_planning_interface
+  vigir_planning_msgs
+  actionlib
 )
 
 #set the default path for built executables to the "bin" directory
@@ -97,7 +99,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES vigir_manipulation_controller
-  CATKIN_DEPENDS flor_control_msgs flor_grasp_msgs flor_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp urdf tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface
+  CATKIN_DEPENDS actionlib flor_control_msgs flor_grasp_msgs flor_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp urdf tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface vigir_planning_msgs
 #  DEPENDS system_lib
 )
 
@@ -125,7 +127,7 @@ src/vigir_manipulation_controller.cpp
 ## Declare a cpp library
 add_library(${PROJECT_NAME} ${SOURCE} ${HEADERS} )
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} vigir_object_template_msgs_generate_messages_cpp)
 
 ## Declare a cpp executable
 #add_executable(vigir_manipulation_controller_node ${SOURCE} ${HEADERS})

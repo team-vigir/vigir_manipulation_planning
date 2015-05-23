@@ -51,7 +51,6 @@
 #include <flor_grasp_msgs/GraspState.h>
 #include <flor_grasp_msgs/HandStatus.h>
 #include "flor_ocs_msgs/OCSRobotStatus.h"
-#include "flor_ocs_msgs/OCSGhostControl.h"
 #include "flor_ocs_msgs/RobotStatusCodes.h"
 #include "flor_control_msgs/FlorControlMode.h"
 #include <flor_planning_msgs/PlanRequest.h>
@@ -60,17 +59,22 @@
 #include <flor_atlas_msgs/AtlasHandMass.h>
 #include <flor_control_msgs/FlorControlModeCommand.h>
 
+#include <actionlib/client/simple_action_client.h>
+#include <vigir_planning_msgs/MoveAction.h>
+#include <vigir_planning_msgs/ExtendedPlanningOptions.h>
+
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <tf/tfMessage.h>
 
 #include <trajectory_msgs/JointTrajectory.h>
 
 #include <vigir_object_template_msgs/GetInstantiatedGraspInfo.h>
 #include <vigir_object_template_msgs/GetTemplateStateAndTypeInfo.h>
 #include <vigir_object_template_msgs/SetAttachedObjectTemplate.h>
-#include <vigir_object_template_msgs/DetachObjectTemplate.h>
 #include <vigir_object_template_msgs/Affordance.h>
+#include <vigir_object_template_msgs/GetAffordanceInWristFrame.h>
 
 //#include <vigir_manipulation_planning/vigir_planning_interface/vigir_move_group_interface/include/moveit/vigir_move_group_interface/move_group.h>
 #include <moveit/vigir_move_group_interface/move_group.h>
@@ -130,14 +134,6 @@ namespace vigir_manipulation_controller {
     */
    virtual GraspQuality processHandTactileData()                                = 0;
 
-   /* This Function will set the JointStates that correspond to a "Close Hand" configuration
-    */
-   virtual void setCloseFingerPoses(const uint8_t& grasp_type)                  = 0;
-
-   /* This Function will set the JointStates that correspond to an "Open Hand" configuration
-    */
-   virtual void setOpenFingerPoses(const uint8_t& grasp_type)                   = 0;
-
     flor_grasp_msgs::HandStatus                last_hand_status_msg_;
     flor_grasp_msgs::LinkState                 link_tactile_;
 
@@ -157,15 +153,20 @@ namespace vigir_manipulation_controller {
     std::string                                hand_side_;       // left or right
     int                                        hand_id_;         // -1=left, 1=right
     std::string                                planning_group_;
+    char                                       last_template_stitch_id_;
 
     // Internal variables used by active controllers
     vigir_object_template_msgs::GetInstantiatedGraspInfoResponse last_grasp_res_;
+    vigir_object_template_msgs::GetTemplateStateAndTypeInfo      template_srv_;
+
     tf::Transform                              palmStitch_T_hand_;
     tf::Transform                              hand_T_palm_;
+    tf::Transform                              hand_T_marker_;
 //    tf::TransformListener                      listener_;
     flor_planning_msgs::PlanRequest            wrist_target_pose_;
-    flor_atlas_msgs::AtlasHandMass             hand_mass_msg_;
+    flor_atlas_msgs::AtlasHandMass             template_mass_msg_;
     geometry_msgs::PoseStamped                 com_;
+    geometry_msgs::PoseStamped                 wrist_T_template_;
 
     //Grasp status message
     flor_ocs_msgs::OCSRobotStatus              grasp_status_;
@@ -173,9 +174,6 @@ namespace vigir_manipulation_controller {
     RobotStatusCodes::StatusLevel              grasp_status_severity_;
 
     boost::mutex                               write_data_mutex_;
-
-    moveit::planning_interface::VigirMoveGroup l_arm_group_;
-    moveit::planning_interface::VigirMoveGroup r_arm_group_;
 
     robot_model_loader::RobotModelLoaderPtr    robot_model_loader_;
     robot_model::RobotModelPtr                 robot_model_;
@@ -188,7 +186,7 @@ namespace vigir_manipulation_controller {
     ros::Publisher     template_stitch_pose_pub_ ;
     ros::Publisher     wrist_plan_pub_   ;
     ros::Publisher     grasp_status_pub_ ;
-    ros::Publisher     hand_mass_pub_ ;
+    ros::Publisher     template_mass_pub_ ;
     ros::Publisher     tactile_feedback_pub_;
     ros::Publisher     circular_plan_request_pub_;
     ros::Publisher     cartesian_plan_request_pub_;
@@ -197,7 +195,6 @@ namespace vigir_manipulation_controller {
     ros::Subscriber    moveToPose_sub_;       ///< Current template and grasp selection message
     ros::Subscriber    grasp_command_sub_;         ///< Releasgrasp_joint_controller.e grasp and reset the initial finger positions
     ros::Subscriber    template_stitch_sub_;       ///< Current template pose to be stitched
-    ros::Subscriber    attach_object_sub_;         ///< Attach current template
     ros::Subscriber    detach_object_sub_;         ///< Detach current template
     ros::Subscriber    affordance_command_sub_;    ///< Circulat and Cartesian affordance
     ros::Subscriber    update_hand_marker_sub_;    ///< Update the pose of the marker to control the end-effector
@@ -210,9 +207,10 @@ namespace vigir_manipulation_controller {
 
     ros::ServiceClient inst_grasp_info_client_;
     ros::ServiceClient template_info_client_;
-    ros::ServiceClient attach_object_client_;
     ros::ServiceClient stitch_object_client_;
     ros::ServiceClient detach_object_client_;
+
+    ros::ServiceServer wrist_affordance_server_;
 
     /** This function is called whenever the template needs to be stitched to the real object.
      * assump template pose is given in world frame
@@ -225,9 +223,9 @@ namespace vigir_manipulation_controller {
     void moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp);
 
     /** Set the current planning group to "arm only" or "arm + torso"           */
-    void  graspPlanningGroupCallback(const flor_ocs_msgs::OCSGhostControl& planning_group);
+    void  graspPlanningGroupCallback(const std_msgs::Bool::ConstPtr& msg);
     void  affordanceCommandCallback(const vigir_object_template_msgs::Affordance &affordance);
-    void  updateHandMarkerCallback(const geometry_msgs::Pose &hand_T_marker);
+    void  updateHandMarkerCallback(const std_msgs::Int8 &usability_id);
 
    /**
     * This function must be called to publish the updated wrist target after the template is updated.
@@ -235,23 +233,27 @@ namespace vigir_manipulation_controller {
     void updateWristTarget();
 
     void updateGraspStatus(); // call to publish latest grasp data
-    void updateHandMass(); // call to publish latest grasp data
-    void processHandMassData(const tf::Transform& hand_T_template, float &template_mass, tf::Vector3 &template_com);
+    void updateTemplateMass(); // call to publish latest grasp data
+    void processTemplateMassData(geometry_msgs::PoseStamped &template_pose, float &template_mass, geometry_msgs::Point &template_com);
     void handStatusCallback(const flor_grasp_msgs::HandStatus msg);
 
     void requestInstantiatedGraspService(const uint16_t& requested_template_type);
 
-    void setAttachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
     void setDetachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
     void setStitchingObject(const flor_grasp_msgs::TemplateSelection& template_data);
 
     void sendCircularAffordance(vigir_object_template_msgs::Affordance affordance);
     void sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance);
+    void sendFixedPoseAffordance(vigir_object_template_msgs::Affordance affordance);
+    void sendFinalGrasp(geometry_msgs::PoseStamped final_grasp);
 
+    bool affordanceInWristFrame(vigir_object_template_msgs::GetAffordanceInWristFrame::Request& req,
+                                vigir_object_template_msgs::GetAffordanceInWristFrame::Response& res);
 
     // Calculate the wrist target in world frame given wrist pose in template frame
     int calcWristTarget(const geometry_msgs::Pose& wrist_pose);
     int poseTransform(geometry_msgs::Pose& input_pose, tf::Transform transform);
+    int poseTransform(tf::Transform transform, geometry_msgs::Pose& input_pose);
 
   };
 
