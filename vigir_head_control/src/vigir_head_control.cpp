@@ -8,7 +8,9 @@ namespace head_control{
 
         ROS_DEBUG("Creating Head Controler");
         ros::NodeHandle nh_("");
+        ros::NodeHandle pnh_("~");
 
+        pnh_.param("track_frame_threshold", track_frame_threshold,0.01);
         head_control_sub = nh_.subscribe("/thor_mang/head_control_mode", 1, &HeadControl::HeadControlCb, this);
 
         tf_sub = nh_.subscribe("/tf", 10, &HeadControl::tfCb, this);
@@ -17,6 +19,9 @@ namespace head_control{
         right_hand_sub = nh_.subscribe("/flor/r_arm_current_pose", 1, &HeadControl::trackRightHandCb, this);
 
         joint_trajectory_pub = nh_.advertise<trajectory_msgs::JointTrajectory>("/thor_mang/head_traj_controller/command", 0, false);
+
+        old_target_frame_origin.setZero();
+
     }
 
     HeadControl::~HeadControl()
@@ -143,42 +148,33 @@ namespace head_control{
             return std::vector<double>();
         }
 
+
+        if ( (old_target_frame_origin.isZero()) || (old_target_frame_origin.distance(lookat_point_transform.getOrigin()) > track_frame_threshold) ){
+                old_target_frame_origin = lookat_point_transform.getOrigin();
+        }
+
         try {
-            tf.waitForTransform("utorso", "head_cam_link", ros::Time(), ros::Duration(1.0));
-            tf.lookupTransform("utorso", "head_cam_link", ros::Time(), base_camera_transform);
+            tf.waitForTransform("utorso", "head_link", ros::Time(), ros::Duration(1.0));
+            tf.lookupTransform("utorso", "head_link", ros::Time(), base_camera_transform);
         } catch (std::runtime_error& e) {
             ROS_WARN("Could not transform from base frame to camera_frame %s", e.what());
             return std::vector<double>();
         }
 
-        tf::Vector3 dir(lookat_point_transform.getOrigin().x() - base_camera_transform.getOrigin().x(), lookat_point_transform.getOrigin().y() - base_camera_transform.getOrigin().y(), lookat_point_transform.getOrigin().z() - base_camera_transform.getOrigin().z());
+
+
+        tf::Vector3 dir(old_target_frame_origin.x() - base_camera_transform.getOrigin().x(), old_target_frame_origin.y() - base_camera_transform.getOrigin().y(), old_target_frame_origin.z() - base_camera_transform.getOrigin().z());
 
         double pan = atan2(dir.y(), dir.x()); //yaw
         double tilt = -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y()));  // pitch
 
         std::vector<double> joints;
 
-        // check for pan limits
-        if  (pan <= -1.57) {
-            joints.push_back(-1.57);
-        }
-        else if (pan >= 2.45) {
-            joints.push_back(2.45);
-        }
-        else {
-            joints.push_back(pan);
-        }
+        pan = std::min(std::max(-1.57, pan), 2.45);
+        tilt = std::min(std::max(-1.32, tilt), 0.79);
 
-        // check for tilt limits
-        if  (pan <= -1.32) {
-            joints.push_back(-1.32);
-        }
-        else if (pan >= 0.79) {
-            joints.push_back(0.79);
-        }
-        else {
-            joints.push_back(tilt);
-        }
+        joints.push_back(pan);
+        joints.push_back(tilt);
 
         return joints;
     }
