@@ -805,6 +805,7 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
     move_goal.extended_planning_options.avoid_collisions                   = false;
     move_goal.extended_planning_options.keep_endeffector_orientation       = affordance.keep_orientation;
     move_goal.extended_planning_options.rotation_angle                     = affordance.displacement;
+    move_goal.extended_planning_options.pitch                              = affordance.pitch;
     move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;
     move_goal.request.group_name                                           = this->planning_group_;
     move_goal.request.allowed_planning_time                                = 1.0;

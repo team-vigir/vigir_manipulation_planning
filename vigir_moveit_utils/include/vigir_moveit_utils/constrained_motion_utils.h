@@ -51,19 +51,25 @@ namespace constrained_motion_utils{
                                   std::vector<geometry_msgs::Pose>& poses,
                                   double angular_resolution,
                                   double arc_length,
-                                  bool keep_orientation = false)
+                                  bool keep_orientation = false,
+                                  double pitch = 0.0)
   {
     double sizef = fabs(arc_length / angular_resolution);
 
     size_t size = static_cast<size_t> (sizef);
     double direction = arc_length > 0.0 ? 1.0 : -1.0;
 
+    double pitch_increment = pitch / sizef;
+
     poses.resize(size);
 
     for (size_t i = 0; i < size; ++i){
       Eigen::Affine3d rotation_increment (Eigen::AngleAxisd(direction*angular_resolution*static_cast<double>(i), Eigen::Vector3d::UnitX()));
 
+      Eigen::Translation3d translation_increment (pitch_increment*static_cast<double>(i) * Eigen::Vector3d::UnitX());
+
       Eigen::Affine3d pose ( rotation_center *
+                             translation_increment *
                              rotation_increment *
                              rotation_center.inverse() *
                              start_point);

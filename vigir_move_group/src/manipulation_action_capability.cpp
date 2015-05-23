@@ -724,7 +724,8 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCircularM
                                                       pose_vec,
                                                       0.2,
                                                       goal->extended_planning_options.rotation_angle,
-                                                      goal->extended_planning_options.keep_endeffector_orientation);
+                                                      goal->extended_planning_options.keep_endeffector_orientation,
+                                                      goal->extended_planning_options.pitch);
 
         // make a copy of goal, so I can modify it
         vigir_planning_msgs::MoveGoalPtr new_goal( new vigir_planning_msgs::MoveGoal( *goal ) );
@@ -824,7 +825,8 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
                                                     pose_vec,
                                                     0.2,
                                                     goal->extended_planning_options.rotation_angle,
-                                                    goal->extended_planning_options.keep_endeffector_orientation);
+                                                    goal->extended_planning_options.keep_endeffector_orientation,
+                                                    goal->extended_planning_options.pitch);
     }
   }
 
@@ -1147,7 +1149,8 @@ bool move_group::MoveGroupManipulationAction::planCircularMotionUsingDrake(const
                                                           pose_vec,
                                                           0.2,
                                                           goal->extended_planning_options.rotation_angle,
-                                                          goal->extended_planning_options.keep_endeffector_orientation);
+                                                          goal->extended_planning_options.keep_endeffector_orientation,
+                                                          goal->extended_planning_options.pitch);
 
           // make a copy of goal, so I can modify it
           vigir_planning_msgs::MoveGoalPtr new_goal( new vigir_planning_msgs::MoveGoal( *goal ) );
