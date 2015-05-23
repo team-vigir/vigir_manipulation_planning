@@ -80,7 +80,7 @@ namespace constrained_motion_utils{
         pose = Eigen::Translation3d(pose.translation()) * start_point.rotation();
       }
 
-      tf::poseEigenToMsg(pose, poses[i]);
+      tf::poseEigenToMsg(pose, poses[i-1]);
 
     }
   }
