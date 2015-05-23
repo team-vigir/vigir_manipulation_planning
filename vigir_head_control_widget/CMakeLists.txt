@@ -1,10 +1,15 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(vigir_head_control)
+project(vigir_head_control_widget)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp vigir_planning_msgs trajectory_msgs tf)
+find_package(catkin REQUIRED COMPONENTS
+  rospy
+  rqt_gui
+  rqt_gui_py
+  vigir_planning_msgs
+)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -76,9 +81,9 @@ find_package(catkin REQUIRED roscpp vigir_planning_msgs trajectory_msgs tf)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  #INCLUDE_DIRS include
-#  LIBRARIES vigir_head_control
-  CATKIN_DEPENDS roscpp vigir_planning_msgs trajectory_msgs
+#  INCLUDE_DIRS include
+#  LIBRARIES vigir_head_control_widget
+#  CATKIN_DEPENDS rospy rqt_gui rqt_gui_py
 #  DEPENDS system_lib
 )
 
@@ -88,28 +93,27 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
- include_directories(include ${catkin_INCLUDE_DIRS})
+# include_directories(include)
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
 
 ## Declare a cpp library
- add_library(vigir_head_control
-   src/vigir_head_control.cpp
-   include/${PROJECT_NAME}/vigir_head_control.h
-   
- )
+# add_library(vigir_head_control_widget
+#   src/${PROJECT_NAME}/vigir_head_control_widget.cpp
+# )
 
- add_dependencies(vigir_head_control ${catkin_EXPORTED_TARGETS})
 ## Declare a cpp executable
-add_executable(vigir_head_control_node src/vigir_head_control_node.cpp)
+# add_executable(vigir_head_control_widget_node src/vigir_head_control_widget_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(vigir_head_control_node vigir_head_control_generate_messages_cpp)
+# add_dependencies(vigir_head_control_widget_node vigir_head_control_widget_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(vigir_head_control_node 
-   vigir_head_control
-   ${catkin_LIBRARIES}
- )
+# target_link_libraries(vigir_head_control_widget_node
+#   ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
@@ -126,7 +130,7 @@ add_executable(vigir_head_control_node src/vigir_head_control_node.cpp)
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS vigir_head_control vigir_head_control_node
+# install(TARGETS vigir_head_control_widget vigir_head_control_widget_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -151,7 +155,7 @@ add_executable(vigir_head_control_node src/vigir_head_control_node.cpp)
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_vigir_head_control.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_vigir_head_control_widget.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

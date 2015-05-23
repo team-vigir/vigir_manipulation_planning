@@ -272,7 +272,7 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
             }
 
             if(index >= template_srv_.response.template_type_information.grasps.size()){
-                ROS_ERROR("Grasp id:%d not found while request attaching. Returning Identity as stitch pose", grasp_msg.grasp_id.data);
+                ROS_ERROR("Grasp id:%d not found while request attaching. Not Attaching", grasp_msg.grasp_id.data);
             }else{
                 //Wrist pose in world frame
                 world_T_hand.setRotation(tf::Quaternion(this->last_wrist_pose_msg_.pose.orientation.x,
@@ -298,31 +298,31 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
                 stitch_template_pose.header.frame_id = template_srv_.response.template_state_information.pose.header.frame_id;
                 stitch_template_pose.header.seq++;
                 stitch_template_pose.header.stamp = template_srv_.response.template_state_information.pose.header.stamp;
+
+                //Publish to OCS
+                if (template_stitch_pose_pub_)
+                {
+                    flor_grasp_msgs::TemplateSelection last_template_data;
+                    last_template_data.template_id = grasp_msg.template_id;
+                    this->setStitchingObject(last_template_data); //Stitching collision object to robot
+
+                    stitch_template_pose.pose.position.x = this->palmStitch_T_hand_.getOrigin().getX();
+                    stitch_template_pose.pose.position.y = this->palmStitch_T_hand_.getOrigin().getY();
+                    stitch_template_pose.pose.position.z = this->palmStitch_T_hand_.getOrigin().getZ();
+                    stitch_template_pose.pose.orientation.w = this->palmStitch_T_hand_.getRotation().getW();
+                    stitch_template_pose.pose.orientation.x = this->palmStitch_T_hand_.getRotation().getX();
+                    stitch_template_pose.pose.orientation.y = this->palmStitch_T_hand_.getRotation().getY();
+                    stitch_template_pose.pose.orientation.z = this->palmStitch_T_hand_.getRotation().getZ();
+
+                    template_stitch_pose_pub_.publish(stitch_template_pose);
+                }
+                else
+                    ROS_WARN("Invalid template stitch pose publisher");
+
             }
         }else{
-            ROS_ERROR("Palm not in /world frame, need to detach. Returning Identity as the stitch pose.");
-        }
-
-        //Publish to OCS
-        if (template_stitch_pose_pub_)
-        {
-            flor_grasp_msgs::TemplateSelection last_template_data;
-            last_template_data.template_id = grasp_msg.template_id;
-            this->setStitchingObject(last_template_data); //Stitching collision object to robot
-
-            stitch_template_pose.pose.position.x = this->palmStitch_T_hand_.getOrigin().getX();
-            stitch_template_pose.pose.position.y = this->palmStitch_T_hand_.getOrigin().getY();
-            stitch_template_pose.pose.position.z = this->palmStitch_T_hand_.getOrigin().getZ();
-            stitch_template_pose.pose.orientation.w = this->palmStitch_T_hand_.getRotation().getW();
-            stitch_template_pose.pose.orientation.x = this->palmStitch_T_hand_.getRotation().getX();
-            stitch_template_pose.pose.orientation.y = this->palmStitch_T_hand_.getRotation().getY();
-            stitch_template_pose.pose.orientation.z = this->palmStitch_T_hand_.getRotation().getZ();
-
-            template_stitch_pose_pub_.publish(stitch_template_pose);
-        }
-        else
-            ROS_WARN("Invalid template stitch pose publisher");
-
+            ROS_ERROR("Palm not in /world frame, need to detach. Not Attaching.");
+        }        
     }
 }
 

@@ -1,0 +1,16 @@
+<library path="src">
+  <class name="HeadControl" type="vigir_head_control_widget.head_control_widget.HeadControl" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      An example Python GUI plugin to create a great user interface.
+    </description>
+    <qtgui>
+      <group>
+        <label>Robot Tools</label>
+        <icon type="theme">folder</icon>
+      </group>
+      <label>Head Control</label>
+      <icon type="theme">face-monkey</icon>
+      <statustip>A plugin to control the head of the robot.</statustip>
+    </qtgui>
+  </class>
+</library>
