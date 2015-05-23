@@ -76,6 +76,7 @@ class HeadControl(Plugin):
         self._widget.modeTrackRightRadioButton.toggled.connect(self.modeTrackRightRadioButtonToggled)
         self._widget.modeManualRadioButton.toggled.connect(self.modeManualRadioButtonToggled)
         self._widget.modeTrackFrameRadioButton.toggled.connect(self.modeTrackFrameRadioButtonToggled)
+        self._widget.modeLookStraightRadioButton.toggled.connect(self.modeLookStraightRadioButtonToggled)
 
         self._widget.zeroPushButton.pressed.connect(self.zeroPushButtonPressed)
         self._widget.FrameRefreshButton.pressed.connect(self.frameRefreshButtonPressed)
@@ -119,6 +120,12 @@ class HeadControl(Plugin):
             frame = str(self._widget.trackFrameCombobox.currentText())
             command = HeadControlCommand(HeadControlCommand.TRACK_FRAME, [], frame)
             self.modePublisher.publish(command)
+
+    def modeLookStraightRadioButtonToggled(self, pressed):
+        if pressed:
+            command = HeadControlCommand(HeadControlCommand.LOOK_STRAIGHT, [], "")
+            self.modePublisher.publish(command)
+
 
     '''
     Combobox

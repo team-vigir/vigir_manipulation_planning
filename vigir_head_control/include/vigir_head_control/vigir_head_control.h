@@ -44,5 +44,8 @@ namespace head_tracking_mode{
   const unsigned char LEFT_HAND_TRACKING = 1;
   const unsigned char RIGHT_HAND_TRACKING = 2;
   const unsigned char FRAME_TRACKING = 3;
+  const unsigned char USE_PROVIDED_JOINTS = 4;
+  const unsigned char LOOK_STRAIGHT = 5;
+
 }
 #endif // VIGIR_HEAD_CONTROL_NODE_H

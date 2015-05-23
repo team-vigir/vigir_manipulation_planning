@@ -30,6 +30,10 @@ namespace head_control{
         if(command.motion_type == vigir_planning_msgs::HeadControlCommand::NONE){
             tracking_mode = head_tracking_mode::NONE;
         }
+        else if(command.motion_type == vigir_planning_msgs::HeadControlCommand::LOOK_STRAIGHT){
+            tracking_mode = head_tracking_mode::LOOK_STRAIGHT;
+            setHeadJointPosition(0.0, 0.0);
+        }
         else if(command.motion_type == vigir_planning_msgs::HeadControlCommand::USE_PROVIDED_JOINTS){
             // TODO: We might need a mutex here for changing the node
             tracking_mode = head_tracking_mode::NONE;
@@ -153,8 +157,28 @@ namespace head_control{
         double tilt = -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y()));  // pitch
 
         std::vector<double> joints;
-        joints.push_back(pan);
-        joints.push_back(tilt);
+
+        // check for pan limits
+        if  (pan <= -1.57) {
+            joints.push_back(-1.57);
+        }
+        else if (pan >= 2.45) {
+            joints.push_back(2.45);
+        }
+        else {
+            joints.push_back(pan);
+        }
+
+        // check for tilt limits
+        if  (pan <= -1.32) {
+            joints.push_back(-1.32);
+        }
+        else if (pan >= 0.79) {
+            joints.push_back(0.79);
+        }
+        else {
+            joints.push_back(tilt);
+        }
 
         return joints;
     }
