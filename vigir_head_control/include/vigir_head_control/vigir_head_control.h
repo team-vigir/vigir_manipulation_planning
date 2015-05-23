@@ -29,6 +29,9 @@ namespace head_control{
 
     private:
       unsigned char tracking_mode;
+      tf::Vector3 old_target_frame_origin;
+      double track_frame_threshold;
+
       ros::Publisher joint_trajectory_pub;
       ros::Subscriber head_control_sub;
       ros::Subscriber left_hand_sub;
