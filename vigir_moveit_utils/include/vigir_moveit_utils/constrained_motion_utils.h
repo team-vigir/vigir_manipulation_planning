@@ -63,7 +63,7 @@ namespace constrained_motion_utils{
 
     poses.resize(size);
 
-    for (size_t i = 0; i < size; ++i){
+    for (size_t i = 1; i <= size; ++i){
       Eigen::Affine3d rotation_increment (Eigen::AngleAxisd(direction*angular_resolution*static_cast<double>(i), Eigen::Vector3d::UnitX()));
 
       Eigen::Translation3d translation_increment (pitch_increment*static_cast<double>(i) * Eigen::Vector3d::UnitX());
