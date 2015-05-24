@@ -39,16 +39,18 @@ namespace head_control{
       ros::Subscriber tf_sub;
       std::string tracking_frame;
       tf::TransformListener tf;
+
+
     };
 }
 
-namespace head_tracking_mode{
-  const unsigned char NONE = 0;
-  const unsigned char LEFT_HAND_TRACKING = 1;
-  const unsigned char RIGHT_HAND_TRACKING = 2;
-  const unsigned char FRAME_TRACKING = 3;
-  const unsigned char USE_PROVIDED_JOINTS = 4;
-  const unsigned char LOOK_STRAIGHT = 5;
+//namespace head_tracking_mode{
+//  const unsigned char NONE = 0;
+//  const unsigned char LEFT_HAND_TRACKING = 1;
+//  const unsigned char RIGHT_HAND_TRACKING = 2;
+//  const unsigned char FRAME_TRACKING = 3;
+//  const unsigned char USE_PROVIDED_JOINTS = 4;
+//  const unsigned char LOOK_STRAIGHT = 5;
 
-}
+//}
 #endif // VIGIR_HEAD_CONTROL_NODE_H
