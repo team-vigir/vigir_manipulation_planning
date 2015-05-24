@@ -94,6 +94,8 @@ public:
   const robot_model::RobotModel& getModel() const { return *robot_model_; };
 
 protected:
+  bool checkGroupStateSelfCollisionFree(robot_state::RobotState *robot_state, const robot_state::JointModelGroup *joint_group, const double *joint_group_variable_values);
+
   //std::vector <vigir_planning_msgs::JointPositionConstraints> torso_joint_position_constraints_;
   std::vector<moveit_msgs::JointConstraint> torso_joint_position_constraints_;
 

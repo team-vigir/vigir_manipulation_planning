@@ -49,7 +49,7 @@ bool MoveItOcsModel::setByIk(const geometry_msgs::PoseStamped& goal_pose, const 
   const robot_state::JointModelGroup* joint_model_group = robot_state_->getJointModelGroup(group_name);
 
   //@TODO Port group utils
-  return group_utils::setJointModelGroupFromIk(*robot_state_,joint_model_group, goal_pose.pose, torso_joint_position_constraints_);
+  return group_utils::setJointModelGroupFromIk(*robot_state_,joint_model_group, goal_pose.pose, torso_joint_position_constraints_, boost::bind(&MoveItOcsModel::checkGroupStateSelfCollisionFree, this, _1, _2, _3));
 }
 
 bool MoveItOcsModel::getManipulationMetrics(const std::string& group_name,
@@ -211,6 +211,15 @@ const std::string MoveItOcsModel::getRobotName() const
 std::vector<srdf::Model::Group>  MoveItOcsModel::getGroups()
 {
     return robot_model_->getSRDF()->getGroups();
+}
+
+bool MoveItOcsModel::checkGroupStateSelfCollisionFree(robot_state::RobotState *robot_state, const robot_state::JointModelGroup *joint_group, const double *joint_group_variable_values)
+{
+    collision_detection::CollisionRequest request;
+    collision_detection::CollisionResult result;
+    robot_state->setJointGroupPositions(joint_group, joint_group_variable_values);
+    planning_scene_->checkSelfCollision(request, result, *robot_state);
+    return !result.collision;
 }
 
 

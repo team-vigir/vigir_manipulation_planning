@@ -59,6 +59,7 @@ public:
   virtual void initialize();
 
 private:
+  bool checkGroupStateSelfCollisionFree(robot_state::RobotState *robot_state, const robot_state::JointModelGroup *joint_group, const double *joint_group_variable_values);
 
   void executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal);
   void executeMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);

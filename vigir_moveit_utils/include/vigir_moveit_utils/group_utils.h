@@ -95,7 +95,8 @@ namespace group_utils{
   static bool setJointModelGroupFromIk(robot_state::RobotState &state,
                                        const robot_model::JointModelGroup* group,
                                        const geometry_msgs::Pose& goal_pose,
-                                       const std::vector<moveit_msgs::JointConstraint>& torso_joint_position_constraints_)
+                                       const std::vector<moveit_msgs::JointConstraint>& torso_joint_position_constraints_,
+                                       const moveit::core::GroupStateValidityCallbackFn& group_state_validity_cb)
   {
 
     //std::cout << "size: " << torso_joint_position_constraints_.size() << "\n";
@@ -141,7 +142,7 @@ namespace group_utils{
     bool success = false;
 
     if (redundant_joints_vector.size() == 0){
-      success = state.setFromIK(group, mat, tip_frame, consistency_limits, 1, 0.1);
+      success = state.setFromIK(group, mat, tip_frame, consistency_limits, 1, 0.1, group_state_validity_cb);
       //std::cout << "zero redundant\n";
     }else{
       //std::cout << "nonzero redundant\n";
@@ -155,7 +156,7 @@ namespace group_utils{
 
       kinematics::KinematicsQueryOptions options;
       options.lock_redundant_joints = true;
-      success = state.setFromIK(&group_cpy, mat, tip_frame, consistency_limits, 1, 0.1, 0, options);
+      success = state.setFromIK(&group_cpy, mat, tip_frame, consistency_limits, 1, 0.1, group_state_validity_cb, options);
 
       //Reset redundant joints to make sure we don't alter solver settings
       redundant_joints_vector.clear();
