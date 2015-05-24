@@ -46,8 +46,10 @@ namespace head_control{
             if(command.provided_joints.size() < 2){
                 ROS_WARN("Head cannot be moved because values are missing. (%lu provided)", command.provided_joints.size());
             }else{
-                double pan = command.provided_joints[0];
-                double tilt = command.provided_joints[1];
+                double pan = std::min(std::max(-1.57, - command.provided_joints[0]), 2.45);
+                double tilt = std::min(std::max(-1.32, command.provided_joints[1]), 0.79);
+//                double pan = - command.provided_joints[0];
+//                double tilt = command.provided_joints[1];
                 ROS_DEBUG("Moving Head to provided joint positions: (pan, tilt) = (%f, %f)", pan, tilt);
                 setHeadJointPosition(pan, tilt);
             }

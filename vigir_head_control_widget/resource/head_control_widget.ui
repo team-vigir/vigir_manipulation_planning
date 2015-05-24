@@ -207,10 +207,10 @@
            <bool>false</bool>
           </property>
           <property name="wrapping">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
           <property name="notchTarget">
-           <double>45.000000000000000</double>
+           <double>90.000000000000000</double>
           </property>
           <property name="notchesVisible">
            <bool>true</bool>
@@ -220,10 +220,10 @@
         <item>
          <widget class="QSlider" name="panSlider">
           <property name="minimum">
-           <number>-180</number>
+           <number>-140</number>
           </property>
           <property name="maximum">
-           <number>180</number>
+           <number>140</number>
           </property>
           <property name="pageStep">
            <number>15</number>
@@ -285,10 +285,10 @@
            </sizepolicy>
           </property>
           <property name="minimum">
-           <number>-90</number>
+           <number>-75</number>
           </property>
           <property name="maximum">
-           <number>90</number>
+           <number>75</number>
           </property>
           <property name="pageStep">
            <number>15</number>
@@ -352,7 +352,7 @@
  <connections>
   <connection>
    <sender>panDial</sender>
-   <signal>valueChanged(int)</signal>
+   <signal>sliderMoved(int)</signal>
    <receiver>panSlider</receiver>
    <slot>setValue(int)</slot>
    <hints>
@@ -361,20 +361,20 @@
      <y>143</y>
     </hint>
     <hint type="destinationlabel">
-     <x>437</x>
-     <y>402</y>
+     <x>469</x>
+     <y>401</y>
     </hint>
    </hints>
   </connection>
   <connection>
    <sender>panSlider</sender>
-   <signal>valueChanged(int)</signal>
+   <signal>sliderMoved(int)</signal>
    <receiver>panDial</receiver>
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>437</x>
-     <y>402</y>
+     <x>469</x>
+     <y>401</y>
     </hint>
     <hint type="destinationlabel">
      <x>413</x>
@@ -384,7 +384,7 @@
   </connection>
   <connection>
    <sender>panDial</sender>
-   <signal>valueChanged(int)</signal>
+   <signal>sliderMoved(int)</signal>
    <receiver>panSpinBox</receiver>
    <slot>setValue(int)</slot>
    <hints>
@@ -400,13 +400,13 @@
   </connection>
   <connection>
    <sender>panSlider</sender>
-   <signal>valueChanged(int)</signal>
+   <signal>sliderMoved(int)</signal>
    <receiver>panSpinBox</receiver>
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>437</x>
-     <y>402</y>
+     <x>469</x>
+     <y>401</y>
     </hint>
     <hint type="destinationlabel">
      <x>437</x>
@@ -416,7 +416,7 @@
   </connection>
   <connection>
    <sender>tiltSlider</sender>
-   <signal>valueChanged(int)</signal>
+   <signal>sliderMoved(int)</signal>
    <receiver>tiltSpinBox</receiver>
    <slot>setValue(int)</slot>
    <hints>
