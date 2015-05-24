@@ -444,13 +444,15 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
 
     if (extended_collision_scene.get()){
       // Use extended collision options
-      extended_collision_scene->diff(planning_scene_diff);
+      //planning_scene::PlanningScenePtr fused_scene = extended_collision_scene->diff(planning_scene_diff);
 
-      moveit_msgs::PlanningScene extended_collision_scene_msg;
-      extended_collision_scene->getPlanningSceneMsg(extended_collision_scene_msg);
+      extended_collision_scene->setPlanningSceneDiffMsg(planning_scene_diff);
+
+      moveit_msgs::PlanningScene fused_scene_msg;
+      extended_collision_scene->getPlanningSceneMsg(fused_scene_msg);
 
       ROS_INFO("Proceeding with extended collision options");
-      context_->plan_execution_->planAndExecute(plan, extended_collision_scene_msg, opt);
+      context_->plan_execution_->planAndExecute(plan, fused_scene_msg, opt);
     }else{
       // Proceed as per moveit default
       ROS_INFO("Proceeding with standard plan and move");

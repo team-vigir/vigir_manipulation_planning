@@ -90,6 +90,8 @@ public:
     planner_configuration_.trajectory_time_factor = 1.0f;
     planner_configuration_.octomap_max_height = 2.3f;
     planner_configuration_.goal_cube_clearance = 0.105f;
+    planner_configuration_.disable_left_hand_collision_avoidance = false;
+    planner_configuration_.disable_right_hand_collision_avoidance = false;
 
 
     robot_model_loader_.reset(new robot_model_loader::RobotModelLoader());
