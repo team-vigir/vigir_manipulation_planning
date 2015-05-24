@@ -4,7 +4,7 @@
 namespace head_control{
     HeadControl::HeadControl()
     {
-        tracking_mode = head_tracking_mode::NONE;
+        tracking_mode = vigir_planning_msgs::HeadControlCommand::NONE;
 
         ROS_DEBUG("Creating Head Controler");
         ros::NodeHandle nh_("");
@@ -31,36 +31,36 @@ namespace head_control{
     void HeadControl::HeadControlCb(const vigir_planning_msgs::HeadControlCommand &command){
      ///flor/l_arm_current_pose
      /// //trajectory_msgs/JointTrajectory
-        ROS_INFO("Setting Head Control Mode to %u", command.motion_type);
+        if(tracking_mode != command.motion_type) {
+        //ROS_INFO("Setting Head Control Mode to %u", command.motion_type);
+        }
         if(command.motion_type == vigir_planning_msgs::HeadControlCommand::NONE){
-            tracking_mode = head_tracking_mode::NONE;
+            tracking_mode = vigir_planning_msgs::HeadControlCommand::NONE;
         }
         else if(command.motion_type == vigir_planning_msgs::HeadControlCommand::LOOK_STRAIGHT){
-            tracking_mode = head_tracking_mode::LOOK_STRAIGHT;
+            tracking_mode = vigir_planning_msgs::HeadControlCommand::LOOK_STRAIGHT;
             setHeadJointPosition(0.0, 0.0);
         }
         else if(command.motion_type == vigir_planning_msgs::HeadControlCommand::USE_PROVIDED_JOINTS){
             // TODO: We might need a mutex here for changing the node
-            tracking_mode = head_tracking_mode::NONE;
+            tracking_mode = vigir_planning_msgs::HeadControlCommand::NONE;
 
             if(command.provided_joints.size() < 2){
                 ROS_WARN("Head cannot be moved because values are missing. (%lu provided)", command.provided_joints.size());
             }else{
                 double pan = std::min(std::max(-1.57, - command.provided_joints[0]), 2.45);
                 double tilt = std::min(std::max(-1.32, command.provided_joints[1]), 0.79);
-//                double pan = - command.provided_joints[0];
-//                double tilt = command.provided_joints[1];
                 ROS_DEBUG("Moving Head to provided joint positions: (pan, tilt) = (%f, %f)", pan, tilt);
                 setHeadJointPosition(pan, tilt);
             }
 
         } else if (command.motion_type == vigir_planning_msgs::HeadControlCommand::TRACK_LEFT_HAND){
-            tracking_mode = head_tracking_mode::LEFT_HAND_TRACKING;
+            tracking_mode = vigir_planning_msgs::HeadControlCommand::TRACK_LEFT_HAND;
         } else if (command.motion_type == vigir_planning_msgs::HeadControlCommand::TRACK_RIGHT_HAND){
-            tracking_mode = head_tracking_mode::RIGHT_HAND_TRACKING;
+            tracking_mode = vigir_planning_msgs::HeadControlCommand::TRACK_RIGHT_HAND;
         }else if (command.motion_type == vigir_planning_msgs::HeadControlCommand::TRACK_FRAME){
             tracking_frame = command.tracking_frame;
-            tracking_mode = head_tracking_mode::FRAME_TRACKING;
+            tracking_mode = vigir_planning_msgs::HeadControlCommand::TRACK_FRAME;
         }else{
             ROS_WARN("Received invalid Head Control Mode: %u", command.motion_type);
         }
@@ -92,49 +92,6 @@ namespace head_control{
 
         joint_trajectory_pub.publish(jointTrajectory);
     }
-
-//    std::vector<double> HeadControl::computeJointsForTracking(const geometry_msgs::PoseStamped &pose){
-//        //TODO:: implement
-//        geometry_msgs::PointStamped lookat_point;
-//        lookat_point.header=pose.header;
-//        lookat_point.point=pose.pose.position;
-//        geometry_msgs::PointStamped lookat_camera;
-
-//        tf::StampedTransform base_camera_transform;
-
-//        try {
-//          tf.waitForTransform("utorso", lookat_point.header.frame_id, ros::Time(), ros::Duration(1.0));
-//          tf.transformPoint("utorso", ros::Time(), lookat_point, lookat_point.header.frame_id, lookat_camera);
-//        } catch (std::runtime_error& e) {
-//          ROS_WARN("Could not transform look_at position to target frame_id %s", e.what());
-//             //TODO return  !!!!
-//        }
-
-//        try {
-//          tf.waitForTransform("utorso", "head_cam_link", ros::Time(), ros::Duration(1.0));
-//          tf.lookupTransform("utorso", "head_cam_link", ros::Time(), base_camera_transform);
-//        } catch (std::runtime_error& e) {
-//          ROS_WARN("Could not transform from base frame to camera_frame %s", e.what());
-//          //TODO return  !!!!
-//        }
-
-//        geometry_msgs::QuaternionStamped orientation;
-//        orientation.header = lookat_camera.header;
-//        orientation.header.frame_id = "world";
-//        tf::Vector3 dir(lookat_camera.point.x - base_camera_transform.getOrigin().x(), lookat_camera.point.y - base_camera_transform.getOrigin().y(), lookat_camera.point.z - base_camera_transform.getOrigin().z());
-
-//        //tf::Quaternion quaternion = tf::createQuaternionFromRPY(0.0, -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y())), atan2(dir.y(), dir.x()));
-
-
-//        double pan = atan2(dir.y(), dir.x()); //yaw
-//        double tilt = -atan2(dir.z(), sqrt(dir.x()*dir.x() + dir.y()*dir.y()));  // pitch
-
-//        std::vector<double> joints;
-//        joints.push_back(pan);
-//        joints.push_back(tilt);
-
-//        return joints;
-//    }
 
     std::vector<double> HeadControl::computeJointsForTracking(const std::string &target_frame_id){
         ROS_DEBUG("Computing Joints for tracking %s", target_frame_id.c_str());
@@ -183,7 +140,7 @@ namespace head_control{
 
 
     void HeadControl::tfCb(const tf2_msgs::TFMessage &tfmsg){
-        if(tracking_mode == head_tracking_mode::FRAME_TRACKING){
+        if(tracking_mode == vigir_planning_msgs::HeadControlCommand::TRACK_FRAME){
             std::vector<double> joints = computeJointsForTracking(tracking_frame);
             if (joints.size() < 2) return;
             setHeadJointPosition(joints[0], joints[1]);
@@ -191,7 +148,7 @@ namespace head_control{
     }
 
     void HeadControl::trackLeftHandCb(const geometry_msgs::PoseStamped &pose){
-        if(tracking_mode == head_tracking_mode::LEFT_HAND_TRACKING){
+        if(tracking_mode == vigir_planning_msgs::HeadControlCommand::TRACK_LEFT_HAND){
             std::vector<double> joints = computeJointsForTracking("l_hand");
             if (joints.size() < 2) return;
             setHeadJointPosition(joints[0], joints[1]);
@@ -199,7 +156,7 @@ namespace head_control{
     }
 
     void HeadControl::trackRightHandCb(const geometry_msgs::PoseStamped &pose){
-        if(tracking_mode == head_tracking_mode::RIGHT_HAND_TRACKING){
+        if(tracking_mode == vigir_planning_msgs::HeadControlCommand::TRACK_RIGHT_HAND){
             std::vector<double> joints = computeJointsForTracking("r_hand");
             if (joints.size() < 2) return;
             setHeadJointPosition(joints[0], joints[1]);

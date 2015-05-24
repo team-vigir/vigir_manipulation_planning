@@ -352,7 +352,7 @@
  <connections>
   <connection>
    <sender>panDial</sender>
-   <signal>sliderMoved(int)</signal>
+   <signal>valueChanged(int)</signal>
    <receiver>panSlider</receiver>
    <slot>setValue(int)</slot>
    <hints>
@@ -368,7 +368,7 @@
   </connection>
   <connection>
    <sender>panSlider</sender>
-   <signal>sliderMoved(int)</signal>
+   <signal>valueChanged(int)</signal>
    <receiver>panDial</receiver>
    <slot>setValue(int)</slot>
    <hints>
@@ -384,7 +384,7 @@
   </connection>
   <connection>
    <sender>panDial</sender>
-   <signal>sliderMoved(int)</signal>
+   <signal>valueChanged(int)</signal>
    <receiver>panSpinBox</receiver>
    <slot>setValue(int)</slot>
    <hints>
@@ -400,7 +400,7 @@
   </connection>
   <connection>
    <sender>panSlider</sender>
-   <signal>sliderMoved(int)</signal>
+   <signal>valueChanged(int)</signal>
    <receiver>panSpinBox</receiver>
    <slot>setValue(int)</slot>
    <hints>
@@ -416,7 +416,7 @@
   </connection>
   <connection>
    <sender>tiltSlider</sender>
-   <signal>sliderMoved(int)</signal>
+   <signal>valueChanged(int)</signal>
    <receiver>tiltSpinBox</receiver>
    <slot>setValue(int)</slot>
    <hints>
