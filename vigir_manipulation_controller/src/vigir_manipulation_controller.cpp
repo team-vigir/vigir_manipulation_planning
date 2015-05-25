@@ -389,7 +389,11 @@ void VigirManipulationController::affordanceCommandCallback(const vigir_object_t
         sendCircularAffordance(affordance);
     else if (affordance.type == "cartesian")
         sendCartesianAffordance(affordance);
-    else sendFixedPoseAffordance(affordance);
+    else if (affordance.type == "fixed")
+        sendFixedPoseAffordance(affordance);
+    else{
+        ROS_ERROR("Affordance type not recognized, ignoring affrodance_command");
+    }
 }
 
 void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8& usability_id)
