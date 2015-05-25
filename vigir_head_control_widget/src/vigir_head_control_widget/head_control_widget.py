@@ -182,11 +182,11 @@ class HeadControl(Plugin):
 
     def updateJointStates(self, jointStateMessage):
         if(not(self.manualControlsEnabled)):
-            panIndex = jointStateMessage.name.index('head_pan')
+            panIndex =  jointStateMessage.name.index('head_pan')
             tiltIndex = jointStateMessage.name.index('head_tilt')
             pan = int(jointStateMessage.position[panIndex] * 360.0 / (2.0*pi))
             tilt = int(jointStateMessage.position[tiltIndex] * 360.0 / (2.0*pi))
-            self.emit(QtCore.SIGNAL("panChanged"), pan)
+            self.emit(QtCore.SIGNAL("panChanged"), -pan)
             self.emit(QtCore.SIGNAL("tiltChanged"), tilt)
 
     def updateTfFrames(self):
