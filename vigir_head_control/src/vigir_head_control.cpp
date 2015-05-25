@@ -98,10 +98,11 @@ namespace head_control{
 
         tf::StampedTransform lookat_point_transform;
         tf::StampedTransform base_camera_transform;
+        ros::Time now = ros::Time::now();
 
         try {
-            tf.waitForTransform("utorso", target_frame_id, ros::Time(), ros::Duration(1.0));
-            tf.lookupTransform("utorso", target_frame_id, ros::Time(), lookat_point_transform);
+            tf.waitForTransform("utorso", target_frame_id, now, ros::Duration(1.0));
+            tf.lookupTransform("utorso", target_frame_id, now, lookat_point_transform);
         } catch (std::runtime_error& e) {
             ROS_WARN("Could not transform look_at position to target frame_id %s", e.what());
             return std::vector<double>();
@@ -113,8 +114,8 @@ namespace head_control{
         }
 
         try {
-            tf.waitForTransform("utorso", "head_link", ros::Time(), ros::Duration(1.0));
-            tf.lookupTransform("utorso", "head_link", ros::Time(), base_camera_transform);
+            tf.waitForTransform("utorso", "head_link", now, ros::Duration(1.0));
+            tf.lookupTransform("utorso", "head_link", now, base_camera_transform);
         } catch (std::runtime_error& e) {
             ROS_WARN("Could not transform from base frame to camera_frame %s", e.what());
             return std::vector<double>();
