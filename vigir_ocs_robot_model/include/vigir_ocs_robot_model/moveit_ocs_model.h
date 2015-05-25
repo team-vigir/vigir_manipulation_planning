@@ -60,6 +60,7 @@ public:
   bool getLinkPose(const std::string& link_name, geometry_msgs::Pose& pose) const;
   bool getJointPose(const std::string& joint_name, geometry_msgs::Pose& pose) const;
   void setJointStates(const sensor_msgs::JointState& msg);
+  void setFromState(const robot_state::RobotState& new_state);
   void getJointStates(sensor_msgs::JointState& msg) const;
   bool getGroupJointPositions(const std::string& group_name, std::vector<double>& joint_positions);
 
@@ -92,9 +93,10 @@ public:
   std::vector<srdf::Model::Group>  getGroups();
 
   const robot_model::RobotModel& getModel() const { return *robot_model_; };
+  const robot_model::RobotModelConstPtr getModelConstPtr() const { return robot_model_; };
 
 protected:
-  //std::vector <vigir_planning_msgs::JointPositionConstraints> torso_joint_position_constraints_;
+  //std::vector <vigir_planning_msgs::JointPositionConstraints> torso_joint_position_constraits_;
   std::vector<moveit_msgs::JointConstraint> torso_joint_position_constraints_;
 
   planning_scene::PlanningScenePtr planning_scene_;

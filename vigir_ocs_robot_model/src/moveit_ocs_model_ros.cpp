@@ -8,9 +8,11 @@
 
 MoveItOcsModelRos::MoveItOcsModelRos()
 {
+    ros::NodeHandle nh("");
+
     ocs_model_.reset(new MoveItOcsModel());
 
-    ros::NodeHandle nh("");
+    real_robot_state_.reset(new robot_state::RobotState(ocs_model_->getModelConstPtr()));
 
     collision_avoidance_active_ = true;
 
@@ -39,13 +41,13 @@ MoveItOcsModelRos::MoveItOcsModelRos()
     incoming_plan_to_pose_request_sub_ = nh.subscribe("/flor/ocs/planning/plan_to_pose_state", 5, &MoveItOcsModelRos::incomingPlanToPoseRequestCallback, this);
     incoming_plan_to_joint_request_sub_ = nh.subscribe("/flor/ocs/planning/plan_to_joint_state", 5, &MoveItOcsModelRos::incomingPlanToJointRequestCallback, this);
 
-
     ghost_pelvis_pose_pub_ = nh.advertise<geometry_msgs::PoseStamped>( "/flor/ocs/ghost/set_pose", 1 );
     pose_sub_ = nh.subscribe("/flor/ghost/set_appendage_poses", 1, &MoveItOcsModelRos::targetConfigCallback, this);
     root_pose_sub_ = nh.subscribe("/flor/ghost/set_root_pose", 1, &MoveItOcsModelRos::rootPoseCallback, this);
     incoming_joint_states_sub_ = nh.subscribe("/flor/ghost/set_joint_states", 5, &MoveItOcsModelRos::incomingJointStatesCallback, this);
     incoming_real_joint_states_sub_ = nh.subscribe("/atlas/joint_states", 5, &MoveItOcsModelRos::realJointStatesCallback, this);
-
+    incoming_real_pose_sub_ = nh.subscribe("/flor/controller/atlas_pose", 5, &MoveItOcsModelRos::realPoseCallback, this);
+    ghost_snap_to_real_config_sub_ = nh.subscribe("/flor/ocs/snap_ghost_to_robot", 5, &MoveItOcsModelRos::snapGhostToRobotCallback, this);
 
     torso_joint_position_constraints_sub_ = nh.subscribe("/flor/planning/upper_body/configuration",
                                                          10,
@@ -110,10 +112,41 @@ void MoveItOcsModelRos::incomingJointStatesCallback(const sensor_msgs::JointStat
     this->onModelUpdated();
 }
 
-void MoveItOcsModelRos::realJointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg)
+void MoveItOcsModelRos::realJointStatesCallback(const sensor_msgs::JointState::ConstPtr msg)
 {
     real_joint_states_ = msg;
+
+    for (size_t i = 0; i < msg->name.size();++i){
+      if (!ocs_model_->getModel().hasJointModel(msg->name[i])){
+        ROS_WARN("Tried to update ocs real robot model with message containing non-existing joint %s, aborting callback.", msg->name[i].c_str());
+        return;
+      }
+    }
+    real_robot_state_->setVariableValues(*msg);
 }
+
+void MoveItOcsModelRos::realPoseCallback(const geometry_msgs::PoseStampedConstPtr msg)
+{
+  real_robot_pose_ = msg;
+}
+
+void MoveItOcsModelRos::snapGhostToRobotCallback(const std_msgs::Bool& msg)
+{
+  if (real_robot_state_.get()){
+    ocs_model_->setFromState(*real_robot_state_);
+  }else{
+    ROS_ERROR("Couldn't set ghost to real robot configuration as it is a null pointer!");
+    return;
+  }
+
+  if (real_robot_pose_.get()){
+    ocs_model_->setRootTransform(*real_robot_pose_);
+  }else{
+    ROS_ERROR("Couldn't set ghost to real robot pose as it is a null pointer!");
+    return;
+  }
+}
+
 
 // Sets global pose of model
 void MoveItOcsModelRos::rootPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
