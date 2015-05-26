@@ -82,11 +82,12 @@ void MoveItOcsModelRos::targetConfigCallback (const flor_planning_msgs::TargetCo
   if ( use_drake_ik_ == false ) { // continue with tried and true classic MoveIt IK
     if (msg->target_poses.size() == 1){
 
-      size_t found_index = msg->planning_group.data.find_last_of("_position_only_ik");
+      size_t found_index = msg->planning_group.data.rfind("_position_only_ik");
 
       if (found_index < msg->planning_group.data.size()){
         std::string group_no_pos_ik = msg->planning_group.data.substr(0, found_index);
 
+        //First try full 6dof IK, then position only if that fails
         if (!ocs_model_->setByIk(msg->target_poses[0], group_no_pos_ik)){
           ocs_model_->setByIk(msg->target_poses[0], msg->planning_group.data);
         }
