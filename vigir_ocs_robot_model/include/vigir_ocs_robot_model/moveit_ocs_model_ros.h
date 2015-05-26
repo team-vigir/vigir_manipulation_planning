@@ -47,6 +47,8 @@
 
 #include <flor_visualization_utils/marker_utils.h>
 
+#include <geometry_msgs/PoseStamped.h>
+
 
 
 class MoveItOcsModelRos{
@@ -57,7 +59,9 @@ public:
 
   void incomingJointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg);
 
-  void realJointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg);
+  void realJointStatesCallback(const sensor_msgs::JointState::ConstPtr msg);
+  void realPoseCallback(const geometry_msgs::PoseStampedConstPtr msg);
+  void snapGhostToRobotCallback(const std_msgs::Bool& msg);
 
 
   // Sets global pose of model
@@ -94,6 +98,8 @@ protected:
   moveit_msgs::DisplayRobotState display_state_msg_;
 
   sensor_msgs::JointStateConstPtr real_joint_states_;
+  geometry_msgs::PoseStampedConstPtr real_robot_pose_;
+  boost::shared_ptr<robot_state::RobotState> real_robot_state_;
 
   ros::Publisher pose_plan_request_pub_;
   ros::Publisher joint_plan_request_pub_;
@@ -103,6 +109,8 @@ protected:
 
   ros::Subscriber incoming_joint_states_sub_;
   ros::Subscriber incoming_real_joint_states_sub_;
+  ros::Subscriber incoming_real_pose_sub_;
+  ros::Subscriber ghost_snap_to_real_config_sub_;
 
   ros::Subscriber pose_sub_;
   ros::Subscriber root_pose_sub_;

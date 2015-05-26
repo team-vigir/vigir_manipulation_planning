@@ -104,6 +104,11 @@ void MoveItOcsModel::setJointStates(const sensor_msgs::JointState& msg)
   robot_state_->setVariableValues(msg);
 }
 
+void MoveItOcsModel::setFromState(const robot_state::RobotState& new_state)
+{
+  *robot_state_ = new_state;
+}
+
 void MoveItOcsModel::getJointStates(sensor_msgs::JointState& msg) const
 {
   robotStateToJointStateMsg(*robot_state_, msg);
