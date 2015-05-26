@@ -12,6 +12,11 @@ int main(int argc, char **argv)
 
   ROS_INFO("Starting Head Control Node");
   head_control::HeadControl head_controller;
+  ros::Rate loop_rate(30);
+  while (ros::ok()) {
+    head_controller.updateHeadPosition();
+    ros::spinOnce();
+  }
   ros::spin();
   exit(0);
 }

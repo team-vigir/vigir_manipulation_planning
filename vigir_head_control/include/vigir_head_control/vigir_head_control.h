@@ -16,17 +16,12 @@ namespace head_control{
 
     public:
       HeadControl();
-      virtual ~HeadControl();
+      void updateHeadPosition();
     protected:
       void HeadControlCb(const vigir_planning_msgs::HeadControlCommand &command);
-      void trackLeftHandCb(const geometry_msgs::PoseStamped &pose);
-      void trackRightHandCb(const geometry_msgs::PoseStamped &pose);
-      void tfCb(const tf2_msgs::TFMessage &tfmsg);
-
       void setHeadJointPosition(const double pan, const double tilt);
-      std::vector<double> computeJointsForTracking(const geometry_msgs::PoseStamped &pose);
-      std::vector<double> computeJointsForTracking(const std::string &target_frame_id);
 
+      std::vector<double> computeJointsForTracking(const std::string &target_frame_id);
     private:
       unsigned char tracking_mode;
       tf::Vector3 old_target_frame_origin;
@@ -34,13 +29,10 @@ namespace head_control{
 
       ros::Publisher joint_trajectory_pub;
       ros::Subscriber head_control_sub;
-      ros::Subscriber left_hand_sub;
-      ros::Subscriber right_hand_sub;
-      ros::Subscriber tf_sub;
       std::string tracking_frame;
       tf::TransformListener tf;
 
-
+      std::vector<double> head_cmd; // pan, tilt
     };
 }
 
