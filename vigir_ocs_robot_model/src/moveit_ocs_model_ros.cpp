@@ -145,6 +145,8 @@ void MoveItOcsModelRos::snapGhostToRobotCallback(const std_msgs::Bool& msg)
     ROS_ERROR("Couldn't set ghost to real robot pose as it is a null pointer!");
     return;
   }
+
+  this->onModelUpdated();
 }
 
 
