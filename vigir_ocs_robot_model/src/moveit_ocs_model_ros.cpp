@@ -79,6 +79,7 @@ MoveItOcsModelRos::MoveItOcsModelRos()
 
 void MoveItOcsModelRos::targetConfigCallback (const flor_planning_msgs::TargetConfigIkRequest::ConstPtr& msg)
 {
+  ROS_INFO("bla %s", msg->planning_group.data.c_str());
   if ( use_drake_ik_ == false ) { // continue with tried and true classic MoveIt IK
     if (msg->target_poses.size() == 1){
 
@@ -86,6 +87,7 @@ void MoveItOcsModelRos::targetConfigCallback (const flor_planning_msgs::TargetCo
 
       if (found_index < msg->planning_group.data.size()){
         std::string group_no_pos_ik = msg->planning_group.data.substr(0, found_index);
+        ROS_ERROR("subs %s", group_no_pos_ik.c_str());
 
         if (!ocs_model_->setByIk(msg->target_poses[0], group_no_pos_ik)){
           ocs_model_->setByIk(msg->target_poses[0], msg->planning_group.data);

@@ -46,6 +46,7 @@ MoveItOcsModel::MoveItOcsModel()
  */
 bool MoveItOcsModel::setByIk(const geometry_msgs::PoseStamped& goal_pose, const std::string& group_name)
 {
+  ROS_INFO("group name: %s", group_name.c_str());
   const robot_state::JointModelGroup* joint_model_group = robot_state_->getJointModelGroup(group_name);
 
   //@TODO Port group utils
