@@ -13,6 +13,7 @@ MoveItOcsModelRos::MoveItOcsModelRos()
     ocs_model_.reset(new MoveItOcsModel());
 
     real_robot_state_.reset(new robot_state::RobotState(ocs_model_->getModelConstPtr()));
+    real_robot_state_->setToDefaultValues();
 
     collision_avoidance_active_ = true;
 
