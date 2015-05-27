@@ -16,6 +16,7 @@ int main(int argc, char **argv)
   while (ros::ok()) {
     head_controller.updateHeadPosition();
     ros::spinOnce();
+    loop_rate.sleep();
   }
   ros::spin();
   exit(0);
