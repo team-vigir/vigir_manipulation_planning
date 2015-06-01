@@ -56,6 +56,7 @@
 #include <vigir_moveit_utils/group_utils.h>
 #include <vigir_moveit_utils/planning_scene_utils.h>
 #include <vigir_moveit_utils/robot_model_utils.h>
+#include <vigir_moveit_utils/collision_utils.h>
 
 
 namespace
@@ -109,6 +110,29 @@ void move_group::MoveGroupManipulationAction::setupHandData()
 
   left_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,"l_hand");
   right_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,"r_hand");
+}
+
+void move_group::MoveGroupManipulationAction::setCollisionOptions(bool all_env_collision_allow,
+                         bool left_hand_collision_allow,
+                         bool right_hand_collision_allow)
+{
+  planning_scene_monitor::LockedPlanningSceneRW ps(context_->planning_scene_monitor_);
+
+  if (all_env_collision_allow){
+    collision_utils::setAllowedCollisions(context_->planning_scene_monitor_->getRobotModel()->getLinkModelNames(),
+                                          context_->planning_scene_monitor_->getPlanningScene(),
+                                          all_env_collision_allow);
+
+    //If all env collisions allowed, ignore hand settings as they are implied in allowing all
+  }else{
+    collision_utils::setAllowedCollisions(left_hand_links_vector_,
+                                          context_->planning_scene_monitor_->getPlanningScene(),
+                                          left_hand_collision_allow);
+
+    collision_utils::setAllowedCollisions(right_hand_links_vector_,
+                                          context_->planning_scene_monitor_->getPlanningScene(),
+                                          right_hand_collision_allow);
+  }
 }
 
 bool move_group::MoveGroupManipulationAction::checkGroupStateSelfCollisionFree(robot_state::RobotState *robot_state, const robot_state::JointModelGroup *joint_group, const double *joint_group_variable_values)

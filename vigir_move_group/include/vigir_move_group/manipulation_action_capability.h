@@ -63,6 +63,10 @@ private:
 
   void setupHandData();
 
+  void setCollisionOptions(bool octomap_collision_allow,
+                           bool left_hand_collision_allow,
+                           bool right_hand_collision_allow);
+
   void executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal);
   void executeMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
   void executeMoveCallback_PlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
