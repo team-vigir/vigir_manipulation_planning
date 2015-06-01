@@ -118,13 +118,13 @@ void move_group::MoveGroupManipulationAction::setCollisionOptions(bool all_env_c
 {
   planning_scene_monitor::LockedPlanningSceneRW ps(context_->planning_scene_monitor_);
 
-  if (all_env_collision_allow){
-    collision_utils::setAllowedCollisions(context_->planning_scene_monitor_->getRobotModel()->getLinkModelNames(),
+  //Set all collision allow directly (allowed or not allowed)
+  collision_utils::setAllowedCollisions(context_->planning_scene_monitor_->getRobotModel()->getLinkModelNames(),
                                           context_->planning_scene_monitor_->getPlanningScene(),
                                           all_env_collision_allow);
 
-    //If all env collisions allowed, ignore hand settings as they are implied in allowing all
-  }else{
+  //If all env collisions allowed, ignore hand settings as they are implied in allowing all
+  if(!all_env_collision_allow){
     collision_utils::setAllowedCollisions(left_hand_links_vector_,
                                           context_->planning_scene_monitor_->getPlanningScene(),
                                           left_hand_collision_allow);
@@ -263,47 +263,50 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
           //Only used if keep endeffector orientation true or if circular motion requested
           Eigen::Affine3d eef_start_pose;
 
-          if(!planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+          if(planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
                                                             context_->planning_scene_monitor_,
                                                             eef_start_pose))
           {
+            geometry_msgs::PoseStamped reference_pose;
+
+            reference_pose.header.frame_id = goal->extended_planning_options.reference_point_frame;
+            reference_pose.pose            = goal->extended_planning_options.reference_point;
+
+            if (this->performTransform(reference_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))//Gets reference point in world frame
+            {
+              geometry_msgs::Pose wristPose;
+              tf::poseEigenToMsg(eef_start_pose,wristPose);  //Converts eef eigen pose to geometry pose
+
+              // calculate the difference between them
+              tf::Vector3 diff_vector;
+              diff_vector.setX(wristPose.position.x - reference_pose.pose.position.x);
+              diff_vector.setY(wristPose.position.y - reference_pose.pose.position.y);
+              diff_vector.setZ(wristPose.position.z - reference_pose.pose.position.z);
+
+              // apply the difference to the circular center
+              ROS_INFO("Applying difference vector to rotation axis (x: %f, y: %f, z: %f)", diff_vector.getX(), diff_vector.getY(), diff_vector.getZ());
+              new_target_poses[0].position.x += diff_vector.getX();
+              new_target_poses[0].position.y += diff_vector.getY();
+              new_target_poses[0].position.z += diff_vector.getZ();
+              ROS_INFO("New rotation axis (x: %f, y: %f, z: %f)", new_target_poses[0].position.x, new_target_poses[0].position.y, new_target_poses[0].position.z);
+
+              new_goal->extended_planning_options.target_poses = new_target_poses;
+            }else{
+              ROS_ERROR("Could not get reference pose (%s) into %s frame, resetting target poses.", reference_pose.header.frame_id.c_str(),
+                        context_->planning_scene_monitor_->getRobotModel()->getModelFrame().c_str());
+              action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+            }
+          }else{
+            //Under normal operating conditions we always can get the endeffector transform
             ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
             action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
             return;
           }
-
-          geometry_msgs::PoseStamped reference_pose;
-
-          reference_pose.header.frame_id = goal->extended_planning_options.reference_point_frame;
-          reference_pose.pose            = goal->extended_planning_options.reference_point;
-
-          if (this->performTransform(reference_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))//Gets reference point in world frame
-          {
-            geometry_msgs::Pose wristPose;
-            tf::poseEigenToMsg(eef_start_pose,wristPose);  //Converts eef eigen pose to geometry pose
-
-            // calculate the difference between them
-            tf::Vector3 diff_vector;
-            diff_vector.setX(wristPose.position.x - reference_pose.pose.position.x);
-            diff_vector.setY(wristPose.position.y - reference_pose.pose.position.y);
-            diff_vector.setZ(wristPose.position.z - reference_pose.pose.position.z);
-
-            // apply the difference to the circular center
-            ROS_INFO("Applying difference vector to rotation axis (x: %f, y: %f, z: %f)", diff_vector.getX(), diff_vector.getY(), diff_vector.getZ());
-            new_target_poses[0].position.x += diff_vector.getX();
-            new_target_poses[0].position.y += diff_vector.getY();
-            new_target_poses[0].position.z += diff_vector.getZ();
-            ROS_INFO("New rotation axis (x: %f, y: %f, z: %f)", new_target_poses[0].position.x, new_target_poses[0].position.y, new_target_poses[0].position.z);
-
-          }else{
-            ROS_ERROR("Could not get reference pose (%s) into %s frame, resetting target poses.", reference_pose.header.frame_id.c_str(),
-                      context_->planning_scene_monitor_->getRobotModel()->getModelFrame().c_str());
-          }
         }else{  //Using circular motion without keeping end effector orientation
-          ROS_ERROR("Resetting target poses since no modification is needed when circular and not keeping end effector orientation");
+          ROS_WARN("Resetting target poses since no modification is needed when circular and not keeping end effector orientation");
         }
       }
-      new_goal->extended_planning_options.target_poses = new_target_poses;
+
     }
 
 
