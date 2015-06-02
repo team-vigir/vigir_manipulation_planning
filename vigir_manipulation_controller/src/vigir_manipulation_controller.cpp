@@ -755,7 +755,7 @@ void VigirManipulationController::sendFinalGrasp(geometry_msgs::PoseStamped fina
     vigir_planning_msgs::MoveGoal move_goal;
 
     move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
-    move_goal.extended_planning_options.avoid_collisions                   = false;
+    move_goal.extended_planning_options.allow_environment_collisions       = true;
     move_goal.extended_planning_options.keep_endeffector_orientation       = false;  //Final Grasps are always sent to the correct orientation
     move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;
     move_goal.request.group_name                                           = this->planning_group_;
@@ -806,7 +806,7 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
     vigir_planning_msgs::MoveGoal move_goal;
 
     move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION;
-    move_goal.extended_planning_options.avoid_collisions                   = false;
+    move_goal.extended_planning_options.allow_environment_collisions       = true;
     move_goal.extended_planning_options.keep_endeffector_orientation       = affordance.keep_orientation;
     move_goal.extended_planning_options.rotation_angle                     = affordance.displacement;
     move_goal.extended_planning_options.pitch                              = affordance.pitch;
@@ -866,7 +866,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
     vigir_planning_msgs::MoveGoal move_goal;
 
     move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
-    move_goal.extended_planning_options.avoid_collisions                   = false;
+    move_goal.extended_planning_options.allow_environment_collisions       = true;
     move_goal.extended_planning_options.keep_endeffector_orientation       = true;  //Cartesian Affordances don't care about end effector orientation
     move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;
     move_goal.request.group_name                                           = this->planning_group_;
@@ -941,7 +941,7 @@ void VigirManipulationController::sendFixedPoseAffordance(vigir_object_template_
     vigir_planning_msgs::MoveGoal move_goal;
 
     move_goal.extended_planning_options.target_motion_type                 = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION;
-    move_goal.extended_planning_options.avoid_collisions                   = false;
+    move_goal.extended_planning_options.allow_environment_collisions       = true;
     move_goal.extended_planning_options.keep_endeffector_orientation       = false;
     move_goal.extended_planning_options.rotation_angle                     = affordance.displacement;
     move_goal.extended_planning_options.execute_incomplete_cartesian_plans = true;

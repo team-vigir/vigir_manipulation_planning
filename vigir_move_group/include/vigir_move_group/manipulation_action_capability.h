@@ -63,7 +63,7 @@ private:
 
   void setupHandData();
 
-  void setCollisionOptions(bool octomap_collision_allow,
+  void setCollisionOptions(bool all_env_collision_allow,
                            bool left_hand_collision_allow,
                            bool right_hand_collision_allow);
 

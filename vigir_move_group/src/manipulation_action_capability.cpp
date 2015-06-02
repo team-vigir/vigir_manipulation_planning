@@ -118,13 +118,13 @@ void move_group::MoveGroupManipulationAction::setCollisionOptions(bool all_env_c
 {
   planning_scene_monitor::LockedPlanningSceneRW ps(context_->planning_scene_monitor_);
 
-  if (all_env_collision_allow){
-    collision_utils::setAllowedCollisions(context_->planning_scene_monitor_->getRobotModel()->getLinkModelNames(),
+  //Set all collision allow directly (allowed or not allowed)
+  collision_utils::setAllowedCollisions(context_->planning_scene_monitor_->getRobotModel()->getLinkModelNames(),
                                           context_->planning_scene_monitor_->getPlanningScene(),
                                           all_env_collision_allow);
 
-    //If all env collisions allowed, ignore hand settings as they are implied in allowing all
-  }else{
+  //If all env collisions allowed, ignore hand settings as they are implied in allowing all
+  if(!all_env_collision_allow){
     collision_utils::setAllowedCollisions(left_hand_links_vector_,
                                           context_->planning_scene_monitor_->getPlanningScene(),
                                           left_hand_collision_allow);
@@ -174,7 +174,12 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
 
   vigir_planning_msgs::MoveResult action_res;
 
-  if (goal->request.planner_id == "drake"){
+  this->setCollisionOptions(goal->extended_planning_options.allow_environment_collisions,
+                            goal->extended_planning_options.extended_planning_scene_diff.allow_left_hand_environment_collision,
+                            goal->extended_planning_options.extended_planning_scene_diff.allow_right_hand_environment_collision);
+
+  if (goal->request.planner_id == "drake")
+  {
     // @DRAKE Plan using Drake here. Alternatively, could also implement alternative callback below where @DRAKE is marked
 
     if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
@@ -193,11 +198,11 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
       }
       else if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION)
       {
-          executeMoveCallback_DrakeCircularMotionPlanOnly(goal, action_res);
+        executeMoveCallback_DrakeCircularMotionPlanOnly(goal, action_res);
       }
       else {
         ROS_WARN("Motion request type %d not implemented for Drake!", goal->extended_planning_options.target_motion_type);
-    action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
       }
     }
     else
@@ -207,11 +212,11 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
 
     action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
   }
-  
   // Below if not using Drake and not using copy of standard MoveIt! Action
-  else if (goal->extended_planning_options.target_poses.size() != 0){
+  else if (goal->extended_planning_options.target_poses.size() != 0)
+  {
 
-      /* Implement reference point from the request
+    /* Implement reference point from the request
        * Output needed: targetFrame_T_wrist.
        * Input needed:  targetFrame_T_referencePoint. This is given in the request as targetPose, but in this case it refers to the reference point, not the wrist.
        *                wrist_T_referencePoint.   This is the reference point in wrist frame (need to use inverse transform)
@@ -219,11 +224,11 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
        * For n waypoints:
        *    waypoint[i] = waypoint[i] * reference_point.inverse;  //User gives point of reference in wrist frame, but need to use inverse: */
 
-      std::vector<geometry_msgs::Pose> new_target_poses;
-      vigir_planning_msgs::MoveGoalPtr new_goal;
-      //Copy directly from goal
-      new_goal.reset(new vigir_planning_msgs::MoveGoal());
-      *new_goal = *goal;
+    std::vector<geometry_msgs::Pose> new_target_poses;
+    vigir_planning_msgs::MoveGoalPtr new_goal;
+    //Copy directly from goal
+    new_goal.reset(new vigir_planning_msgs::MoveGoal());
+    *new_goal = *goal;
 
     if(goal->extended_planning_options.reference_point.position.x    != 0.0 ||
        goal->extended_planning_options.reference_point.position.y    != 0.0 ||
@@ -231,83 +236,92 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
        goal->extended_planning_options.reference_point.orientation.x != 0.0 ||
        goal->extended_planning_options.reference_point.orientation.y != 0.0 ||
        goal->extended_planning_options.reference_point.orientation.z != 0.0 ||
-       goal->extended_planning_options.reference_point.orientation.w != 0.0 ){
-        ROS_INFO("Using reference point in the request");
-        tf::Transform wrist_T_referencePoint;
-        tf::Transform targetFrame_T_referencePoint;
-        tf::Transform targetFrame_T_wrist;
+       goal->extended_planning_options.reference_point.orientation.w != 0.0 )
+    {
+      ROS_INFO("Using reference point in the request");
+      tf::Transform wrist_T_referencePoint;
+      tf::Transform targetFrame_T_referencePoint;
+      tf::Transform targetFrame_T_wrist;
 
-        new_target_poses = goal->extended_planning_options.target_poses;
+      new_target_poses = goal->extended_planning_options.target_poses;
 
-        if(goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION ||
-           goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS){
-            ROS_INFO("Calculating new waypoints given reference point for FREE MOTIONS and CATRTESIAN WAYPOINTS");
+      if(goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION ||
+         goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS)
+      {
+        ROS_INFO("Calculating new waypoints given reference point for FREE MOTIONS and CATRTESIAN WAYPOINTS");
 
-            tf::poseMsgToTF(goal->extended_planning_options.reference_point, wrist_T_referencePoint);
+        tf::poseMsgToTF(goal->extended_planning_options.reference_point, wrist_T_referencePoint);
 
-            for (size_t i = 0; i < goal->extended_planning_options.target_poses.size(); ++i){
-                tf::poseMsgToTF(goal->extended_planning_options.target_poses[i], targetFrame_T_referencePoint);
-                targetFrame_T_wrist = targetFrame_T_referencePoint * wrist_T_referencePoint.inverse();
-                tf::poseTFToMsg(targetFrame_T_wrist,new_target_poses[i]);
-            }
-        }else{ //Circular motions behave different when reference point is given. Waypoint is translated but not rotated.
-
-            if(goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION &&
-                 goal->extended_planning_options.keep_endeffector_orientation){
-                ROS_INFO("Calculating new waypoints given reference point for CIRCULAR MOTIONS");
-                //Only used if keep endeffector orientation true or if circular motion requested
-                Eigen::Affine3d eef_start_pose;
-
-                if(!planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
-                                                                  context_->planning_scene_monitor_,
-                                                                  eef_start_pose))
-                {
-                  ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
-                  action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
-                  return;
-                }
-
-                geometry_msgs::PoseStamped reference_pose;
-
-                reference_pose.header.frame_id = goal->extended_planning_options.reference_point_frame;
-                reference_pose.pose            = goal->extended_planning_options.reference_point;
-
-                if (this->performTransform(reference_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))//Gets reference point in world frame
-                {
-                    geometry_msgs::Pose wristPose;
-                    tf::poseEigenToMsg(eef_start_pose,wristPose);  //Converts eef eigen pose to geometry pose
-
-                    // calculate the difference between them
-                    tf::Vector3 diff_vector;
-                    diff_vector.setX(wristPose.position.x - reference_pose.pose.position.x);
-                    diff_vector.setY(wristPose.position.y - reference_pose.pose.position.y);
-                    diff_vector.setZ(wristPose.position.z - reference_pose.pose.position.z);
-
-                    // apply the difference to the circular center
-                    ROS_INFO("Applying difference vector to rotation axis (x: %f, y: %f, z: %f)", diff_vector.getX(), diff_vector.getY(), diff_vector.getZ());
-                    new_target_poses[0].position.x += diff_vector.getX();
-                    new_target_poses[0].position.y += diff_vector.getY();
-                    new_target_poses[0].position.z += diff_vector.getZ();
-                    ROS_INFO("New rotation axis (x: %f, y: %f, z: %f)", new_target_poses[0].position.x, new_target_poses[0].position.y, new_target_poses[0].position.z);
-
-                }else{
-                    ROS_ERROR("Could not get reference pose (%s) into %s frame, resetting target poses.", reference_pose.header.frame_id.c_str(),
-                                                                                                          context_->planning_scene_monitor_->getRobotModel()->getModelFrame().c_str());
-                }
-            }else{  //Using circular motion without keeping end effector orientation
-                ROS_ERROR("Resetting target poses since no modification is needed when circular and not keeping end effector orientation");
-            }
+        for (size_t i = 0; i < goal->extended_planning_options.target_poses.size(); ++i)
+        {
+          tf::poseMsgToTF(goal->extended_planning_options.target_poses[i], targetFrame_T_referencePoint);
+          targetFrame_T_wrist = targetFrame_T_referencePoint * wrist_T_referencePoint.inverse();
+          tf::poseTFToMsg(targetFrame_T_wrist,new_target_poses[i]);
         }
-        new_goal->extended_planning_options.target_poses = new_target_poses;
+      }else{ //Circular motions behave different when reference point is given. Waypoint is translated but not rotated.
+
+        if(goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION &&
+           goal->extended_planning_options.keep_endeffector_orientation)
+        {
+          ROS_INFO("Calculating new waypoints given reference point for CIRCULAR MOTIONS");
+          //Only used if keep endeffector orientation true or if circular motion requested
+          Eigen::Affine3d eef_start_pose;
+
+          if(planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+                                                            context_->planning_scene_monitor_,
+                                                            eef_start_pose))
+          {
+            geometry_msgs::PoseStamped reference_pose;
+
+            reference_pose.header.frame_id = goal->extended_planning_options.reference_point_frame;
+            reference_pose.pose            = goal->extended_planning_options.reference_point;
+
+            if (this->performTransform(reference_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame()))//Gets reference point in world frame
+            {
+              geometry_msgs::Pose wristPose;
+              tf::poseEigenToMsg(eef_start_pose,wristPose);  //Converts eef eigen pose to geometry pose
+
+              // calculate the difference between them
+              tf::Vector3 diff_vector;
+              diff_vector.setX(wristPose.position.x - reference_pose.pose.position.x);
+              diff_vector.setY(wristPose.position.y - reference_pose.pose.position.y);
+              diff_vector.setZ(wristPose.position.z - reference_pose.pose.position.z);
+
+              // apply the difference to the circular center
+              ROS_INFO("Applying difference vector to rotation axis (x: %f, y: %f, z: %f)", diff_vector.getX(), diff_vector.getY(), diff_vector.getZ());
+              new_target_poses[0].position.x += diff_vector.getX();
+              new_target_poses[0].position.y += diff_vector.getY();
+              new_target_poses[0].position.z += diff_vector.getZ();
+              ROS_INFO("New rotation axis (x: %f, y: %f, z: %f)", new_target_poses[0].position.x, new_target_poses[0].position.y, new_target_poses[0].position.z);
+
+              new_goal->extended_planning_options.target_poses = new_target_poses;
+            }else{
+              ROS_ERROR("Could not get reference pose (%s) into %s frame, resetting target poses.", reference_pose.header.frame_id.c_str(),
+                        context_->planning_scene_monitor_->getRobotModel()->getModelFrame().c_str());
+              action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+            }
+          }else{
+            //Under normal operating conditions we always can get the endeffector transform
+            ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
+            action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+            return;
+          }
+        }else{  //Using circular motion without keeping end effector orientation
+          ROS_WARN("Resetting target poses since no modification is needed when circular and not keeping end effector orientation");
+        }
+      }
+
     }
 
 
-    if (new_goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION){
+    if (new_goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION)
+    {
 
       // For free motion, do IK and plan.
       // Consider additional joint constraints/redundant joints
 
-      if (new_goal->extended_planning_options.target_poses.size() > 1){
+      if (new_goal->extended_planning_options.target_poses.size() > 1)
+      {
         ROS_ERROR("For FREE MOTION, only a single target pose is supported, but I got %d", (int)new_goal->extended_planning_options.target_poses.size());
         action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
       }else{
@@ -340,7 +354,8 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
             }
           }
 
-          if (found_ik){
+          if (found_ik)
+          {
             vigir_planning_msgs::MoveGoalPtr updated_goal;
             updated_goal.reset(new vigir_planning_msgs::MoveGoal());
             *updated_goal = *new_goal;
@@ -374,7 +389,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
       executeCartesianMoveCallback_PlanAndExecute(new_goal, action_res);
     }
 
-  // Below forwards to standard MoveIt Action
+    // Below forwards to standard MoveIt Action
   }else{
 
 
@@ -402,6 +417,8 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
     else
       move_action_server_->setAborted(action_res, response);
   }
+
+  this->setCollisionOptions(false, false, false);
 
   setMoveState(IDLE);
 }
@@ -881,7 +898,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
 
   cart_path.request.jump_threshold = 2.0;
   cart_path.request.max_step = 0.01;
-  cart_path.request.avoid_collisions = goal->extended_planning_options.avoid_collisions;
+  cart_path.request.avoid_collisions = false;//goal->extended_planning_options.allow_environment_collisions;
   cart_path.request.group_name = goal->request.group_name;
 
   setMoveState(PLANNING);
@@ -1442,7 +1459,7 @@ planning_scene::PlanningSceneConstPtr move_group::MoveGroupManipulationAction::g
   const planning_scene::PlanningScenePtr extended_scene = the_scene->diff();
 
   // We only modify extended scene if required, otherwise no copies are performed, which is preferable.
-  if ( (!goal->extended_planning_options.avoid_collisions) ||
+  if ( ( goal->extended_planning_options.allow_environment_collisions) ||
        ( goal->extended_planning_options.extended_planning_scene_diff.allowed_collision_pairs.size() > 0) ||
        ( goal->extended_planning_options.extended_planning_scene_diff.forbidden_collision_pairs.size() > 0) ||
        ( goal->extended_planning_options.extended_planning_scene_diff.allow_left_hand_environment_collision) ||
@@ -1452,7 +1469,7 @@ planning_scene::PlanningSceneConstPtr move_group::MoveGroupManipulationAction::g
     collision_detection::AllowedCollisionMatrix& acm = extended_scene->getAllowedCollisionMatrixNonConst();
 
     // Completely disable complete environment collision checks
-    if (!goal->extended_planning_options.avoid_collisions){
+    if (goal->extended_planning_options.allow_environment_collisions){
       std::vector<std::string> object_strings = context_->planning_scene_monitor_->getPlanningScene()->getCollisionWorld()->getWorld()->getObjectIds();
 
       size_t size = object_strings.size();
