@@ -159,6 +159,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     //Initializing hand transformation in palm frame to identity (no end-effector used)
     hand_T_palm_.setIdentity();
     hand_T_marker_.setIdentity();
+    hand_T_usability_.setIdentity();
 
     if(!robot_model_->hasLinkModel(hand_link_)){
         ROS_WARN("Hand model does not contain %s_palm link",hand_side_.c_str());
@@ -185,10 +186,22 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
             //Initializing palm transformation in hand frame
             tf::transformEigenToTF( hand_palm_aff,hand_T_palm_);
             //We got palm_T_hand, need to invert
-            hand_T_palm_ = hand_T_palm_.inverse();
-            hand_T_marker_ = hand_T_palm_;
+            hand_T_palm_      = hand_T_palm_.inverse();
+            hand_T_marker_    = hand_T_palm_;
         }
     }
+
+    XmlRpc::XmlRpcValue   hand_T_marker;
+
+    if (!nhp.getParam("/"+this->wrist_name_+"_tf/hand_T_marker", hand_T_marker))
+        ROS_WARN(" Did not find /%s_tf/hand_T_marker parameter, setting to left palm ", this->wrist_name_.c_str());
+    else{
+        hand_T_marker_.setOrigin(tf::Vector3(static_cast<double>(hand_T_marker[0]),static_cast<double>(hand_T_marker[1]),static_cast<double>(hand_T_marker[2])));
+        hand_T_marker_.setRotation(tf::Quaternion(static_cast<double>(hand_T_marker[3]),static_cast<double>(hand_T_marker[4]),static_cast<double>(hand_T_marker[5]),static_cast<double>(hand_T_marker[6])));
+    }
+
+    hand_T_usability_ = hand_T_marker_;
+
     //initializing grasp status
     grasp_status_.status = RobotStatusCodes::status(RobotStatusCodes::NO_ERROR, RobotStatusCodes::OK);
 
@@ -449,7 +462,7 @@ void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8&
                               hand_T_template.getRotation().getZ(),
                               hand_T_template.getRotation().getW());
 
-                    hand_T_marker_ = hand_T_template * template_T_marker;
+                    hand_T_usability_ = hand_T_template * template_T_marker;
                     break;
                 }
             }
@@ -457,20 +470,20 @@ void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8&
 
         if(index >= template_srv_.response.template_type_information.usabilities.size()){
             ROS_ERROR("Usability id:%d not found, setting marker to palm", usability_id.data);
-            hand_T_marker_ = hand_T_palm_;
+            hand_T_usability_ = hand_T_marker_;
         }
     }else{
-        hand_T_marker_ = hand_T_palm_;
+        hand_T_usability_ = hand_T_marker_;
     }
 
     ROS_INFO("New hand_T_marker x:%f, y:%f, z:%f, qx:%f, qy:%f, qz:%f, qw:%f",
-              hand_T_marker_.getOrigin().getX(),
-              hand_T_marker_.getOrigin().getY(),
-              hand_T_marker_.getOrigin().getZ(),
-              hand_T_marker_.getRotation().getX(),
-              hand_T_marker_.getRotation().getY(),
-              hand_T_marker_.getRotation().getZ(),
-              hand_T_marker_.getRotation().getW());
+              hand_T_usability_.getOrigin().getX(),
+              hand_T_usability_.getOrigin().getY(),
+              hand_T_usability_.getOrigin().getZ(),
+              hand_T_usability_.getRotation().getX(),
+              hand_T_usability_.getRotation().getY(),
+              hand_T_usability_.getRotation().getZ(),
+              hand_T_usability_.getRotation().getW());
 }
 
 // Called because of stitching functionality
@@ -820,7 +833,7 @@ void VigirManipulationController::sendCircularAffordance(vigir_object_template_m
 
     if(affordance.keep_orientation){
         geometry_msgs::Pose temp;
-        tf::poseTFToMsg(hand_T_marker_, temp);
+        tf::poseTFToMsg(hand_T_usability_, temp);
         move_goal.extended_planning_options.reference_point       = temp;
         move_goal.extended_planning_options.reference_point_frame = this->wrist_name_;
         ROS_INFO("Setting reference frame to %s and reference point to x: %f, y: %f, z: %f, qx: %f, qy: %f, qz: %f, qw:%f ",

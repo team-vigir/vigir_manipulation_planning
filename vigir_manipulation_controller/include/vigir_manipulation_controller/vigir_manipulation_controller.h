@@ -162,6 +162,7 @@ namespace vigir_manipulation_controller {
     tf::Transform                              palmStitch_T_hand_;
     tf::Transform                              hand_T_palm_;
     tf::Transform                              hand_T_marker_;
+    tf::Transform                              hand_T_usability_;
 //    tf::TransformListener                      listener_;
     flor_planning_msgs::PlanRequest            wrist_target_pose_;
     flor_atlas_msgs::AtlasHandMass             template_mass_msg_;
