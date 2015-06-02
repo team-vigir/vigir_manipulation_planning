@@ -1,6 +1,7 @@
 <launch>  
   <!-- ATLAS RIGHT HAND IP = 10.66.171.23 -->
-  <arg name="right_hand_name" default="192.168.121.101" />
+ <!-- <arg name="right_hand_name" default="192.168.121.101" /> -->
+  <arg name="right_hand_name" default="10.4.4.230" />
 
   <rosparam ns="/right_robotiq/right_robotiq_ros_controller" >robotiq_activation_time: 16</rosparam>
 
