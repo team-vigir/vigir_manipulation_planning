@@ -174,6 +174,10 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
 
   vigir_planning_msgs::MoveResult action_res;
 
+  this->setCollisionOptions(goal->extended_planning_options.allow_environment_collisions,
+                            goal->extended_planning_options.extended_planning_scene_diff.allow_left_hand_environment_collision,
+                            goal->extended_planning_options.extended_planning_scene_diff.allow_right_hand_environment_collision);
+
   if (goal->request.planner_id == "drake")
   {
     // @DRAKE Plan using Drake here. Alternatively, could also implement alternative callback below where @DRAKE is marked
@@ -413,6 +417,8 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
     else
       move_action_server_->setAborted(action_res, response);
   }
+
+  this->setCollisionOptions(false, false, false);
 
   setMoveState(IDLE);
 }
@@ -892,7 +898,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
 
   cart_path.request.jump_threshold = 2.0;
   cart_path.request.max_step = 0.01;
-  cart_path.request.avoid_collisions = goal->extended_planning_options.avoid_collisions;
+  cart_path.request.avoid_collisions = false;//goal->extended_planning_options.allow_environment_collisions;
   cart_path.request.group_name = goal->request.group_name;
 
   setMoveState(PLANNING);
@@ -1453,7 +1459,7 @@ planning_scene::PlanningSceneConstPtr move_group::MoveGroupManipulationAction::g
   const planning_scene::PlanningScenePtr extended_scene = the_scene->diff();
 
   // We only modify extended scene if required, otherwise no copies are performed, which is preferable.
-  if ( (!goal->extended_planning_options.avoid_collisions) ||
+  if ( ( goal->extended_planning_options.allow_environment_collisions) ||
        ( goal->extended_planning_options.extended_planning_scene_diff.allowed_collision_pairs.size() > 0) ||
        ( goal->extended_planning_options.extended_planning_scene_diff.forbidden_collision_pairs.size() > 0) ||
        ( goal->extended_planning_options.extended_planning_scene_diff.allow_left_hand_environment_collision) ||
@@ -1463,7 +1469,7 @@ planning_scene::PlanningSceneConstPtr move_group::MoveGroupManipulationAction::g
     collision_detection::AllowedCollisionMatrix& acm = extended_scene->getAllowedCollisionMatrixNonConst();
 
     // Completely disable complete environment collision checks
-    if (!goal->extended_planning_options.avoid_collisions){
+    if (goal->extended_planning_options.allow_environment_collisions){
       std::vector<std::string> object_strings = context_->planning_scene_monitor_->getPlanningScene()->getCollisionWorld()->getWorld()->getObjectIds();
 
       size_t size = object_strings.size();

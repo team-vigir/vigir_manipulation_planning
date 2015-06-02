@@ -205,7 +205,7 @@ public:
     goal_.extended_planning_options.target_frame = msg->rotation_center_pose.header.frame_id;
     goal_.extended_planning_options.keep_endeffector_orientation = msg->keep_endeffector_orientation;
     goal_.extended_planning_options.rotation_angle = msg->rotation_angle;
-    goal_.extended_planning_options.avoid_collisions = msg->use_environment_obstacle_avoidance;
+    goal_.extended_planning_options.allow_environment_collisions = !msg->use_environment_obstacle_avoidance;
     goal_.extended_planning_options.execute_incomplete_cartesian_plans = true;
 
     goal_.request.goal_constraints.clear();
@@ -231,7 +231,7 @@ public:
     goal_.request.allowed_planning_time = 1.0;
 
     goal_.extended_planning_options.target_frame = msg->header.frame_id;
-    goal_.extended_planning_options.avoid_collisions = msg->use_environment_obstacle_avoidance;
+    goal_.extended_planning_options.allow_environment_collisions = !msg->use_environment_obstacle_avoidance;
     goal_.extended_planning_options.execute_incomplete_cartesian_plans = true;
 
     goal_.request.goal_constraints.clear();
@@ -368,7 +368,10 @@ public:
     goal_.extended_planning_options.target_poses.clear();
     goal_.extended_planning_options.target_poses.push_back(plan_request.pose.pose);
     goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION;
-    goal_.extended_planning_options.avoid_collisions = !planner_configuration_.disable_collision_avoidance;
+
+    goal_.extended_planning_options.allow_environment_collisions = planner_configuration_.disable_collision_avoidance;
+    goal_.extended_planning_options.extended_planning_scene_diff.allow_left_hand_environment_collision = planner_configuration_.disable_left_hand_collision_avoidance;
+    goal_.extended_planning_options.extended_planning_scene_diff.allow_right_hand_environment_collision = planner_configuration_.disable_right_hand_collision_avoidance;
 
     move_action_client_->sendGoal(goal_,
                                   boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
@@ -386,8 +389,9 @@ public:
     goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor);
     goal_.request.allowed_planning_time = 1.0;
 
-    goal_.extended_planning_options.avoid_collisions = !planner_configuration_.disable_collision_avoidance;
-
+    goal_.extended_planning_options.allow_environment_collisions = planner_configuration_.disable_collision_avoidance;
+    goal_.extended_planning_options.extended_planning_scene_diff.allow_left_hand_environment_collision = planner_configuration_.disable_left_hand_collision_avoidance;
+    goal_.extended_planning_options.extended_planning_scene_diff.allow_right_hand_environment_collision = planner_configuration_.disable_right_hand_collision_avoidance;
 
     //goal_.request.goal_constraints = plan_request.position;
     //kinematic_constraints::constructGoalConstraints()
