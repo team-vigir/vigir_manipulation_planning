@@ -33,6 +33,7 @@ namespace head_control{
       tf::TransformListener tf;
 
       std::vector<double> head_cmd; // pan, tilt
+      std::vector<std::string> all_frames;
     };
 }
 

@@ -17,13 +17,28 @@ namespace head_control{
 
         old_target_frame_origin.setZero();
         head_cmd.resize(2, 0);
+
+        tf.getFrameStrings(all_frames);
     }
 
     void HeadControl::updateHeadPosition() {
       if(tracking_mode == vigir_planning_msgs::HeadControlCommand::TRACK_FRAME){
-          std::vector<double> joints = computeJointsForTracking(tracking_frame);
-          if (joints.size() < 2) return;
-          setHeadJointPosition(joints[0], joints[1]);
+          tf.getFrameStrings(all_frames);
+          bool frame_exists = false;
+          for (int i = 0; i< all_frames.size(); i++){
+
+              if (all_frames[i] == tracking_frame){
+                  frame_exists = true;
+                  break;
+              }
+
+          }
+          if (frame_exists) {
+              std::vector<double> joints = computeJointsForTracking(tracking_frame);
+              if (joints.size() < 2) return;
+              setHeadJointPosition(joints[0], joints[1]);
+          }
+
       } else if (tracking_mode == vigir_planning_msgs::HeadControlCommand::TRACK_LEFT_HAND) {
           std::vector<double> joints = computeJointsForTracking("l_hand");
           if (joints.size() < 2) return;
