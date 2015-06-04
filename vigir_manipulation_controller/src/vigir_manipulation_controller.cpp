@@ -405,7 +405,7 @@ void VigirManipulationController::affordanceCommandCallback(const vigir_object_t
     else if (affordance.type == "fixed")
         sendFixedPoseAffordance(affordance);
     else{
-        ROS_ERROR("Affordance type not recognized, ignoring affrodance_command");
+        ROS_ERROR("Affordance type not recognized, ignoring affordance command");
     }
 }
 
@@ -633,7 +633,7 @@ inline void VigirManipulationController::updateTemplateMass()
         ROS_WARN("Invalid template_mass_pub_");
 }
 
-void VigirManipulationController::processTemplateMassData(geometry_msgs::PoseStamped& template_pose, float &template_mass,  geometry_msgs::Point& template_com)
+void VigirManipulationController::processTemplateMassData(const geometry_msgs::PoseStamped& template_pose, const float &template_mass, const geometry_msgs::Point& template_com)
 {
     tf::Transform wrist_T_template;
     tf::Vector3   template_P;
@@ -670,7 +670,7 @@ void VigirManipulationController::processTemplateMassData(geometry_msgs::PoseSta
         com_.pose.position.z = template_P.getZ();
     }
     else{//CoM sanity check failed, reset the CoM to the corresponding hand.
-        ROS_WARN("Template CoM sanitiy check failed, resetting to 0.");
+        ROS_WARN("Template CoM sanity check failed, resetting to 0.");
         this->template_mass_msg_.mass = 0.0;
         com_.pose.position.x = 0.0;
         com_.pose.position.y = 0.0;

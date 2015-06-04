@@ -235,7 +235,7 @@ namespace vigir_manipulation_controller {
 
     void updateGraspStatus(); // call to publish latest grasp data
     void updateTemplateMass(); // call to publish latest grasp data
-    void processTemplateMassData(geometry_msgs::PoseStamped &template_pose, float &template_mass, geometry_msgs::Point &template_com);
+    void processTemplateMassData(const geometry_msgs::PoseStamped &template_pose, const float &template_mass, const geometry_msgs::Point &template_com);
     void handStatusCallback(const flor_grasp_msgs::HandStatus& msg);
 
     void requestInstantiatedGraspService(const uint16_t& requested_template_type);
