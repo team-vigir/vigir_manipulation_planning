@@ -114,7 +114,7 @@ namespace vigir_manipulation_controller {
 
   protected:
 
-   inline int16_t  getGraspStatus() { return RobotStatusCodes::status(grasp_status_code_, grasp_status_severity_);}
+   inline int16_t  getGraspStatus() const { return RobotStatusCodes::status(grasp_status_code_, grasp_status_severity_);}
    void            setGraspStatus(const RobotStatusCodes::StatusCode& status, const RobotStatusCodes::StatusLevel& severity);
 
    void                        setLinkState(flor_grasp_msgs::LinkState link_state);
@@ -236,25 +236,25 @@ namespace vigir_manipulation_controller {
     void updateGraspStatus(); // call to publish latest grasp data
     void updateTemplateMass(); // call to publish latest grasp data
     void processTemplateMassData(geometry_msgs::PoseStamped &template_pose, float &template_mass, geometry_msgs::Point &template_com);
-    void handStatusCallback(const flor_grasp_msgs::HandStatus msg);
+    void handStatusCallback(const flor_grasp_msgs::HandStatus& msg);
 
     void requestInstantiatedGraspService(const uint16_t& requested_template_type);
 
     void setDetachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
     void setStitchingObject(const flor_grasp_msgs::TemplateSelection& template_data);
 
-    void sendCircularAffordance(vigir_object_template_msgs::Affordance affordance);
+    void sendCircularAffordance(const vigir_object_template_msgs::Affordance& affordance);
     void sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance);
-    void sendFixedPoseAffordance(vigir_object_template_msgs::Affordance affordance);
-    void sendFinalGrasp(geometry_msgs::PoseStamped final_grasp);
+    void sendFixedPoseAffordance(const vigir_object_template_msgs::Affordance& affordance);
+    void sendFinalGrasp(const geometry_msgs::PoseStamped &final_grasp);
 
     bool affordanceInWristFrame(vigir_object_template_msgs::GetAffordanceInWristFrame::Request& req,
                                 vigir_object_template_msgs::GetAffordanceInWristFrame::Response& res);
 
     // Calculate the wrist target in world frame given wrist pose in template frame
     int calcWristTarget(const geometry_msgs::Pose& wrist_pose);
-    int poseTransform(geometry_msgs::Pose& input_pose, tf::Transform transform);
-    int poseTransform(tf::Transform transform, geometry_msgs::Pose& input_pose);
+    int poseTransform(geometry_msgs::Pose& input_pose, const tf::Transform& transform);
+    int poseTransform(const tf::Transform& transform, geometry_msgs::Pose& input_pose);
 
   };
 

@@ -511,7 +511,7 @@ int VigirManipulationController::calcWristTarget(const geometry_msgs::Pose& wris
     return 0;
 }
 
-int VigirManipulationController::poseTransform(geometry_msgs::Pose& input_pose, tf::Transform transform)
+int VigirManipulationController::poseTransform(geometry_msgs::Pose& input_pose, const tf::Transform& transform)
 {
     tf::Transform output_transform;    //describes hand in object's frame
     tf::Transform input_transform;       //describes palm_from_graspit in object's frame
@@ -536,7 +536,7 @@ int VigirManipulationController::poseTransform(geometry_msgs::Pose& input_pose, 
     return 0;
 }
 
-int VigirManipulationController::poseTransform(tf::Transform transform, geometry_msgs::Pose& input_pose)
+int VigirManipulationController::poseTransform(const tf::Transform &transform, geometry_msgs::Pose& input_pose)
 {
     tf::Transform output_transform;    //describes hand in object's frame
     tf::Transform input_transform;       //describes palm_from_graspit in object's frame
@@ -680,7 +680,7 @@ void VigirManipulationController::processTemplateMassData(geometry_msgs::PoseSta
 
 }
 
-void VigirManipulationController::handStatusCallback(const flor_grasp_msgs::HandStatus msg)
+void VigirManipulationController::handStatusCallback(const flor_grasp_msgs::HandStatus &msg)
 {
     {
         boost::lock_guard<boost::mutex> guard(this->write_data_mutex_);
@@ -754,7 +754,7 @@ void VigirManipulationController::setDetachingObject(const flor_grasp_msgs::Temp
     updateTemplateMass();
 }
 
-void VigirManipulationController::sendFinalGrasp(geometry_msgs::PoseStamped final_grasp)
+void VigirManipulationController::sendFinalGrasp(const geometry_msgs::PoseStamped& final_grasp)
 {
     actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> move_action_client("/vigir_move_group",true);
 
@@ -793,7 +793,7 @@ void VigirManipulationController::sendFinalGrasp(geometry_msgs::PoseStamped fina
         ROS_ERROR("Action did not finish before the time out.");
 }
 
-void VigirManipulationController::sendCircularAffordance(vigir_object_template_msgs::Affordance affordance)
+void VigirManipulationController::sendCircularAffordance(const vigir_object_template_msgs::Affordance& affordance)
 {
 //    //Create message for manipulation controller
 //    template_srv_.request.template_id = last_template_stitch_id_;
@@ -940,7 +940,7 @@ void VigirManipulationController::sendCartesianAffordance(vigir_object_template_
         ROS_ERROR("Action did not finish before the time out.");
 }
 
-void VigirManipulationController::sendFixedPoseAffordance(vigir_object_template_msgs::Affordance affordance)
+void VigirManipulationController::sendFixedPoseAffordance(const vigir_object_template_msgs::Affordance &affordance)
 {
     actionlib::SimpleActionClient<vigir_planning_msgs::MoveAction> move_action_client("/vigir_move_group",true);
 
