@@ -194,7 +194,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     XmlRpc::XmlRpcValue   hand_T_marker;
 
     if (!nhp.getParam("/"+this->wrist_name_+"_tf/hand_T_marker", hand_T_marker))
-        ROS_WARN(" Did not find /%s_tf/hand_T_marker parameter, setting to left palm ", this->wrist_name_.c_str());
+        ROS_ERROR(" Did not find /%s_tf/hand_T_marker parameter, setting to left palm ", this->wrist_name_.c_str());
     else{
         hand_T_marker_.setOrigin(tf::Vector3(static_cast<double>(hand_T_marker[0]),static_cast<double>(hand_T_marker[1]),static_cast<double>(hand_T_marker[2])));
         hand_T_marker_.setRotation(tf::Quaternion(static_cast<double>(hand_T_marker[3]),static_cast<double>(hand_T_marker[4]),static_cast<double>(hand_T_marker[5]),static_cast<double>(hand_T_marker[6])));
