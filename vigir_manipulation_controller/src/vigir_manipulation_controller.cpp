@@ -473,7 +473,12 @@ void VigirManipulationController::updateHandMarkerCallback(const std_msgs::Int8&
             hand_T_usability_ = hand_T_marker_;
         }
     }else{
-        hand_T_usability_ = hand_T_marker_;
+        if(usability_id.data == -2)
+            hand_T_usability_ = hand_T_marker_;
+        else if(usability_id.data == -1){
+            hand_T_usability_.setRotation(tf::Quaternion(0,0,0,1));
+            hand_T_usability_.setOrigin(tf::Vector3(0,-0.095,0));
+        }
     }
 
     ROS_INFO("New hand_T_marker x:%f, y:%f, z:%f, qx:%f, qy:%f, qz:%f, qw:%f",
