@@ -40,8 +40,13 @@
 #include <QWidget>
 #include <QTreeWidgetItem>
 #include <QListWidgetItem>
+#include <QDoubleSpinBox>
+#include <QSignalMapper>
+#include <QButtonGroup>
+
 
 #ifndef Q_MOC_RUN
+#include <vigir_planning_msgs/ExtendedPlanningOptions.h>
 #include <moveit/vigir_move_group_interface/move_group.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit/planning_scene_monitor/planning_scene_monitor.h>
@@ -191,6 +196,17 @@ private Q_SLOTS:
   void detectedObjectChanged(QListWidgetItem *item);
   void selectedSupportSurfaceChanged();  
 
+  //Cartesian Trajectory tab
+  void addWaypointButtonClicked();
+  void removeWaypointButtonClicked();
+  void clearWaypointsButtonClicked();
+  void loadCartesianTrajectoryButtonClicked();
+  void saveCartesianTrajectoryButtonClicked();
+  void planCartesianTrajectoryButtonClicked();
+  void cartesianTrajectoryOrientationChanged();
+
+  void updateWaypointData(QWidget *spinbox);
+
   //General
   void tabChanged(int index);
 
@@ -270,6 +286,23 @@ private:
   ros::Subscriber execute_subscriber_;
   ros::Subscriber update_start_state_subscriber_;
   ros::Subscriber update_goal_state_subscriber_;
+
+  //Cartesian Trajectory
+  void initCartesianTrajectoryTab();
+  vigir_planning_msgs::ExtendedPlanningOptionsPtr buildExtendedPlanningOptions();
+  vigir_planning_msgs::ExtendedPlanningOptionsPtr loadExtendedPlanningOptions(QString filename);
+  bool saveExtendedPlanningOptions(vigir_planning_msgs::ExtendedPlanningOptionsPtr extendedPlanningOptions, QString filename);
+
+  void computeCartesianPlanButtonClicked();
+  QTreeWidgetItem *addWaypoint(QTreeWidgetItem *copy = NULL);
+  bool getContentFromItem(QTreeWidgetItem *waypointItem, QString &name, geometry_msgs::Pose &targetPose, QString &targetLinkName, geometry_msgs::Point &targetLinkAxis, double &targetPoseTime);
+  void removeWaypoint(QTreeWidgetItem *item);
+  void clearWaypoints();
+
+  QDoubleSpinBox *createItemSpinBox(QTreeWidgetItem *item);
+  QSignalMapper cartesian_trajectory_waypoint_change_mapper_;
+  QButtonGroup cartesian_trajectory_orientation_group_;
+
   //General
   void changePlanningGroupHelper();
   void importResource(const std::string &path);

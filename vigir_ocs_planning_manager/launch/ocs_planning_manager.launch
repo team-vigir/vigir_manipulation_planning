@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <node pkg="vigir_ocs_planning_manager" type="ocs_planning_manager_node" name="ocs_planning_manager_node" output="screen" respawn="true" />
+  
+  <!-- <include file="$(find simox_inv_reach_ros)/launch/vigir_onboard.launch" /> -->
+  
+  <node pkg="vigir_interactive_marker_pose_server" type="interactive_marker_pose_server" name="rotation_target_pose_server" respawn="true" >
+    <param name="marker_name" value="rotation_target" />
+    <param name="frame_id" value="/world" />
+    <remap from="pose" to="/flor/ocs/planning/rotation_center_pose" />
+  </node> 
+  
+  <node pkg="vigir_interactive_marker_pose_server" type="interactive_marker_pose_server" name="cartesian_target_pose_server"  respawn="true">
+    <param name="marker_name" value="cartesian_target" />
+    <param name="frame_id" value="/world" />
+    <remap from="pose" to="/flor/ocs/planning/cartesian_target_pose" />
+  </node>
+
+  <node pkg="vigir_interactive_marker_pose_server" type="interactive_marker_pose_server" name="inv_reach_target_pose_server"  respawn="true">
+    <param name="marker_name" value="inv_reach_target" />
+    <param name="frame_id" value="/world" />
+    <remap from="pose" to="/flor/ocs/planning/inverse_reachability_target" />
+  </node>
+    
+</launch>

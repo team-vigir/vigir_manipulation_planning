@@ -39,10 +39,13 @@
 
 #include <moveit/move_group/move_group_capability.h>
 #include <actionlib/server/simple_action_server.h>
-//#include <moveit_msgs/MoveGroupAction.h>
 #include <vigir_planning_msgs/MoveAction.h>
 
 #include <vigir_moveit_utils/trajectory_utils.h>
+#include <vigir_plan_execution/continuous_plan_execution.h>
+#include <moveit_msgs/GetCartesianPath.h>
+
+#include <tf/transform_listener.h>
 
 namespace move_group
 {
@@ -56,26 +59,62 @@ public:
   virtual void initialize();
 
 private:
+  bool checkGroupStateSelfCollisionFree(robot_state::RobotState *robot_state, const robot_state::JointModelGroup *joint_group, const double *joint_group_variable_values);
+
+  void setupHandData();
+
+  void setCollisionOptions(bool all_env_collision_allow,
+                           bool left_hand_collision_allow,
+                           bool right_hand_collision_allow);
 
   void executeMoveCallback(const vigir_planning_msgs::MoveGoalConstPtr& goal);
   void executeMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
   void executeMoveCallback_PlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
+
+  void executeMoveCallback_DrakePlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
+  void executeMoveCallback_DrakeCartesianPlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
+  void executeMoveCallback_DrakeCircularMotionPlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
+
+  void executeCartesianMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
   void startMoveExecutionCallback();
   void startMoveLookCallback();
   void preemptMoveCallback();
   void setMoveState(MoveGroupState state);
   bool planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan);
+  bool planUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
+  bool planCartesianUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
+  bool planCircularMotionUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
+
+  // Mostly copy of MoveGroup CartesianPath service with modifications
+  bool computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req,
+                            moveit_msgs::GetCartesianPath::Response &res,
+                            double max_velocity_scaling_factor);
+
+  planning_scene::PlanningSceneConstPtr getCollisionSettingsPlanningSceneDiff(const vigir_planning_msgs::MoveGoalConstPtr& goal,
+                                                                              planning_scene_monitor::LockedPlanningSceneRO& lscene) const;
 
   boost::scoped_ptr<actionlib::SimpleActionServer<vigir_planning_msgs::MoveAction> > move_action_server_;
   vigir_planning_msgs::MoveFeedback move_feedback_;
 
   MoveGroupState move_state_;
 
+  plan_execution::ContinuousPlanExecutionPtr continuous_plan_execution_;
+
   boost::shared_ptr<trajectory_utils::TrajectoryVisualization> planned_traj_vis_;
   boost::shared_ptr<trajectory_utils::TrajectoryVisualization> executed_traj_vis_;
+
+  ros::ServiceClient drake_trajectory_srv_client_;
+  ros::ServiceClient drake_cartesian_trajectory_srv_client_;
+
+  ros::Publisher trajectory_result_display_pub_;
+
+  tf::TransformListener transform_listener_;
+
+  boost::shared_ptr<trajectory_processing::IterativeParabolicTimeParameterization> time_param_;
+
+  std::vector<std::string> left_hand_links_vector_;
+  std::vector<std::string> right_hand_links_vector_;
 };
-
-
 
 }
 

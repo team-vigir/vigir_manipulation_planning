@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+
+<launch>
+
+<!-- Publish topic to pin hip -->
+<node type="rostopic" pkg="rostopic" name="pin_hip" args="pub --once /atlas/mode std_msgs/String 'pinned_with_gravity'" output="screen"  />
+
+
+<!-- This launches the components affiliated with state estimation -->
+<include file="$(find vigir_state_estimation)/launch/state_estimation.launch"/>
+
+<include file="$(find vigir_ik_position_control)/launch/interactive_marker_servers.launch"/>
+
+<include file="$(find atlas_moveit_config)/launch/test_sim_robot.launch"/>
+
+<node name="pose_to_plan_node" pkg="flor_pose_to_plan_node" type="pose_to_plan_node" >
+  <remap from="plan" to="/flor/r_arm_controller/trajectory" />
+  <remap from="pose" to="/flor/r_arm_pose" />
+  <remap from="get_plan" to="/plan_for_grasp" />
+</node>
+
+<!-- Start the simple IK-based position controllers to move the arm to the specified target -->
+<!--node name="gravity_controller" pkg="vigir_joint_controller" type="joint_controller" output="screen" launch-prefix="gdb -ex run - -args" -->
+<node name="flor_robot_controller" pkg="flor_robot_controller" type="flor_sim_controller_node" output="screen"  >
+  <param name="publish_statistics_count" value="2000" />
+  <remap from="/pose" to="/flor/state/pelvis_pose_world" />
+  <remap from="/flor/neck_controller/joint_state" to="/atlas/pos_cmd/neck_ry" />
+</node>
+
+<!--<node name="r_arm_group_kinematics_base_test" pkg="flor_kinematics_base_test" type="kinematics_base_test" output="screen">
+  <param name="publish_joint_states" type="bool" value="true" />
+  <param name="robot_name" value="atlas" />
+  <param name="group_name" value="/flor/r_arm_group" />
+  <param name="base_frame" value="utorso" />
+  <param name="tip_frame"  value="r_hand" />
+  <remap from="pose" to="/grasp_control/r_hand/desired_pose" />
+  <remap from="joint_states" to="/flor/r_arm_group_joint_states" />
+</node>-->
+
+</launch>
+

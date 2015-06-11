@@ -1,3 +1,4 @@
+set(QT_USE_QTXML TRUE)
 
 # Header files that need Qt Moc pre-processing for use with Qt signals, etc:
 set( headers
@@ -22,12 +23,15 @@ set(SOURCE_FILES
   src/motion_planning_frame_objects.cpp
   src/motion_planning_frame_scenes.cpp
   src/motion_planning_frame_states.cpp
+  src/motion_planning_frame_cartesian_trajectory.cpp
   src/motion_planning_display.cpp
   src/motion_planning_frame_manipulation.cpp
 )
 
 set(MOVEIT_LIB_NAME vigir_moveit_motion_planning_rviz_plugin)
 add_library(${MOVEIT_LIB_NAME}_core ${SOURCE_FILES} ${MOC_SOURCES} ${UIC_FILES})
+add_dependencies(${MOVEIT_LIB_NAME}_core vigir_planning_msgs_generate_messages_cpp)
+
 target_link_libraries(${MOVEIT_LIB_NAME}_core
   #vigir_moveit_rviz_plugin_render_tools
   moveit_planning_scene_rviz_plugin_core

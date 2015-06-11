@@ -108,7 +108,14 @@ void MotionPlanningFrame::computePlanButtonClicked()
 
   configureForPlanning();
   current_plan_.reset(new moveit::planning_interface::VigirMoveGroup::Plan());
-  if (move_group_->plan(*current_plan_))
+
+  vigir_planning_msgs::ExtendedPlanningOptionsPtr extended_options(new vigir_planning_msgs::ExtendedPlanningOptions());
+  extended_options->target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION;
+  extended_options->target_pose_times.push_back( ui_->drake_trajectory_duration_spinbox->value());
+  extended_options->trajectory_sample_rate = ui_->drake_sample_rate_spinbox->value();
+  extended_options->check_self_collisions = ui_->drake_check_self_collisions_checkbox->isChecked();
+
+  if (move_group_->plan(*current_plan_, extended_options))
   {
     ui_->execute_button->setEnabled(true);
 
@@ -136,7 +143,14 @@ void MotionPlanningFrame::computePlanAndExecuteButtonClicked()
   if (!move_group_)
     return;
   configureForPlanning();
-  move_group_->move();
+
+  vigir_planning_msgs::ExtendedPlanningOptionsPtr extended_options(new vigir_planning_msgs::ExtendedPlanningOptions());
+  extended_options->target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION;
+  extended_options->target_pose_times.push_back( ui_->drake_trajectory_duration_spinbox->value());
+  extended_options->trajectory_sample_rate = ui_->drake_sample_rate_spinbox->value();
+  extended_options->check_self_collisions = ui_->drake_check_self_collisions_checkbox->isChecked();
+
+  move_group_->move(extended_options);
   ui_->plan_and_execute_button->setEnabled(true);
 }
 

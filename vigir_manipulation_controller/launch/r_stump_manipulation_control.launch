@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!-- This launch file uses the basic Grasp controller plugin. -->
+
+<launch>
+
+<node name="right_vigir_manipulation_controller" pkg="vigir_stump_grasp_controller" type="vigir_stump_grasp_controller_node" respawn="true" ><!--output="screen"  launch-prefix="xterm -e gdb -ex r"-->
+
+    <param name="wrist_name"  value="r_hand" />      <!--Last arm link name-->
+    <!--<param name="hand_link"   value="right_palm" />  First hand link name-->
+    <!--<param name="joint_group" value="right_hand" />  Hand joint group specified in SRDF-->
+
+    <remap from="template_stitch_pose" to="/manipulation_control/r_hand/template_stitch_pose" />
+    <remap from="template_stitch"      to="/manipulation_control/r_hand/template_stitch_request" />
+    <remap from="move_to_pose"         to="/manipulation_control/r_hand/move_to_pose" />
+    <remap from="attach_object"        to="/manipulation_control/r_hand/attach_object" />
+    <remap from="detach_object"        to="/manipulation_control/r_hand/detach_object" />
+    <remap from="affordance_command"   to="/manipulation_control/r_hand/affordance_command" />
+    <remap from="hand_marker"          to="/manipulation_control/r_hand/hand_marker" />
+
+    <remap from="grasp_command"        to="/grasp_control/r_hand/grasp_command" />
+    <remap from="grasp_status"         to="/grasp_control/r_hand/grasp_status" />
+    <remap from="link_states"          to="/grasp_control/r_hand/tactile_feedback" />
+    <remap from="hand_status"          to="/grasp_control/r_hand/hand_status" />
+    <remap from="hand_mass"            to="/grasp_control/template_mass" />
+    <remap from="wrist_target"         to="/grasp_control/r_hand/target_pose" />
+    <remap from="wrist_plan"           to="/grasp_control/r_hand/plan_request" />
+
+    <remap from="wrist_pose"           to="/flor/r_arm_current_pose" />
+    <remap from="planner_status"       to="/grasp_planning/r_hand/status" />
+    <remap from="use_torso"            to="/flor/ocs/ghost/state_use_torso" />
+</node>
+
+</launch>

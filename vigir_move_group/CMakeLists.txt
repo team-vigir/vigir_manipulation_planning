@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   vigir_plan_execution
   vigir_moveit_utils
+  vigir_planning_msgs
 )
 
 catkin_package(
@@ -31,6 +32,7 @@ add_library(vigir_move_group_capabilities
   src/continuous_replanning_capability.cpp
   src/manipulation_action_capability.cpp
   src/octomap_access_capability.cpp
+  src/robot_state_retrieval_capability.cpp
   )
 
 target_link_libraries(vigir_move_group_capabilities ${catkin_LIBRARIES} ${Boost_LIBRARIES})

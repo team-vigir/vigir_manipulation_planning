@@ -69,6 +69,9 @@
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <XmlRpcException.h>
 
+#include <tf/transform_datatypes.h>
+
+
 namespace occupancy_map_monitor
 {
 
@@ -117,6 +120,9 @@ bool LidarOctomapUpdater::initialize()
 {
   wait_duration_ = ros::Duration(0.5);
 
+  filtered_localized_scan_.processed_scan.ranges.resize(3);
+  filtered_localized_scan_.processed_scan.intensities.resize(1);
+
   if (!filter_chain_.configure("scan_filter_chain", private_nh_))
     ROS_ERROR("Error while configuring filter chain, proceeding without filtering!");
 
@@ -130,6 +136,7 @@ bool LidarOctomapUpdater::initialize()
 
   scan_filtered_publisher_ = private_nh_.advertise<sensor_msgs::LaserScan>("scan_filtered", 10, false);
   scan_self_filtered_publisher_ = private_nh_.advertise<sensor_msgs::LaserScan>("scan_self_filtered", 10, false);
+  filtered_localized_scan_publisher_ = private_nh_.advertise<vigir_perception_msgs::FilteredLocalizedLaserScan>("scan_filtered_localized", 10, false);
   return true;
 }
 
@@ -213,6 +220,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
 
   /* get transform for cloud into map frame */
   tf::StampedTransform map_H_sensor;
+  tf::StampedTransform map_H_sensor_last_ray;
   if (monitor_->getMapFrame() == scan_filtered_.header.frame_id)
     map_H_sensor.setIdentity();
   else
@@ -221,21 +229,30 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     {
       try
       {
-        ros::Time end_time   = scan_filtered_.header.stamp + ros::Duration().fromSec(scan_filtered_.ranges.size()*scan_filtered_.time_increment) ;
+        ros::Time end_time   = scan_filtered_.header.stamp + ros::Duration().fromSec((scan_filtered_.ranges.size() -1)*scan_filtered_.time_increment) ;
 
         if(tf_->waitForTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, scan_filtered_.header.stamp, wait_duration_) &&
            tf_->waitForTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, end_time, wait_duration_)){
           tf_->lookupTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, scan_filtered_.header.stamp, map_H_sensor);
+          tf_->lookupTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, end_time, map_H_sensor_last_ray);
         }
       }
       catch (tf::TransformException& ex)
       {
-        ROS_ERROR_STREAM("Transform error of sensor data: " << ex.what() << "; quitting callback");
+        ROS_ERROR_STREAM("Transform error of sensor data: " << ex.what() << "; quitting callback in LidarOctomapUpdater");
+        return;
+      }
+      catch(...)
+      {
+        ROS_ERROR_STREAM("Exception while retrieving scan transform in LidarOctomapUpdater");
         return;
       }
     }
     else
+    {
+      ROS_ERROR("No tf listener, cannot run LidarOctomapUpdater");
       return;
+    }
   }
 
   /* compute sensor origin in map frame */
@@ -243,7 +260,15 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   octomap::point3d sensor_origin(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
   Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
 
-  projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), scan_filtered_, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity|laser_geometry::channel_option::Index);
+  try
+  {
+    projector_.transformLaserScanToPointCloud(monitor_->getMapFrame(), scan_filtered_, *cloud_msg, *tf_, max_range_, laser_geometry::channel_option::Intensity|laser_geometry::channel_option::Index);
+  }
+  catch(...)
+  {
+    ROS_ERROR_STREAM("Exception while transforming scan; quitting callback in LidarOctomapUpdater");
+    return;
+  }
 
   if (!updateTransformCache(cloud_msg->header.frame_id, cloud_msg->header.stamp))
   {
@@ -358,6 +383,8 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
           }
           else if (mask_[col] == point_containment_filter::ShapeMask::CLIP)
           {
+            // CLIP cells are only those outside min to max range. Given we operate in world frame for
+            // containment check and scan is prefiltered for min/max, there are no CLIP cells.
             //clip_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
           }
           else
@@ -404,6 +431,56 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
 
   tree_->unlockRead();
 
+
+  // ----------------- Finished with self filtering, can publish filtered data now
+
+
+  if (filtered_localized_scan_publisher_.getNumSubscribers() > 0){
+
+    filtered_localized_scan_.header.stamp = scan_msg->header.stamp;
+    filtered_localized_scan_.header.frame_id = monitor_->getMapFrame();
+
+    filtered_localized_scan_.processed_scan.header = scan_msg->header;
+
+    filtered_localized_scan_.processed_scan.angle_min = scan_msg->angle_min;
+    filtered_localized_scan_.processed_scan.angle_max = scan_msg->angle_max;
+    filtered_localized_scan_.processed_scan.angle_increment = scan_msg->angle_increment;
+    filtered_localized_scan_.processed_scan.time_increment = scan_msg->time_increment;
+    filtered_localized_scan_.processed_scan.scan_time = scan_msg->scan_time;
+    filtered_localized_scan_.processed_scan.range_min = scan_msg->range_min;
+    filtered_localized_scan_.processed_scan.range_max = scan_msg->range_max;
+
+    filtered_localized_scan_.processed_scan.ranges[vigir_perception_msgs::FilteredLocalizedLaserScan::SCAN_PREPROCESSED].echoes = scan_filtered_.ranges;
+    filtered_localized_scan_.processed_scan.ranges[vigir_perception_msgs::FilteredLocalizedLaserScan::SCAN_SELF_FILTERED].echoes = scan_self_filtered_.ranges;
+    filtered_localized_scan_.processed_scan.ranges[vigir_perception_msgs::FilteredLocalizedLaserScan::SCAN_RAW].echoes = scan_msg->ranges;
+    filtered_localized_scan_.processed_scan.intensities[0].echoes = scan_msg->intensities;
+
+    tf::transformTFToMsg(map_H_sensor, filtered_localized_scan_.transform_first_ray);
+    tf::transformTFToMsg(map_H_sensor_last_ray, filtered_localized_scan_.transform_last_ray);
+
+    filtered_localized_scan_publisher_.publish(filtered_localized_scan_);
+  }
+
+  if (scan_filtered_publisher_.getNumSubscribers() > 0){
+    scan_filtered_publisher_.publish(scan_filtered_);
+  }
+
+  if (scan_self_filtered_publisher_.getNumSubscribers() > 0){
+    scan_self_filtered_publisher_.publish(scan_self_filtered_);
+  }
+
+  if (publish_filtered_cloud)
+  {
+    sensor_msgs::PointCloud2Modifier pcd_modifier(*filtered_cloud);
+    pcd_modifier.resize(filtered_cloud_size);
+    filtered_cloud_publisher_.publish(*filtered_cloud);
+  }
+
+
+
+  // ----------------- Update octomap --------------------
+
+
   /* cells that overlap with the model are not occupied */
   for (octomap::KeySet::iterator it = model_cells.begin(), end = model_cells.end(); it != end; ++it)
     occupied_cells.erase(*it);
@@ -433,24 +510,10 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   {
     ROS_ERROR("Internal error while updating octree");
   }
-  tree_->unlockWrite();
-  ROS_DEBUG("Processed laser scan in %lf ms. Self filtering took %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0, (self_filter_finished_time - start).toSec() * 1000.0 );
+  tree_->unlockWrite();  
   tree_->triggerUpdateCallback();
 
-  if (scan_filtered_publisher_.getNumSubscribers() > 0){
-    scan_filtered_publisher_.publish(scan_filtered_);
-  }
-
-  if (scan_self_filtered_publisher_.getNumSubscribers() > 0){
-    scan_self_filtered_publisher_.publish(scan_self_filtered_);
-  }
-
-  if (publish_filtered_cloud)
-  {
-    sensor_msgs::PointCloud2Modifier pcd_modifier(*filtered_cloud);
-    pcd_modifier.resize(filtered_cloud_size);
-    filtered_cloud_publisher_.publish(*filtered_cloud);
-  }
+  ROS_DEBUG("Processed laser scan in %lf ms. Self filtering took %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0, (self_filter_finished_time - start).toSec() * 1000.0 );
 }
 
 }
