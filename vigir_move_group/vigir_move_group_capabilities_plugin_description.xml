@@ -1,16 +1,16 @@
 <library path="libvigir_move_group_capabilities">
 
-  <class name="move_group/ContinuousReplanningCapability" type="move_group::ContinuousReplanningCapability" base_class_type="move_group::MoveGroupCapability">
+<!--  <class name="move_group/ContinuousReplanningCapability" type="move_group::ContinuousReplanningCapability" base_class_type="move_group::MoveGroupCapability">
     <description>
       Continuous replanning capability
     </description>
-  </class>
+  </class>-->
   
-  <class name="move_group/MoveGroupManipulationAction" type="move_group::MoveGroupManipulationAction" base_class_type="move_group::MoveGroupCapability">
+<!--  <class name="move_group/MoveGroupManipulationAction" type="move_group::MoveGroupManipulationAction" base_class_type="move_group::MoveGroupCapability">
     <description>
       Manipulation action capability, extending default MoveAction with custom functionality
     </description>
-  </class>
+  </class>-->
 
   <class name="move_group/OctomapAccessCapability" type="move_group::OctomapAccessCapability" base_class_type="move_group::MoveGroupCapability">
     <description>
@@ -18,9 +18,9 @@
     </description>
   </class>    
 
-  <class name="move_group/RobotStateRetrievalCapability" type="move_group::RobotStateRetrievalCapability" base_class_type="move_group::MoveGroupCapability">
+<!--  <class name="move_group/RobotStateRetrievalCapability" type="move_group::RobotStateRetrievalCapability" base_class_type="move_group::MoveGroupCapability">
     <description>
       Provides API for retrieving the group state
     </description>
-  </class> 
+  </class> -->
 </library>
