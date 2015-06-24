@@ -4,7 +4,7 @@ project(vigir_ocs_robot_model)
 find_package(Boost REQUIRED COMPONENTS system)
 
 find_package(Boost REQUIRED system filesystem date_time program_options signals thread)
-find_package(catkin REQUIRED COMPONENTS cmake_modules flor_utilities geometry_msgs flor_planning_msgs vigir_planning_msgs flor_ocs_msgs roscpp moveit_core moveit_ros_planning  flor_visualization_utils eigen_conversions vigir_moveit_utils)
+find_package(catkin REQUIRED COMPONENTS cmake_modules vigir_utilities geometry_msgs flor_planning_msgs vigir_planning_msgs flor_ocs_msgs roscpp moveit_core moveit_ros_planning  flor_visualization_utils eigen_conversions vigir_moveit_utils)
 #flor_moveit_tools
 find_package(Eigen REQUIRED)
 
@@ -14,7 +14,7 @@ catkin_package(
    LIBRARIES
      ${PROJECT_NAME}
    CATKIN_DEPENDS
-     flor_utilities
+     vigir_utilities
      geometry_msgs
      flor_planning_msgs
      vigir_planning_msgs
