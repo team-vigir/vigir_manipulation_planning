@@ -86,14 +86,14 @@ include_directories(include
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a cpp executable
-# add_executable(flor_utilities_node src/flor_utilities_node.cpp)
+# add_executable(vigir_utilities_node src/vigir_utilities_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(flor_utilities_node flor_utilities_generate_messages_cpp)
+# add_dependencies(vigir_utilities_node vigir_utilities_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(flor_utilities_node
+# target_link_libraries(vigir_utilities_node
 #   ${catkin_LIBRARIES}
 # )
 
@@ -122,7 +122,7 @@ install(DIRECTORY include/${PROJECT_NAME}/
 )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS flor_utilities flor_utilities_node
+# install(TARGETS vigir_utilities vigir_utilities_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -147,7 +147,7 @@ install(DIRECTORY include/${PROJECT_NAME}/
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_flor_utilities.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_vigir_utilities.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
