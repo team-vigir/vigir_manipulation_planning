@@ -46,10 +46,10 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/WrenchStamped.h>
 
-#include <flor_grasp_msgs/GraspSelection.h>
-#include <flor_grasp_msgs/TemplateSelection.h>
-#include <flor_grasp_msgs/GraspState.h>
-#include <flor_grasp_msgs/HandStatus.h>
+#include <vigir_grasp_msgs/GraspSelection.h>
+#include <vigir_grasp_msgs/TemplateSelection.h>
+#include <vigir_grasp_msgs/GraspState.h>
+#include <vigir_grasp_msgs/HandStatus.h>
 #include "flor_ocs_msgs/OCSRobotStatus.h"
 #include "flor_ocs_msgs/RobotStatusCodes.h"
 #include "flor_control_msgs/FlorControlMode.h"
@@ -117,8 +117,8 @@ namespace vigir_manipulation_controller {
    inline int16_t  getGraspStatus() const { return RobotStatusCodes::status(grasp_status_code_, grasp_status_severity_);}
    void            setGraspStatus(const RobotStatusCodes::StatusCode& status, const RobotStatusCodes::StatusLevel& severity);
 
-   void                        setLinkState(flor_grasp_msgs::LinkState link_state);
-   flor_grasp_msgs::HandStatus getHandStatus() { return last_hand_status_msg_; }
+   void                        setLinkState(vigir_grasp_msgs::LinkState link_state);
+   vigir_grasp_msgs::HandStatus getHandStatus() { return last_hand_status_msg_; }
 
    //Specific hand functions
 
@@ -127,15 +127,15 @@ namespace vigir_manipulation_controller {
     * Grasp command has a grip in the range [0,200] where range [0,100) means percentage closure and
     * range [100,200] means percentage effort
     * */
-   virtual void graspCommandCallback(const flor_grasp_msgs::GraspState &grasp)  = 0;
+   virtual void graspCommandCallback(const vigir_grasp_msgs::GraspState &grasp)  = 0;
 
    /* This function needs to set the tactile information of the hand and will also return
     * a GraspQualtity evaluation    *
     */
    virtual GraspQuality processHandTactileData()                                = 0;
 
-    flor_grasp_msgs::HandStatus                last_hand_status_msg_;
-    flor_grasp_msgs::LinkState                 link_tactile_;
+    vigir_grasp_msgs::HandStatus                last_hand_status_msg_;
+    vigir_grasp_msgs::LinkState                 link_tactile_;
 
     flor_ocs_msgs::OCSRobotStatus              last_planner_status_msg_;
     flor_control_msgs::FlorControlMode         last_controller_mode_msg_;
@@ -216,12 +216,12 @@ namespace vigir_manipulation_controller {
     /** This function is called whenever the template needs to be stitched to the real object.
      * assump template pose is given in world frame
      */
-    void  templateStitchCallback(const flor_grasp_msgs::GraspSelection& grasp_msg);
+    void  templateStitchCallback(const vigir_grasp_msgs::GraspSelection& grasp_msg);
 
     /** called to update the latest wrist pose */
     void  wristPoseCallback(const geometry_msgs::PoseStamped& wrist_pose);
 
-    void moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp);
+    void moveToPoseCallback(const vigir_grasp_msgs::GraspSelection& grasp);
 
     /** Set the current planning group to "arm only" or "arm + torso"           */
     void  graspPlanningGroupCallback(const std_msgs::Bool::ConstPtr& msg);
@@ -236,12 +236,12 @@ namespace vigir_manipulation_controller {
     void updateGraspStatus(); // call to publish latest grasp data
     void updateTemplateMass(); // call to publish latest grasp data
     void processTemplateMassData(const geometry_msgs::PoseStamped &template_pose, const float &template_mass, const geometry_msgs::Point &template_com);
-    void handStatusCallback(const flor_grasp_msgs::HandStatus& msg);
+    void handStatusCallback(const vigir_grasp_msgs::HandStatus& msg);
 
     void requestInstantiatedGraspService(const uint16_t& requested_template_type);
 
-    void setDetachingObject(const flor_grasp_msgs::TemplateSelection& template_data);
-    void setStitchingObject(const flor_grasp_msgs::TemplateSelection& template_data);
+    void setDetachingObject(const vigir_grasp_msgs::TemplateSelection& template_data);
+    void setStitchingObject(const vigir_grasp_msgs::TemplateSelection& template_data);
 
     void sendCircularAffordance(const vigir_object_template_msgs::Affordance& affordance);
     void sendCartesianAffordance(vigir_object_template_msgs::Affordance affordance);

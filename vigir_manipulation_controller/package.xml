@@ -41,7 +41,7 @@
   <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>flor_control_msgs</build_depend>
-  <build_depend>flor_grasp_msgs</build_depend>
+  <build_depend>vigir_grasp_msgs</build_depend>
   <build_depend>flor_ocs_msgs</build_depend>
   <build_depend>geometric_shapes</build_depend>
   <build_depend>moveit_core</build_depend>
@@ -56,7 +56,7 @@
   <build_depend>vigir_planning_msgs</build_depend>
   <build_depend>actionlib</build_depend>
   <run_depend>flor_control_msgs</run_depend>
-  <run_depend>flor_grasp_msgs</run_depend>
+  <run_depend>vigir_grasp_msgs</run_depend>
   <run_depend>flor_ocs_msgs</run_depend>
   <run_depend>geometric_shapes</run_depend>
   <run_depend>moveit_core</run_depend>

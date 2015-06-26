@@ -104,7 +104,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     wrist_plan_pub_             = nh.advertise<flor_planning_msgs::PlanRequest>("wrist_plan",       1, true);
     grasp_status_pub_           = nh.advertise<flor_ocs_msgs::OCSRobotStatus>("grasp_status",       1, true);
     template_mass_pub_          = nh.advertise<flor_atlas_msgs::AtlasHandMass>("hand_mass",         1, true);
-    tactile_feedback_pub_       = nh.advertise<flor_grasp_msgs::LinkState>("link_states",           1, true);
+    tactile_feedback_pub_       = nh.advertise<vigir_grasp_msgs::LinkState>("link_states",           1, true);
     circular_plan_request_pub_  = nh.advertise<flor_planning_msgs::CircularMotionRequest>( "/flor/planning/upper_body/plan_circular_request",  1, false );
     cartesian_plan_request_pub_ = nh.advertise<flor_planning_msgs::CartesianMotionRequest>("/flor/planning/upper_body/plan_cartesian_request", 1, false );
 
@@ -238,7 +238,7 @@ void VigirManipulationController::graspPlanningGroupCallback(const std_msgs::Boo
     }
 }
 
-void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::GraspSelection& grasp_msg)
+void VigirManipulationController::templateStitchCallback(const vigir_grasp_msgs::GraspSelection& grasp_msg)
 {
 
 
@@ -315,7 +315,7 @@ void VigirManipulationController::templateStitchCallback(const flor_grasp_msgs::
                 //Publish to OCS
                 if (template_stitch_pose_pub_)
                 {
-                    flor_grasp_msgs::TemplateSelection last_template_data;
+                    vigir_grasp_msgs::TemplateSelection last_template_data;
                     last_template_data.template_id = grasp_msg.template_id;
                     this->setStitchingObject(last_template_data); //Stitching collision object to robot
 
@@ -350,7 +350,7 @@ void  VigirManipulationController::wristPoseCallback(const geometry_msgs::PoseSt
      return;
 }
 
-void VigirManipulationController::moveToPoseCallback(const flor_grasp_msgs::GraspSelection& grasp)
+void VigirManipulationController::moveToPoseCallback(const vigir_grasp_msgs::GraspSelection& grasp)
 {
     // Store the latest grasp command, and update at next calculation loop
     {
@@ -588,7 +588,7 @@ void VigirManipulationController::setGraspStatus(const RobotStatusCodes::StatusC
     }
 }
 
-void VigirManipulationController::setLinkState(flor_grasp_msgs::LinkState link_state){
+void VigirManipulationController::setLinkState(vigir_grasp_msgs::LinkState link_state){
     link_tactile_ = link_state;
 }
 
@@ -685,7 +685,7 @@ void VigirManipulationController::processTemplateMassData(const geometry_msgs::P
 
 }
 
-void VigirManipulationController::handStatusCallback(const flor_grasp_msgs::HandStatus &msg)
+void VigirManipulationController::handStatusCallback(const vigir_grasp_msgs::HandStatus &msg)
 {
     {
         boost::lock_guard<boost::mutex> guard(this->write_data_mutex_);
@@ -720,7 +720,7 @@ void VigirManipulationController::requestInstantiatedGraspService(const uint16_t
     last_grasp_res_ = srv.response;
 }
 
-void VigirManipulationController::setStitchingObject(const flor_grasp_msgs::TemplateSelection& template_data){
+void VigirManipulationController::setStitchingObject(const vigir_grasp_msgs::TemplateSelection& template_data){
     //Add collision object with template pose and bounding box
 
     ROS_INFO("Stitching collision object :%s started",(boost::to_string(int16_t(template_data.template_id.data))).c_str());
@@ -738,7 +738,7 @@ void VigirManipulationController::setStitchingObject(const flor_grasp_msgs::Temp
 
 }
 
-void VigirManipulationController::setDetachingObject(const flor_grasp_msgs::TemplateSelection& template_data){
+void VigirManipulationController::setDetachingObject(const vigir_grasp_msgs::TemplateSelection& template_data){
     //Set static transform to identity unstitching the template
     this->palmStitch_T_hand_.setIdentity();
 
