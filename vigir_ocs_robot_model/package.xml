@@ -18,7 +18,7 @@
   <build_depend>flor_planning_msgs</build_depend>
   <build_depend>vigir_planning_msgs</build_depend>
   <build_depend>vigir_moveit_utils</build_depend>
-  <build_depend>flor_ocs_msgs</build_depend>  
+  <build_depend>vigir_ocs_msgs</build_depend>  
   <build_depend>flor_visualization_utils</build_depend>
   <build_depend>eigen_conversions</build_depend>
 
@@ -30,7 +30,7 @@
   <run_depend>flor_planning_msgs</run_depend>
   <run_depend>vigir_planning_msgs</run_depend>
   <run_depend>vigir_moveit_utils</run_depend>
-  <run_depend>flor_ocs_msgs</run_depend>  
+  <run_depend>vigir_ocs_msgs</run_depend>  
   <run_depend>flor_visualization_utils</run_depend>
   <run_depend>eigen_conversions</run_depend>
 

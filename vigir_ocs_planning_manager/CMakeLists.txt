@@ -4,7 +4,7 @@ project(vigir_ocs_planning_manager)
 #find_package(Boost REQUIRED COMPONENTS system)
 
 find_package(Boost REQUIRED system filesystem date_time program_options signals thread)
-find_package(catkin REQUIRED COMPONENTS cmake_modules geometry_msgs flor_planning_msgs flor_ocs_msgs roscpp)
+find_package(catkin REQUIRED COMPONENTS cmake_modules geometry_msgs flor_planning_msgs vigir_ocs_msgs roscpp)
 
 find_package(Eigen REQUIRED)
 

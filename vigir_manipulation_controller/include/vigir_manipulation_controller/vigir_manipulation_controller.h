@@ -50,8 +50,8 @@
 #include <vigir_grasp_msgs/TemplateSelection.h>
 #include <vigir_grasp_msgs/GraspState.h>
 #include <vigir_grasp_msgs/HandStatus.h>
-#include "flor_ocs_msgs/OCSRobotStatus.h"
-#include "flor_ocs_msgs/RobotStatusCodes.h"
+#include "vigir_ocs_msgs/OCSRobotStatus.h"
+#include "vigir_ocs_msgs/RobotStatusCodes.h"
 #include "flor_control_msgs/FlorControlMode.h"
 #include <flor_planning_msgs/PlanRequest.h>
 #include <flor_planning_msgs/CircularMotionRequest.h>
@@ -137,7 +137,7 @@ namespace vigir_manipulation_controller {
     vigir_grasp_msgs::HandStatus                last_hand_status_msg_;
     vigir_grasp_msgs::LinkState                 link_tactile_;
 
-    flor_ocs_msgs::OCSRobotStatus              last_planner_status_msg_;
+    vigir_ocs_msgs::OCSRobotStatus              last_planner_status_msg_;
     flor_control_msgs::FlorControlMode         last_controller_mode_msg_;
     geometry_msgs::PoseStamped                 last_wrist_pose_msg_;
 
@@ -170,7 +170,7 @@ namespace vigir_manipulation_controller {
     geometry_msgs::PoseStamped                 wrist_T_template_;
 
     //Grasp status message
-    flor_ocs_msgs::OCSRobotStatus              grasp_status_;
+    vigir_ocs_msgs::OCSRobotStatus              grasp_status_;
     RobotStatusCodes::StatusCode               grasp_status_code_;      // Using RobotStatusCodes with severity
     RobotStatusCodes::StatusLevel              grasp_status_severity_;
 

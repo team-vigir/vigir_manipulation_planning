@@ -31,8 +31,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <trajectory_msgs/JointTrajectory.h>
 
-#include <flor_ocs_msgs/OCSRobotStatus.h>
-#include <flor_ocs_msgs/RobotStatusCodes.h>
+#include <vigir_ocs_msgs/OCSRobotStatus.h>
+#include <vigir_ocs_msgs/RobotStatusCodes.h>
 
 #include <flor_planning_msgs/PlanRequest.h>
 #include <flor_planning_msgs/PlanToJointTargetRequest.h>
@@ -112,7 +112,7 @@ public:
     plan_joint_request_sub_ = nh.subscribe("plan_joint_request", 1, &PlanToAction::planJointRequestCallback, this);
     plan_circular_request_sub_ = nh.subscribe("plan_circular_request", 1, &PlanToAction::planCircularRequestCallback, this);
     plan_cartesian_request_sub_ = nh.subscribe("plan_cartesian_request", 1, &PlanToAction::planCartesianRequestCallback, this);
-    plan_status_pub_ = nh.advertise<flor_ocs_msgs::OCSRobotStatus>("plan_status",1,false);
+    plan_status_pub_ = nh.advertise<vigir_ocs_msgs::OCSRobotStatus>("plan_status",1,false);
 
     // Subscriber for plans that sends them of to controller
     plan_execute_sub_ = nh.subscribe("execute_trajectory", 1, &PlanToAction::planExecuteCallback, this);
@@ -126,8 +126,8 @@ public:
     r_arm_joint_trajectory_sub_ = nh.subscribe("refine_r_arm_trajectory", 1, &PlanToAction::refineRightArmTrajectoryCallback, this);
 
     // Grasping ROS API
-    l_grasp_status_pub_ = nh.advertise<flor_ocs_msgs::OCSRobotStatus>("l_grasp_status",1,false);
-    r_grasp_status_pub_ = nh.advertise<flor_ocs_msgs::OCSRobotStatus>("r_grasp_status",1,false);
+    l_grasp_status_pub_ = nh.advertise<vigir_ocs_msgs::OCSRobotStatus>("l_grasp_status",1,false);
+    r_grasp_status_pub_ = nh.advertise<vigir_ocs_msgs::OCSRobotStatus>("r_grasp_status",1,false);
     l_grasp_plan_request_sub_ = nh.subscribe("l_grasp_plan_request", 1, &PlanToAction::lGraspRequestCallback, this);
     r_grasp_plan_request_sub_ = nh.subscribe("r_grasp_plan_request", 1, &PlanToAction::rGraspRequestCallback, this);
 
@@ -154,7 +154,7 @@ public:
     motion_source_= LEFT_GRASP;
     planAndMove(*msg);
     /*
-    flor_ocs_msgs::OCSRobotStatus status;
+    vigir_ocs_msgs::OCSRobotStatus status;
 
     if (!planAndMove(*msg, &status)){
       status.stamp = ros::Time::now();
@@ -173,7 +173,7 @@ public:
     planAndMove(*msg);
 
     /*
-    flor_ocs_msgs::OCSRobotStatus status;
+    vigir_ocs_msgs::OCSRobotStatus status;
 
     if (!planAndMove(*msg, &status)){
       status.stamp = ros::Time::now();
@@ -427,7 +427,7 @@ public:
 
   void moveActionDoneCallback(const actionlib::SimpleClientGoalState& state, const vigir_planning_msgs::MoveResultConstPtr& result)
   {
-    flor_ocs_msgs::OCSRobotStatus status;
+    vigir_ocs_msgs::OCSRobotStatus status;
 
     status.stamp = ros::Time::now();
     status.status = this->moveitErrorCodeToPlannerStatus(result->error_code.val);
@@ -446,7 +446,7 @@ public:
   {
       ROS_INFO("Move Action active callback");
 
-      flor_ocs_msgs::OCSRobotStatus status;
+      vigir_ocs_msgs::OCSRobotStatus status;
       status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_MOVEIT_PLAN_ACTIVE, RobotStatusCodes::OK);
       plan_status_pub_.publish(status);
 
@@ -609,7 +609,7 @@ public:
 
   /* @TODO Below is obsolete, remove once clear that is ok.
   //Sets status for OCS feedback
-  void setStatus(uint8_t plan_status, flor_ocs_msgs::OCSRobotStatus& status) const
+  void setStatus(uint8_t plan_status, vigir_ocs_msgs::OCSRobotStatus& status) const
   {
     status.stamp = ros::Time::now();
 
