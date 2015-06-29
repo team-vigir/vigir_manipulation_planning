@@ -37,8 +37,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
 
-//#include <flor_grasp_msgs/InverseReachabilityForGraspRequest.h>
-//#include <flor_grasp_msgs/InverseReachabilityWithPoseRequest.h>
+//#include <vigir_grasp_msgs/InverseReachabilityForGraspRequest.h>
+//#include <vigir_grasp_msgs/InverseReachabilityWithPoseRequest.h>
 
 #include <flor_planning_msgs/CircularMotionRequest.h>
 #include <flor_planning_msgs/CartesianMotionRequest.h>
@@ -76,7 +76,7 @@ public:
   }
 
   /*
-  void poseInverseReachabilityQueryCallback(const flor_grasp_msgs::InverseReachabilityForGraspRequest req)
+  void poseInverseReachabilityQueryCallback(const vigir_grasp_msgs::InverseReachabilityForGraspRequest req)
   {
     if (inv_reach_target_pose_ == 0){
       ROS_WARN("No inverse reachability target received so far, aborting inverse reachability request (hand=%d)!",req.hand_side);
@@ -87,7 +87,7 @@ public:
 
     ros::ServiceClient* service_client = 0;
 
-    if (req.hand_side == flor_grasp_msgs::InverseReachabilityForGraspRequest::HAND_LEFT){
+    if (req.hand_side == vigir_grasp_msgs::InverseReachabilityForGraspRequest::HAND_LEFT){
       service_client = &simox_pose_inverse_reachability_client_l_arm_and_yaw_;
     }else{
       service_client = &simox_pose_inverse_reachability_client_r_arm_and_yaw_;
@@ -116,7 +116,7 @@ public:
   }
 
   /*
-  void invReachQueryWithTargetPoseCallback(const flor_grasp_msgs::InverseReachabilityWithPoseRequest::ConstPtr& msg)
+  void invReachQueryWithTargetPoseCallback(const vigir_grasp_msgs::InverseReachabilityWithPoseRequest::ConstPtr& msg)
   {
     invReachTargetPoseCallback((const geometry_msgs::PoseStamped::ConstPtr)&msg->target_pose);
     poseInverseReachabilityQueryCallback(msg->reachability_request);
