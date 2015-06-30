@@ -40,8 +40,8 @@
 //#include <vigir_grasp_msgs/InverseReachabilityForGraspRequest.h>
 //#include <vigir_grasp_msgs/InverseReachabilityWithPoseRequest.h>
 
-#include <flor_planning_msgs/CircularMotionRequest.h>
-#include <flor_planning_msgs/CartesianMotionRequest.h>
+#include <vigir_teleop_planning_msgs/CircularMotionRequest.h>
+#include <vigir_teleop_planning_msgs/CartesianMotionRequest.h>
 
 //#include <simox_inv_reach_ros/IKResult.h>
 #include <ros/ros.h>
@@ -58,8 +58,8 @@ public:
     //ghost_robot_pose_publisher_   = nh.advertise<geometry_msgs::PoseStamped>("/flor/ghost/set_root_pose",1);
     //ghost_robot_joints_publisher_ = nh.advertise<sensor_msgs::JointState>("/flor/ghost/set_joint_states",1);
 
-    circular_plan_publisher_ = nh.advertise<flor_planning_msgs::CircularMotionRequest>("/flor/planning/upper_body/plan_circular_request",1);
-    cartesian_plan_publisher_ = nh.advertise<flor_planning_msgs::CartesianMotionRequest>("/flor/planning/upper_body/plan_cartesian_request",1);
+    circular_plan_publisher_ = nh.advertise<vigir_teleop_planning_msgs::CircularMotionRequest>("/flor/planning/upper_body/plan_circular_request",1);
+    cartesian_plan_publisher_ = nh.advertise<vigir_teleop_planning_msgs::CartesianMotionRequest>("/flor/planning/upper_body/plan_cartesian_request",1);
 
     
     rotation_center_pose_sub_ = nh.subscribe("/flor/ocs/planning/rotation_center_pose", 1, &InvReachManager::rotationCenterPoseCallback, this);
@@ -140,7 +140,7 @@ public:
       return;
     }
 
-    flor_planning_msgs::CircularMotionRequest req;
+    vigir_teleop_planning_msgs::CircularMotionRequest req;
 
     req.rotation_center_pose = *rotation_center_pose_;
     req.rotation_angle = msg.data;
@@ -157,7 +157,7 @@ public:
       return;
     }
 
-    flor_planning_msgs::CartesianMotionRequest req;
+    vigir_teleop_planning_msgs::CartesianMotionRequest req;
     req.header.frame_id = cartesian_target_pose_->header.frame_id;
 
     req.waypoints.push_back(cartesian_target_pose_->pose);

@@ -40,7 +40,7 @@
 
 #include <moveit_msgs/JointConstraint.h>
 
-#include <flor_planning_msgs/JointPositionConstraints.h>
+#include <vigir_teleop_planning_msgs/JointPositionConstraints.h>
 
 #include <eigen_conversions/eigen_msg.h>
 

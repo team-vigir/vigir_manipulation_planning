@@ -31,11 +31,11 @@
 
 #include <vigir_ocs_robot_model/moveit_ocs_model.h>
 
-#include <flor_planning_msgs/TargetConfigIkRequest.h>
+#include <vigir_teleop_planning_msgs/TargetConfigIkRequest.h>
 
-#include <flor_planning_msgs/PlanRequest.h>
+#include <vigir_teleop_planning_msgs/PlanRequest.h>
 #include <vigir_planning_msgs/PlannerConfiguration.h>
-#include <flor_planning_msgs/PlanToJointTargetRequest.h>
+#include <vigir_teleop_planning_msgs/PlanToJointTargetRequest.h>
 #include <std_msgs/Int8.h>
 
 #include <geometry_msgs/PoseStamped.h>
@@ -55,7 +55,7 @@ class MoveItOcsModelRos{
 public:
   MoveItOcsModelRos();
 
-  void targetConfigCallback (const flor_planning_msgs::TargetConfigIkRequest::ConstPtr& msg);
+  void targetConfigCallback (const vigir_teleop_planning_msgs::TargetConfigIkRequest::ConstPtr& msg);
 
   void incomingJointStatesCallback(const sensor_msgs::JointState::ConstPtr& msg);
 

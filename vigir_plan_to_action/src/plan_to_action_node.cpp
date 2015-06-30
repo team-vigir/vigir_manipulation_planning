@@ -34,14 +34,14 @@
 #include <vigir_ocs_msgs/OCSRobotStatus.h>
 #include <vigir_ocs_msgs/RobotStatusCodes.h>
 
-#include <flor_planning_msgs/PlanRequest.h>
-#include <flor_planning_msgs/PlanToJointTargetRequest.h>
+#include <vigir_teleop_planning_msgs/PlanRequest.h>
+#include <vigir_teleop_planning_msgs/PlanToJointTargetRequest.h>
 
 
-#include <flor_planning_msgs/GetMotionPlanForPose.h>
-#include <flor_planning_msgs/GetMotionPlanForJoints.h>
-#include <flor_planning_msgs/GetMotionPlanForCircularMotion.h>
-#include <flor_planning_msgs/GetMotionPlanForCartesianWaypoints.h>
+#include <vigir_teleop_planning_msgs/GetMotionPlanForPose.h>
+#include <vigir_teleop_planning_msgs/GetMotionPlanForJoints.h>
+#include <vigir_teleop_planning_msgs/GetMotionPlanForCircularMotion.h>
+#include <vigir_teleop_planning_msgs/GetMotionPlanForCartesianWaypoints.h>
 
 #include <actionlib/client/simple_action_client.h>
 #include <vigir_planning_msgs/MoveAction.h>
@@ -79,10 +79,10 @@ public:
 
     // Connection to planning service
     /*
-    pose_planning_srv_client_ = nh.serviceClient<flor_planning_msgs::GetMotionPlanForPose>("get_plan");
-    joints_planning_srv_client_ = nh.serviceClient<flor_planning_msgs::GetMotionPlanForJoints>("get_plan_joints");
-    circular_planning_srv_client_ = nh.serviceClient<flor_planning_msgs::GetMotionPlanForCircularMotion>("get_plan_circular");
-    cartesian_planning_srv_client_ = nh.serviceClient<flor_planning_msgs::GetMotionPlanForCartesianWaypoints>("get_plan_cartesian");
+    pose_planning_srv_client_ = nh.serviceClient<vigir_teleop_planning_msgs::GetMotionPlanForPose>("get_plan");
+    joints_planning_srv_client_ = nh.serviceClient<vigir_teleop_planning_msgs::GetMotionPlanForJoints>("get_plan_joints");
+    circular_planning_srv_client_ = nh.serviceClient<vigir_teleop_planning_msgs::GetMotionPlanForCircularMotion>("get_plan_circular");
+    cartesian_planning_srv_client_ = nh.serviceClient<vigir_teleop_planning_msgs::GetMotionPlanForCartesianWaypoints>("get_plan_cartesian");
     */
 
     planner_configuration_.disable_collision_avoidance = false;
@@ -143,13 +143,13 @@ public:
                                                goal_.request.path_constraints.joint_constraints);
   }
 
-  void planRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr msg)
+  void planRequestCallback(const vigir_teleop_planning_msgs::PlanRequest::ConstPtr msg)
   {
     motion_source_= NO_GRASP;
     planAndMove(*msg);
   }
 
-  void lGraspRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr msg)
+  void lGraspRequestCallback(const vigir_teleop_planning_msgs::PlanRequest::ConstPtr msg)
   {
     motion_source_= LEFT_GRASP;
     planAndMove(*msg);
@@ -167,7 +167,7 @@ public:
     */
   }
 
-  void rGraspRequestCallback(const flor_planning_msgs::PlanRequest::ConstPtr msg)
+  void rGraspRequestCallback(const vigir_teleop_planning_msgs::PlanRequest::ConstPtr msg)
   {
     motion_source_= RIGHT_GRASP;
     planAndMove(*msg);
@@ -186,13 +186,13 @@ public:
     */
   }
 
-  void planJointRequestCallback(const flor_planning_msgs::PlanToJointTargetRequest::ConstPtr msg)
+  void planJointRequestCallback(const vigir_teleop_planning_msgs::PlanToJointTargetRequest::ConstPtr msg)
   {
     motion_source_= NO_GRASP;
     planAndMoveToJoints(*msg);
   }
 
-  void planCircularRequestCallback(const flor_planning_msgs::CircularMotionRequest::ConstPtr msg)
+  void planCircularRequestCallback(const vigir_teleop_planning_msgs::CircularMotionRequest::ConstPtr msg)
   {
     motion_source_= NO_GRASP;
 
@@ -220,7 +220,7 @@ public:
                                   boost::bind(&PlanToAction::moveActionFeedbackCallback, this, _1));    
   }
 
-  void planCartesianRequestCallback(const flor_planning_msgs::CartesianMotionRequest::ConstPtr msg)
+  void planCartesianRequestCallback(const vigir_teleop_planning_msgs::CartesianMotionRequest::ConstPtr msg)
   {
     motion_source_= NO_GRASP;
 
@@ -294,7 +294,7 @@ public:
         ROS_WARN("Received trajectory with size 7!. This is intended for experimental calibration !");
         size_t size = msg->points.size();
 
-        flor_planning_msgs::GetMotionPlanForJoints plan_srv;
+        vigir_teleop_planning_msgs::GetMotionPlanForJoints plan_srv;
 
         plan_srv.request.plan_request.planning_group = "l_arm_group";
 
@@ -306,7 +306,7 @@ public:
         if (joints_planning_srv_client_.call(plan_srv))
         {
           ROS_DEBUG ("Planning service called succesfully. Status: %d Used group: %s", plan_srv.response.status, plan_srv.response.used_planning_group.data.c_str());
-          if (plan_srv.response.status == flor_planning_msgs::GetMotionPlanForPose::Response::OK){
+          if (plan_srv.response.status == vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::OK){
             splitAndSendTrajectory(plan_srv.response.trajectory, plan_srv.response.used_planning_group.data);
           }
         }
@@ -318,7 +318,7 @@ public:
         if (joints_planning_srv_client_.call(plan_srv))
         {
           ROS_DEBUG ("Planning service called succesfully. Status: %d Used group: %s", plan_srv.response.status, plan_srv.response.used_planning_group.data.c_str());
-          if (plan_srv.response.status == flor_planning_msgs::GetMotionPlanForPose::Response::OK){
+          if (plan_srv.response.status == vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::OK){
             splitAndSendTrajectory(plan_srv.response.trajectory, plan_srv.response.used_planning_group.data);
           }
         }
@@ -329,7 +329,7 @@ public:
 
     size_t size = msg->points.size();
 
-    flor_planning_msgs::GetMotionPlanForJoints plan_srv;
+    vigir_teleop_planning_msgs::GetMotionPlanForJoints plan_srv;
 
     plan_srv.request.plan_request.planning_group = group_name;
     plan_srv.request.plan_request.position = msg->points.back().positions;
@@ -338,7 +338,7 @@ public:
     if (joints_planning_srv_client_.call(plan_srv))
     {
       ROS_DEBUG ("Planning service called succesfully. Status: %d Used group: %s", plan_srv.response.status, plan_srv.response.used_planning_group.data.c_str());
-      if (plan_srv.response.status == flor_planning_msgs::GetMotionPlanForPose::Response::OK){
+      if (plan_srv.response.status == vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::OK){
         splitAndSendTrajectory(plan_srv.response.trajectory, plan_srv.response.used_planning_group.data);
       }
 
@@ -350,7 +350,7 @@ public:
   }
 
 
-  bool planAndMove(const flor_planning_msgs::PlanRequest& plan_request)
+  bool planAndMove(const vigir_teleop_planning_msgs::PlanRequest& plan_request)
   {
     goal_.request.max_velocity_scaling_factor = static_cast<double>(this->planner_configuration_.trajectory_time_factor);
 
@@ -381,7 +381,7 @@ public:
     return true;
   }
 
-  bool planAndMoveToJoints(const flor_planning_msgs::PlanToJointTargetRequest& plan_request)
+  bool planAndMoveToJoints(const vigir_teleop_planning_msgs::PlanToJointTargetRequest& plan_request)
   {
     goal_.request.planner_id = plan_request.planner_id;
     goal_.request.group_name = plan_request.planning_group;
@@ -616,57 +616,57 @@ public:
     switch(plan_status)
     {
 
-      case flor_planning_msgs::GetMotionPlanForPose::Response::OK:
+      case vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::OK:
         //ROS_WARN(" OK status (%d) but failed to plan in %s",plan_status, p_group_name_.c_str());
         status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_MOVEIT_PLAN_ACTIVE, RobotStatusCodes::OK);
         break;
-      case flor_planning_msgs::GetMotionPlanForPose::Response::OCTOMAP_WARNING:
+      case vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::OCTOMAP_WARNING:
         ROS_WARN(" Octomap warning (%d)",plan_status);
         status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_OCTOMAP_WARNING, RobotStatusCodes::WARNING);
         break;
-      case flor_planning_msgs::GetMotionPlanForPose::Response::IK_FAILED:
+      case vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::IK_FAILED:
         ROS_WARN(" IK Failed status (%d)",plan_status);
         status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_IK_FAILED, RobotStatusCodes::ERROR);
         break;
-      case flor_planning_msgs::GetMotionPlanForPose::Response::PLANNER_EXCEPTION:
+      case vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::PLANNER_EXCEPTION:
         ROS_WARN(" Planner exception status (%d)",plan_status);
         status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_EXCEPTION, RobotStatusCodes::ERROR);
         break;
-      case flor_planning_msgs::GetMotionPlanForPose::Response::PLANNING_FAILED:
+      case vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::PLANNING_FAILED:
         ROS_WARN(" Planner failed status (%d)",plan_status);
         status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
         break;
-      case flor_planning_msgs::GetMotionPlanForPose::Response::PLANNING_INVALID_REQUEST:
+      case vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::PLANNING_INVALID_REQUEST:
         ROS_WARN(" PLANNING_INVALID_REQUEST status (%d)",plan_status);
         status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNING_INVALID_REQUEST, RobotStatusCodes::ERROR);
         break;
-      case flor_planning_msgs::GetMotionPlanForPose::Response::PLANNING_INVALID_START:
+      case vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::PLANNING_INVALID_START:
         ROS_WARN(" PLANNING_INVALID_START status (%d)",plan_status);
         status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNING_INVALID_START, RobotStatusCodes::ERROR);
         break;
-      case flor_planning_msgs::GetMotionPlanForPose::Response::PLANNING_INVALID_GOAL:
+      case vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::PLANNING_INVALID_GOAL:
         ROS_WARN(" PLANNING_INVALID_GOAL status (%d)",plan_status);
         status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNING_INVALID_GOAL, RobotStatusCodes::ERROR);
         break;
-      case flor_planning_msgs::GetMotionPlanForPose::Response::PLANNING_INVALID_PLAN:
+      case vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::PLANNING_INVALID_PLAN:
         ROS_WARN(" PLANNING_INVALID_PLAN status (%d)",plan_status);
         status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNING_INVALID_PLAN, RobotStatusCodes::ERROR);
         break;
        default:
         ROS_INFO(" Mixed failure status (0x%x)",plan_status);
-        if (plan_status & flor_planning_msgs::GetMotionPlanForPose::Response::PLANNER_EXCEPTION )
+        if (plan_status & vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::PLANNER_EXCEPTION )
         {
           status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_EXCEPTION, RobotStatusCodes::ERROR);
         }
-        else if (plan_status & flor_planning_msgs::GetMotionPlanForPose::Response::PLANNING_FAILED)
+        else if (plan_status & vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::PLANNING_FAILED)
         {
           status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_FAILED, RobotStatusCodes::ERROR);
         }
-        else if (plan_status & flor_planning_msgs::GetMotionPlanForPose::Response::OCTOMAP_WARNING)
+        else if (plan_status & vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::OCTOMAP_WARNING)
         {
           status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_OCTOMAP_WARNING, RobotStatusCodes::WARNING);
         }
-        else if (plan_status & flor_planning_msgs::GetMotionPlanForPose::Response::IK_FAILED)
+        else if (plan_status & vigir_teleop_planning_msgs::GetMotionPlanForPose::Response::IK_FAILED)
         {
               status.status = RobotStatusCodes::status(RobotStatusCodes::PLANNER_IK_FAILED, RobotStatusCodes::ERROR);
         }

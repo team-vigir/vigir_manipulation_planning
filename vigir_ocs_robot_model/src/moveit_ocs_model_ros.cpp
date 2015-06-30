@@ -37,8 +37,8 @@ MoveItOcsModelRos::MoveItOcsModelRos()
     ghost_state_sub_ = nh.subscribe( "/flor/ocs/ghost/state_use_drake_ik", 1, &MoveItOcsModelRos::ghostStateCallback, this);
 
     // Planning requests
-    pose_plan_request_pub_ = nh.advertise<flor_planning_msgs::PlanRequest>("/flor/planning/upper_body/plan_request",1);
-    joint_plan_request_pub_ = nh.advertise<flor_planning_msgs::PlanToJointTargetRequest>("/flor/planning/upper_body/plan_joint_request",1);
+    pose_plan_request_pub_ = nh.advertise<vigir_teleop_planning_msgs::PlanRequest>("/flor/planning/upper_body/plan_request",1);
+    joint_plan_request_pub_ = nh.advertise<vigir_teleop_planning_msgs::PlanToJointTargetRequest>("/flor/planning/upper_body/plan_joint_request",1);
     incoming_plan_to_pose_request_sub_ = nh.subscribe("/flor/ocs/planning/plan_to_pose_state", 5, &MoveItOcsModelRos::incomingPlanToPoseRequestCallback, this);
     incoming_plan_to_joint_request_sub_ = nh.subscribe("/flor/ocs/planning/plan_to_joint_state", 5, &MoveItOcsModelRos::incomingPlanToJointRequestCallback, this);
 
@@ -78,7 +78,7 @@ MoveItOcsModelRos::MoveItOcsModelRos()
     ros::param::param<std::string>("~pelvis_frame", pelvis_frame_, "pelvis");
 }
 
-void MoveItOcsModelRos::targetConfigCallback (const flor_planning_msgs::TargetConfigIkRequest::ConstPtr& msg)
+void MoveItOcsModelRos::targetConfigCallback (const vigir_teleop_planning_msgs::TargetConfigIkRequest::ConstPtr& msg)
 {
   if ( use_drake_ik_ == false ) { // continue with tried and true classic MoveIt IK
     if (msg->target_poses.size() == 1){
@@ -282,7 +282,7 @@ void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String
     if (ocs_model_->getLinkPose(link_name,target_pose.pose))
     {
 
-      flor_planning_msgs::PlanRequest plan_request;
+      vigir_teleop_planning_msgs::PlanRequest plan_request;
 
       plan_request.pose = target_pose;
       plan_request.use_environment_obstacle_avoidance.data = true;
@@ -297,7 +297,7 @@ void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String
 
 void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::String::ConstPtr& msg)
 {
-  flor_planning_msgs::PlanToJointTargetRequest request;
+  vigir_teleop_planning_msgs::PlanToJointTargetRequest request;
 
   if ( use_drake_ik_ )
   {

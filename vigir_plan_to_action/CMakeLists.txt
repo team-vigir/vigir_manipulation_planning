@@ -8,7 +8,7 @@ project(vigir_plan_to_action)
 find_package(Boost REQUIRED COMPONENTS system)
 
 find_package(Boost REQUIRED system filesystem date_time program_options signals thread)
-find_package(catkin REQUIRED COMPONENTS cmake_modules vigir_utilities geometry_msgs flor_planning_msgs vigir_ocs_msgs roscpp actionlib vigir_planning_msgs vigir_moveit_utils eigen_conversions moveit_core moveit_ros_planning)
+find_package(catkin REQUIRED COMPONENTS cmake_modules vigir_utilities geometry_msgs vigir_teleop_planning_msgs vigir_ocs_msgs roscpp actionlib vigir_planning_msgs vigir_moveit_utils eigen_conversions moveit_core moveit_ros_planning)
 
 find_package(Eigen REQUIRED)
 
@@ -18,7 +18,7 @@ catkin_package(
    CATKIN_DEPENDS
      vigir_utilities
      geometry_msgs
-     flor_planning_msgs
+     vigir_teleop_planning_msgs
      roscpp
      actionlib
      vigir_planning_msgs
