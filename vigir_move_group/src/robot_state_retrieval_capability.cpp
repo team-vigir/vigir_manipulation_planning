@@ -40,7 +40,7 @@ void move_group::RobotStateRetrievalCapability::initialize()
   get_planning_group_state_ = root_node_handle_.advertiseService("/flor/planning/upper_body/get_group_state", &RobotStateRetrievalCapability::getCurrentPlanningGroupState, this);
 }
 
-bool move_group::RobotStateRetrievalCapability::getCurrentPlanningGroupState(flor_planning_msgs::GetCurrentPlanningGroupState::Request& req, flor_planning_msgs::GetCurrentPlanningGroupState::Response& res)
+bool move_group::RobotStateRetrievalCapability::getCurrentPlanningGroupState(vigir_teleop_planning_msgs::GetCurrentPlanningGroupState::Request& req, vigir_teleop_planning_msgs::GetCurrentPlanningGroupState::Response& res)
 {
   const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
 

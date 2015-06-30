@@ -31,7 +31,7 @@
 
 #include <moveit/move_group/move_group_capability.h>
 
-#include <flor_planning_msgs/GetCurrentPlanningGroupState.h>
+#include <vigir_teleop_planning_msgs/GetCurrentPlanningGroupState.h>
 
 
 namespace move_group
@@ -47,8 +47,8 @@ namespace move_group
 
   private:    
     
-    bool getCurrentPlanningGroupState(flor_planning_msgs::GetCurrentPlanningGroupState::Request& req,
-                                      flor_planning_msgs::GetCurrentPlanningGroupState::Response& res);
+    bool getCurrentPlanningGroupState(vigir_teleop_planning_msgs::GetCurrentPlanningGroupState::Request& req,
+                                      vigir_teleop_planning_msgs::GetCurrentPlanningGroupState::Response& res);
 
     ros::ServiceServer get_planning_group_state_;
 
