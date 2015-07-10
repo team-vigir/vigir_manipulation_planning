@@ -52,7 +52,7 @@
 #include <vigir_grasp_msgs/HandStatus.h>
 #include "vigir_ocs_msgs/OCSRobotStatus.h"
 #include "vigir_ocs_msgs/RobotStatusCodes.h"
-#include "flor_control_msgs/FlorControlMode.h"
+#include "vigir_atlas_control_msgs/VigirAtlasControlMode.h"
 #include <vigir_teleop_planning_msgs/PlanRequest.h>
 #include <vigir_teleop_planning_msgs/CircularMotionRequest.h>
 #include <vigir_teleop_planning_msgs/CartesianMotionRequest.h>
@@ -138,7 +138,7 @@ namespace vigir_manipulation_controller {
     vigir_grasp_msgs::LinkState                 link_tactile_;
 
     vigir_ocs_msgs::OCSRobotStatus              last_planner_status_msg_;
-    flor_control_msgs::FlorControlMode         last_controller_mode_msg_;
+    vigir_atlas_control_msgs::VigirAtlasControlMode         last_controller_mode_msg_;
     geometry_msgs::PoseStamped                 last_wrist_pose_msg_;
 
     // Variables to store locally sensor data recieved from ROS interface
