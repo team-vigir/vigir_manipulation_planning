@@ -24,9 +24,11 @@
     </description>
   </class> 
 
+  <!--
   <class name="move_group/SampleRotationalMotionCapability" type="move_group::SampleRotationalMotionCapability" base_class_type="move_group::MoveGroupCapability">
     <description>
       Provides API for generating keyframes for rotational motion (such as turning a steering wheel)
     </description>
   </class>
+  -->
 </library>
