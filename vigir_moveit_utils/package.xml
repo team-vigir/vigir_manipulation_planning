@@ -4,8 +4,11 @@
   <version>0.0.0</version>
   <description>The vigir_moveit_utils package provides tools for use with MoveIt! planning</description>
 
-  <maintainer email="kohlbrecher@todo.todo">kohlbrecher</maintainer>
+  <maintainer email="kohlbrecher@sim.tu-darmstadt.de">Stefan Kohlbrecher</maintainer>
 
+  <author email="kohlbrecher@sim.tu-darmstadt.de">Stefan Kohlbrecher</author>
+
+  
   <license>BSD</license>
 
   <buildtool_depend>catkin</buildtool_depend>
