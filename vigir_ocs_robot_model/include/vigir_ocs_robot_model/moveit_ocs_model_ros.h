@@ -48,6 +48,7 @@
 #include <flor_visualization_utils/marker_utils.h>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <tf/transform_listener.h>
 
 
 
@@ -136,6 +137,8 @@ protected:
   std::string l_hand_frame_;
   std::string r_hand_frame_;
   std::string pelvis_frame_;
+
+  tf::TransformListener transform_listener_;
 };
 
 #endif

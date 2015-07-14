@@ -38,6 +38,7 @@
 #include "vigir_planning_msgs/RequestWholeBodyIK.h"
 
 #include <vigir_moveit_utils/joint_constraint_utils.h>
+#include <tf/tf.h>
 
 MoveItOcsModelRos::MoveItOcsModelRos()
 {
@@ -405,8 +406,22 @@ void MoveItOcsModelRos::setLinkColors(double r, double g, double b, double a)
 void MoveItOcsModelRos::setPoseWithWholeBodyIK(std::vector<geometry_msgs::PoseStamped> target_poses, std::vector<std_msgs::String> target_link_names, const std::string& group_name)
 {
     if ( target_link_names.size() != target_poses.size() ) {
-        ROS_WARN("Different sizes for target_link_names and target_poses => Aborting");
+        ROS_ERROR("[vigir_ocs_robot_model] Different sizes for target_link_names and target_poses => Aborting");
         return;
+    }
+
+    // transform poses to world frame if necessary
+    for ( int i = 0; i < target_poses.size(); i++ ) {
+        geometry_msgs::PoseStamped current_pose = target_poses[i];
+        if ( current_pose.header.frame_id != "world" && current_pose.header.frame_id != "/world" ) {
+            try {
+                transform_listener_.transformPose("world", current_pose, target_poses[i]);
+            }
+            catch(...) {
+                ROS_ERROR("[vigir_ocs_robot_model] Error transforming target pose to world frame => Aborting!");
+                return;
+            }
+        }
     }
 
     // build request message

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(vigir_ocs_robot_model)
 
+#set(CMAKE_BUILD_TYPE Debug)
+
 find_package(Boost REQUIRED COMPONENTS system)
 
 find_package(Boost REQUIRED system filesystem date_time program_options signals thread)
@@ -24,6 +26,7 @@ catkin_package(
      #flor_moveit_tools
      roscpp
      eigen_conversions
+     tf
 #  DEPENDS system_lib
 )
 
