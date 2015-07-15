@@ -331,33 +331,17 @@ void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String
 
 void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::String::ConstPtr& msg)
 {
-  vigir_teleop_planning_msgs::PlanToJointTargetRequest request;
-
-  if ( use_drake_ik_ )
-  {
-    request.position.clear();
-    request.planning_group = msg->data;
-
-    // get ghost robot state for planning group
-    const robot_state::RobotState *current_robot_state = ocs_model_->getState().get();
-
-    //request.planning_group = "whole_body_group";
-    if ( current_robot_state->getJointModelGroup(msg->data) == NULL) {
-      ROS_ERROR("Request for unknown planning group: %s - Aborting...", msg->data.c_str());
-      return;
-    }
-
-    const robot_state::JointModelGroup *current_model_group = current_robot_state->getJointModelGroup(msg->data);
-    std::vector<std::string> current_joint_names = current_model_group->getJointModelNames();
-    for ( int i = 0; i < current_joint_names.size(); i++) {
-      std::string current_joint_name = current_joint_names[i];
-      double current_position = current_robot_state->getVariablePosition(current_joint_name);
-      request.position.push_back(current_position);
-    }
-
-    request.planner_id = "drake";
-  }else{
     ROS_INFO("Received plan to joint config request, sending group %s", msg->data.c_str());
+
+    vigir_teleop_planning_msgs::PlanToJointTargetRequest request;
+
+    if ( use_drake_ik_ )
+    {
+        request.planner_id = "drake";
+    }
+    else {
+        request.planner_id = ""; // default planner
+    }
 
     const std::string& group = msg->data;
 
@@ -367,10 +351,8 @@ void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::Strin
     }
 
     request.planning_group = group;
-    request.planner_id = ""; // use default planner
-  }
 
-  joint_plan_request_pub_.publish(request);
+    joint_plan_request_pub_.publish(request);
 }
 
 void MoveItOcsModelRos::ghostStateCallback(const std_msgs::Bool::ConstPtr& msg)
