@@ -181,12 +181,16 @@ classdef DrakeInverseKinematicsInterface
                 send_world_joint = false;
             end
             
+            if ( event.message.duration <= 0 ) % set default duration, if it is not set correctly
+                event.message.duration = 5;
+            end
+            
             [trajectory, success] = calcIKTrajectory(obj.robot_visualizer, obj.robot_model, q0, event.message);
             
             if(success) % all is right
                 % calculate time points for trajectory evaluation
                 if ( event.message.trajectory_sample_rate == 0.0 )
-                    event.message.trajectory_saple_rate = 4.0;
+                    event.message.trajectory_sample_rate = 4.0;
                 end
                 
                 time_steps = 1/event.message.trajectory_sample_rate;                    
@@ -249,7 +253,7 @@ classdef DrakeInverseKinematicsInterface
             if(success) % if everything is okay, send trajectory message
                 % calculate time points for trajectory evaluation
                 if ( event.message.trajectory_sample_rate == 0.0 )
-                    event.message.trajectory_saple_rate = 4.0;
+                    event.message.trajectory_sample_rate = 4.0;
                 end
                 
                 time_steps = 1/event.message.trajectory_sample_rate;

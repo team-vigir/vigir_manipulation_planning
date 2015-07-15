@@ -1,10 +1,6 @@
 function [ trajectory, success ] = calcIKTrajectory( visualizer, robot_model, q0, request )
     % get trajectory duration infos and selected time steps
     duration = request.duration;
-            
-    if ( duration <= 0 ) % set default duration, if it is not set correctly
-        duration = 5;
-    end
     
     num_steps = 3;
     t = 0:duration/num_steps:duration;
