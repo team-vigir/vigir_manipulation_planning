@@ -996,7 +996,7 @@ bool move_group::MoveGroupManipulationAction::planUsingDrake(const vigir_plannin
         struct timeval start_time;
         gettimeofday(&start_time, NULL);
 
-        bool solved = drake_trajectory_srv_client_.call(drake_request_msg, drake_response_msg);
+        solved = drake_trajectory_srv_client_.call(drake_request_msg, drake_response_msg);
 
         if ( solved ) {
           res.trajectory_ = robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(robot_model, goal->request.group_name));
@@ -1102,7 +1102,7 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
         struct timeval start_time;
         gettimeofday(&start_time, NULL);
 
-        bool solved = drake_cartesian_trajectory_srv_client_.call(drake_request_msg, drake_response_msg);
+        solved = drake_cartesian_trajectory_srv_client_.call(drake_request_msg, drake_response_msg);
 
         if ( solved ) {
           // if the robot model has no world joint, remove info from result trajectory
