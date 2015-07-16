@@ -122,7 +122,7 @@ install(DIRECTORY launch
 )
 
 ### Install matlab files
-install(DIRECTORY src/matlab
+install(DIRECTORY src
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   FILES_MATCHING PATTERN "*"
 )
