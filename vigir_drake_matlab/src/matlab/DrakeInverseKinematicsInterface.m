@@ -108,15 +108,9 @@ classdef DrakeInverseKinematicsInterface
                 ros.log('WARN', 'Did not receive unique world joint position...');
             end
             
-            %disp('q0 = ');
-            %obj.printSortedQs(q0);
-            
             [ posture, success ] = calcIKPosture( obj.robot_visualizer, obj.robot_model, q0, event.message );
             
             if(success) % all is well
-                %disp('q_sol = ');
-                %obj.printSortedQs(posture);
-
                 % build result message form q values
                 result_message = vigir_planning_msgs.ResultDrakeIK;
                 result_message.result_state = event.message.robot_state;
@@ -244,19 +238,16 @@ classdef DrakeInverseKinematicsInterface
                 send_world_joint = false;
             end
             
-            %disp( 'q0 = ' );
-            %obj.printSortedQs(q0);
-            
             % calculate trajectory            
-            [trajectory, success] = calcIKCartesianTrajectory(obj.robot_visualizer, obj.robot_model, q0, event.message);
+            [trajectory, success, request] = calcIKCartesianTrajectory(obj.robot_visualizer, obj.robot_model, q0, event.message);
             
             if(success) % if everything is okay, send trajectory message
                 % calculate time points for trajectory evaluation
-                if ( event.message.trajectory_sample_rate == 0.0 )
-                    event.message.trajectory_sample_rate = 4.0;
+                if ( request.trajectory_sample_rate == 0.0 )
+                    request.trajectory_sample_rate = 4.0;
                 end
                 
-                time_steps = 1/event.message.trajectory_sample_rate;
+                time_steps = 1/request.trajectory_sample_rate;
                 t = 0:time_steps:request.waypoint_times(end);
                 
                 result_message = obj.buildTrajectoryResultMessage(trajectory, t, send_world_joint, event.message.free_joint_names);
@@ -274,9 +265,6 @@ classdef DrakeInverseKinematicsInterface
             str = sprintf('Sending response (calculation took %f seconds', used_time);
             ros.log('INFO', str);
             obj.cartesian_trajectory_result_publisher.publish(result_message);
-                        
-            
-            
         end
        
         function visualizer = getVisualizer(obj)
@@ -331,13 +319,7 @@ classdef DrakeInverseKinematicsInterface
             nq = obj.robot_model.getNumPositions();
             qs = qqdot_values(1:nq, :);
             qds = qqdot_values(nq+1:2*nq, :);
-            
-            %disp('Result Qs: ');
-            %obj.printSortedQs(qs);
-            
-            %disp('Result QDs: ');
-            %obj.printSortedQs(qds);
-            
+
             % build result message from trajectory
             result_message = vigir_planning_msgs.ResultDrakeTrajectory;
             result_message.result_trajectory = moveit_msgs.RobotTrajectory;

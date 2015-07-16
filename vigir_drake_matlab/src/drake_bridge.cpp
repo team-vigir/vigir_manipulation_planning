@@ -20,7 +20,7 @@ DrakeBridge::DrakeBridge()
 
 DrakeBridge::~DrakeBridge() 
 {
-  
+
 }
 
 bool DrakeBridge::handleWholeBodyIKRequest(vigir_planning_msgs::RequestWholeBodyIK::Request &request, vigir_planning_msgs::RequestWholeBodyIK::Response &response)
@@ -60,7 +60,7 @@ bool DrakeBridge::handleWholeBodyTrajectoryRequest(vigir_planning_msgs::RequestW
   vigir_planning_msgs::ResultDrakeTrajectoryConstPtr response_msg = ros::topic::waitForMessage<vigir_planning_msgs::ResultDrakeTrajectory>("/drake_planner/trajectory_result", ros::Duration(2.0));
 
   // received a valid response?
-  if (response_msg && response_msg->is_valid) {      
+  if (response_msg && response_msg->is_valid) {
     response.trajectory_result.result_trajectory = response_msg->result_trajectory;
     response.trajectory_result.is_valid = true;
     return true;
