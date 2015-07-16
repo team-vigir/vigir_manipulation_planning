@@ -202,6 +202,9 @@ public:
     goal_.request.num_planning_attempts = 1;
     goal_.request.allowed_planning_time = 1.0;
 
+    if ( msg->planner_id != "" )
+        goal_.request.planner_id = msg->planner_id;
+
     goal_.extended_planning_options.target_frame = msg->rotation_center_pose.header.frame_id;
     goal_.extended_planning_options.keep_endeffector_orientation = msg->keep_endeffector_orientation;
     goal_.extended_planning_options.rotation_angle = msg->rotation_angle;
@@ -229,6 +232,9 @@ public:
     goal_.request.group_name = msg->planning_group;
     goal_.request.num_planning_attempts = 1;
     goal_.request.allowed_planning_time = 1.0;
+
+    if ( msg->planner_id != "" )
+        goal_.request.planner_id = msg->planner_id;
 
     goal_.extended_planning_options.target_frame = msg->header.frame_id;
     goal_.extended_planning_options.allow_environment_collisions = !msg->use_environment_obstacle_avoidance;
