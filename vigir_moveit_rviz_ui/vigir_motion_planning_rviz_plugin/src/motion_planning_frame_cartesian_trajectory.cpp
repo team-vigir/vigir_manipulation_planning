@@ -18,9 +18,6 @@ namespace vigir_moveit_rviz_plugin
 
 void MotionPlanningFrame::initCartesianTrajectoryTab()
 {
-    int tab_page_index = ui_->tabWidget->indexOf(ui_->cartesian_trajectory);
-    ui_->tabWidget->removeTab(tab_page_index);
-
     cartesian_trajectory_orientation_group_.addButton(ui_->keep_full_orientation_button, vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_FULL);
     cartesian_trajectory_orientation_group_.addButton(ui_->use_axis_only_button, vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_AXIS_ONLY);
     cartesian_trajectory_orientation_group_.addButton(ui_->ignore_orientation_button, vigir_planning_msgs::ExtendedPlanningOptions::ORIENTATION_IGNORE);
@@ -557,7 +554,14 @@ void MotionPlanningFrame::clearWaypoints()
 
 vigir_planning_msgs::ExtendedPlanningOptionsPtr MotionPlanningFrame::buildExtendedPlanningOptions() {
     vigir_planning_msgs::ExtendedPlanningOptionsPtr extended_options(new vigir_planning_msgs::ExtendedPlanningOptions());
-    extended_options->target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
+
+    if (ui_->free_motion_checkbox->isChecked()) {
+        extended_options->target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION;
+    }
+    else {
+        extended_options->target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
+    }
+
     extended_options->target_frame = "world";
     extended_options->continuous_replanning = false;
 
