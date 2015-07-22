@@ -1,6 +1,13 @@
 function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualizer, robot_model, q0, request )
     %CALCIKCARTESIANTRAJECTORY Summary of this function goes here
     %   Detailed explanation goes here
+    
+    if ( isempty(request.waypoints) )
+        success = false;
+        trajectory = [];        
+        return;
+    end
+    
     if ( ~isempty(visualizer) )
         visualizer.draw(cputime, q0);
     end
