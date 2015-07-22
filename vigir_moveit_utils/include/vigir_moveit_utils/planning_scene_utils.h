@@ -49,21 +49,26 @@ namespace planning_scene_utils{
     return true;
   }
 
+  bool getEndeffectorTransformOfLink(const std::string &eef_link_name,
+                               const planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor,
+                               Eigen::Affine3d& transform)
+  {
+      planning_scene_monitor::LockedPlanningSceneRO lscene(planning_scene_monitor);
+      const robot_state::RobotState& curr_state = lscene.getPlanningSceneMonitor()->getPlanningScene()->getCurrentState();
+      transform = curr_state.getGlobalLinkTransform(eef_link_name);
+
+      return true;
+  }
+
   bool getEndeffectorTransform(const std::string& group_name,
                                const planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor,
                                Eigen::Affine3d& transform)
   {
-    planning_scene_monitor::LockedPlanningSceneRO lscene(planning_scene_monitor);
-    const robot_state::RobotState& curr_state = lscene.getPlanningSceneMonitor()->getPlanningScene()->getCurrentState();
-
     std::string start_pose_link;
-
     if (!get_eef_link(group_name, start_pose_link))
       return false;
 
-    transform = curr_state.getGlobalLinkTransform(start_pose_link);
-
-    return true;
+    return getEndeffectorTransformOfLink(start_pose_link, planning_scene_monitor, transform);
   }
 
 }
