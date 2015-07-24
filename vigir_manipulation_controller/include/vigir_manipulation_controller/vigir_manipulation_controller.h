@@ -56,7 +56,7 @@
 #include <vigir_teleop_planning_msgs/PlanRequest.h>
 #include <vigir_teleop_planning_msgs/CircularMotionRequest.h>
 #include <vigir_teleop_planning_msgs/CartesianMotionRequest.h>
-#include <flor_atlas_msgs/AtlasHandMass.h>
+#include <vigir_atlas_control_msgs/VigirHandMass.h>
 #include <flor_control_msgs/FlorControlModeCommand.h>
 
 #include <actionlib/client/simple_action_client.h>
@@ -165,7 +165,7 @@ namespace vigir_manipulation_controller {
     tf::Transform                              hand_T_usability_;
 //    tf::TransformListener                      listener_;
     vigir_teleop_planning_msgs::PlanRequest            wrist_target_pose_;
-    flor_atlas_msgs::AtlasHandMass             template_mass_msg_;
+    vigir_atlas_control_msgs::VigirHandMass             template_mass_msg_;
     geometry_msgs::PoseStamped                 com_;
     geometry_msgs::PoseStamped                 wrist_T_template_;
 
