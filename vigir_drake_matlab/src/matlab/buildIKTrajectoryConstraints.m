@@ -43,6 +43,7 @@ function activeConstraints = buildIKTrajectoryConstraints(robot_model, joint_con
         current_joint_idx = robot_model.getBody(current_joint_body).position_num;
         current_joint_min = current_joint.position - current_joint.tolerance_below;
         current_joint_max = current_joint.position + current_joint.tolerance_above;
+        
         posture_constr = posture_constr.setJointLimits(current_joint_idx, current_joint_min, current_joint_max);
     end
 

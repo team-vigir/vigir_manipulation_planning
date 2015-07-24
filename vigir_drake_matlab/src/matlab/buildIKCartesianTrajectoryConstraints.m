@@ -123,7 +123,17 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
             % this is not a free joint, lock it
             body_idx = robot_model.findJointId(current_joint_name);            
             fix_joint_idx = robot_model.body(body_idx).position_num;
-            posture_constr = posture_constr.setJointLimits(fix_joint_idx, q0(fix_joint_idx), q0(fix_joint_idx));
+            joint_limit_min = robot_model.joint_limit_min(fix_joint_idx);
+            joint_limit_max = robot_model.joint_limit_max(fix_joint_idx);
+            target_joint_value = q0(fix_joint_idx);
+            
+            if ( target_joint_value < joint_limit_min )                
+                ros.log('WARN', ['joint ' robot_model.body(body_idx).jointname ': target joint value < min joint limit (' num2str(target_joint_value) ' < ' num2str(joint_limit_min) ')' ]);
+            elseif ( target_joint_value > joint_limit_max )
+                ros.log('WARN', ['joint ' robot_model.body(body_idx).jointname ': target joint value > max joint limit (' num2str(target_joint_value) ' > ' num2str(joint_limit_max) ')' ]);
+            else 
+                posture_constr = posture_constr.setJointLimits(fix_joint_idx, target_joint_value, target_joint_value);
+            end         
         end
             
     end
