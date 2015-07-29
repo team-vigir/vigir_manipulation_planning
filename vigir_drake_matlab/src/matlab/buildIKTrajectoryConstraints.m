@@ -15,14 +15,14 @@ function activeConstraints = buildIKTrajectoryConstraints(robot_model, joint_con
     r_foot_pos = forwardKin(robot_model,kinsol0,r_foot,r_foot_pts,2);
     l_foot_pos = forwardKin(robot_model,kinsol0,l_foot,l_foot_pts,2);
 
-    l_foot_position_constr    = WorldPositionConstraint(robot_model, l_foot, l_foot_pts, l_foot_pos(1:3), l_foot_pos(1:3));
-    r_foot_position_constr    = WorldPositionConstraint(robot_model, r_foot, r_foot_pts, r_foot_pos(1:3), r_foot_pos(1:3));
-    l_foot_orientation_constr = WorldQuatConstraint(robot_model, l_foot, l_foot_pos(4:7), 0);
-    r_foot_orientation_constr = WorldQuatConstraint(robot_model, r_foot, r_foot_pos(4:7), 0);
-    activeConstraints{end+1} = l_foot_position_constr;
-    activeConstraints{end+1} = r_foot_position_constr;
-    activeConstraints{end+1} = l_foot_orientation_constr;
-    activeConstraints{end+1} = r_foot_orientation_constr;
+    %l_foot_position_constr    = WorldPositionConstraint(robot_model, l_foot, l_foot_pts, l_foot_pos(1:3), l_foot_pos(1:3));
+    %r_foot_position_constr    = WorldPositionConstraint(robot_model, r_foot, r_foot_pts, r_foot_pos(1:3), r_foot_pos(1:3));
+    %l_foot_orientation_constr = WorldQuatConstraint(robot_model, l_foot, l_foot_pos(4:7), 0);
+    %r_foot_orientation_constr = WorldQuatConstraint(robot_model, r_foot, r_foot_pos(4:7), 0);
+    %activeConstraints{end+1} = l_foot_position_constr;
+    %activeConstraints{end+1} = r_foot_position_constr;
+    %activeConstraints{end+1} = l_foot_orientation_constr;
+    %activeConstraints{end+1} = r_foot_orientation_constr;
 
     % add quasi static constraint
     r_foot_contact_pts = robot_model.getBody(r_foot).getTerrainContactPoints();

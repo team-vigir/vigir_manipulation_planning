@@ -1,9 +1,13 @@
-function [ posture, success ] = calcIKPosture( visualizer, robot_model, q0, request )
+function [ posture, success ] = calcIKPosture( visualizer, robot_model, nominal_pose, q0, request )
     nq = robot_model.getNumPositions();
 
     q_seed = q0;
-    q_nom = q_seed;
+    %q_nom = q_seed;
+    q_nom = nominal_pose;
 
+    % comma-separated q0
+    %q0_str = sprintf('%f, ', q0);
+    
     % show start pose    
     if ( ~isempty(visualizer) )
         visualizer.draw(cputime, q0);

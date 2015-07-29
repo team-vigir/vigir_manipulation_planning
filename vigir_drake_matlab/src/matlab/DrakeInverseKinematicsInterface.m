@@ -14,6 +14,8 @@ classdef DrakeInverseKinematicsInterface
         
         robot_model
         robot_visualizer
+        
+        robot_nominal_pose
     end
     
     methods
@@ -56,12 +58,21 @@ classdef DrakeInverseKinematicsInterface
             % setup collision groups from srdf
             %obj.robot_model = loadCollisionFilterGroupsFromSRDFString(obj.robot_model,srdf_string);
             
+            % load nominal pose from param server
+            pose_str = ros.param.get('/drake_nominal_pose');
+            if ( isempty(pose_str) ) 
+                ros.log('ERROR', 'Please specify /drake_nominal_pose ROS parameter...');
+                error('Please specify /drake_nominal_pose ROS parameter...');
+            end
+            obj.robot_nominal_pose = sscanf(pose_str, '%f, ');
+            
             % construct visualizer
             if ( strcmpi(getenv('SHOW_DRAKE_VISUALIZATION'), 'TRUE' ) )
                 obj.robot_visualizer = obj.robot_model.constructVisualizer();
+                obj.robot_visualizer.draw(cputime, obj.robot_nominal_pose);
             else
                 obj.robot_visualizer = [];
-            end
+            end          
             
             % init IK publishers / subscribers
             obj.ik_result_publisher = ros.Publisher('/drake_planner/ik_result', 'vigir_planning_msgs/ResultDrakeIK', 1, false);
@@ -108,7 +119,7 @@ classdef DrakeInverseKinematicsInterface
                 ros.log('WARN', 'Did not receive unique world joint position...');
             end
             
-            [ posture, success ] = calcIKPosture( obj.robot_visualizer, obj.robot_model, q0, event.message );
+            [ posture, success ] = calcIKPosture( obj.robot_visualizer, obj.robot_model, obj.robot_nominal_pose, q0, event.message );
             
             if(success) % all is well
                 % build result message form q values
