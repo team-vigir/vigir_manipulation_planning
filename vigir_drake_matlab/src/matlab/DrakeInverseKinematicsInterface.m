@@ -261,6 +261,10 @@ classdef DrakeInverseKinematicsInterface
                 time_steps = 1/request.trajectory_sample_rate;
                 t = 0:time_steps:request.waypoint_times(end);
                 
+                if ( t(end) < request.waypoint_times(end) )
+                    t = [t, request.waypoint_times(end)];
+                end
+                
                 result_message = obj.buildTrajectoryResultMessage(trajectory, t, send_world_joint, event.message.free_joint_names);
                 
             else

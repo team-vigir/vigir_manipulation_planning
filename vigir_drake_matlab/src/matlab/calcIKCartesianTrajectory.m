@@ -283,7 +283,8 @@ function interpolated_waypoints = extractOrderedWaypoints(request, robot_model, 
 end
 
 function waypoint_times = estimateWaypointTimes(robot_model, q0, target_link_names, target_poses)
-    scale_factor = 8; % TODO: Where to get that from?    
+    scale_factor = 8; % TODO: Where to get that from? 
+    minimum_trajectory_time = 0.5;
 
     kinsol = doKinematics(robot_model,q0,false,true);    
     start_link_names = unique(target_link_names);
@@ -338,5 +339,11 @@ function waypoint_times = estimateWaypointTimes(robot_model, q0, target_link_nam
     end
     
     waypoint_times = waypoint_times(num_poses_per_time_step+1:end);
+    
+    % ensure that trajectory takes at least some minimum time
+    if ( waypoint_times(end) < minimum_trajectory_time )
+        scale = minimum_trajectory_time / waypoint_times(end);
+        waypoint_times = waypoint_times * scale;
+    end
 end
 

@@ -69,14 +69,7 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
         % get endeffector body ids and points
         eef_body_id = robot_model.findLinkId(target_link_name);
         eef_pts = [0;0;0];
-               
-        % goal position constraint
-        goal_position = target_waypoint.waypoints(i).position;
-        goal_position_vec = [goal_position.x; goal_position.y; goal_position.z];
-
-        eef_position_constr = WorldPositionConstraint(robot_model, eef_body_id, eef_pts, goal_position_vec, goal_position_vec, [target_waypoint.waypoint_time, target_waypoint.waypoint_time]);
-        activeConstraints{end+1} = eef_position_constr;
-
+        
         % goal orientation constraint
         orientation = target_waypoint.waypoints(i).orientation;
         orientation_quat = [orientation.w; orientation.x; orientation.y; orientation.z];
@@ -97,6 +90,13 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
             eef_axis_constr = WorldGazeOrientConstraint(robot_model, eef_body_id, link_axis, orientation_quat, 0.00, pi, duration);
             activeConstraints{end+1} = eef_axis_constr;
         end
+        
+        % goal position constraint
+        goal_position = target_waypoint.waypoints(i).position;
+        goal_position_vec = [goal_position.x; goal_position.y; goal_position.z];        
+
+        eef_position_constr = WorldPositionConstraint(robot_model, eef_body_id, eef_pts, goal_position_vec, goal_position_vec, [target_waypoint.waypoint_time, target_waypoint.waypoint_time]);
+        activeConstraints{end+1} = eef_position_constr;
 
         % setup line distance constraints between waypoints
         if ( request.free_motion == false )
