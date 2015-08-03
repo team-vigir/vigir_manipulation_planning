@@ -16,6 +16,7 @@ catkin_package(
      geometry_msgs
      vigir_teleop_planning_msgs
      roscpp
+     vigir_ocs_msgs
 #  DEPENDS system_lib
 )
 
