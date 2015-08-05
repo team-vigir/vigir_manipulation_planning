@@ -5,7 +5,7 @@ project(vigir_manipulation_controller)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  flor_control_msgs
+  vigir_control_msgs
   vigir_grasp_msgs
   vigir_ocs_msgs
   geometric_shapes
@@ -84,7 +84,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   control_msgs#   flor_control_msgs#   vigir_grasp_msgs#   vigir_ocs_msgs#   moveit_msgs#   trajectory_msgs#   vigir_object_template_msgs
+#   control_msgs#   vigir_control_msgs#   vigir_grasp_msgs#   vigir_ocs_msgs#   moveit_msgs#   trajectory_msgs#   vigir_object_template_msgs
 # )
 
 ###################################
@@ -99,7 +99,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES vigir_manipulation_controller
-  CATKIN_DEPENDS actionlib flor_control_msgs vigir_grasp_msgs vigir_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp urdf tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface vigir_planning_msgs
+  CATKIN_DEPENDS actionlib vigir_control_msgs vigir_grasp_msgs vigir_ocs_msgs geometric_shapes moveit_core moveit_msgs roscpp urdf tf tf_conversions trajectory_msgs vigir_object_template_msgs vigir_planning_interface vigir_planning_msgs
 #  DEPENDS system_lib
 )
 
