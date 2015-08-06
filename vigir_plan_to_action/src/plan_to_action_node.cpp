@@ -202,11 +202,11 @@ public:
     goal_.request.num_planning_attempts = 1;
     goal_.request.allowed_planning_time = 1.0;
 
-    if ( msg->planner_id != "" ) {
-        goal_.request.planner_id = msg->planner_id;
+    if ( planner_configuration_.planner_id != "" ) {
+        goal_.request.planner_id = planner_configuration_.planner_id;
     }
 
-    if ( msg->planner_id == "drake") {
+    if ( planner_configuration_.planner_id == "drake") {
         goal_.extended_planning_options.target_link_axis.clear();
         goal_.extended_planning_options.target_link_axis.push_back( msg->target_link_axis );
 
@@ -215,7 +215,7 @@ public:
             goal_.extended_planning_options.target_link_names.push_back(msg->target_link_name);
 
         goal_.extended_planning_options.target_orientation_type = msg->orientation_type;
-        goal_.extended_planning_options.trajectory_sample_rate = msg->trajectory_sample_rate;
+        goal_.extended_planning_options.trajectory_sample_rate = planner_configuration_.trajectory_sample_rate;
 
     }
 
@@ -247,11 +247,11 @@ public:
     goal_.request.num_planning_attempts = 1;
     goal_.request.allowed_planning_time = 1.0;
 
-    if ( msg->planner_id != "" ) {
-        goal_.request.planner_id = msg->planner_id;
+    if ( planner_configuration_.planner_id != "" ) {
+        goal_.request.planner_id = planner_configuration_.planner_id;
     }
 
-    if ( msg->planner_id == "drake") {        
+    if ( planner_configuration_.planner_id == "drake") {
         goal_.extended_planning_options.target_link_axis.assign(msg->waypoints.size(), msg->target_link_axis);
 
         if ( !msg->target_link_name.empty() ) {
@@ -259,7 +259,7 @@ public:
         }
 
         goal_.extended_planning_options.target_orientation_type = msg->orientation_type;
-        goal_.extended_planning_options.trajectory_sample_rate = msg->trajectory_sample_rate;
+        goal_.extended_planning_options.trajectory_sample_rate = planner_configuration_.trajectory_sample_rate;
     }
 
     goal_.extended_planning_options.target_frame = msg->header.frame_id;
