@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2013-2015, Team ViGIR ( TORC Robotics LLC, TU Darmstadt, Virginia Tech, Oregon State University, Cornell University, and Leibniz University Hanover )
+ *  Copyright (c) 2014, Stefan Kohlbrecher, TU Darmstadt ( Team ViGIR )
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -14,7 +14,7 @@
  *     copyright notice, this list of conditions and the following
  *     disclaimer in the documentation and/or other materials provided
  *     with the distribution.
- *   * Neither the name of Team ViGIR, TORC Robotics, nor the names of its
+ *   * Neither the name of TU Darmstadt, Team ViGIR, nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -31,7 +31,6 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
-//@TODO_ADD_AUTHOR_INFO
 
 #include <vigir_ocs_robot_model/moveit_ocs_model_ros.h>
 
@@ -39,6 +38,7 @@
 #include "vigir_planning_msgs/RequestWholeBodyIK.h"
 
 #include <vigir_moveit_utils/joint_constraint_utils.h>
+#include <tf/tf.h>
 
 MoveItOcsModelRos::MoveItOcsModelRos()
 {
@@ -331,33 +331,17 @@ void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String
 
 void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::String::ConstPtr& msg)
 {
-  vigir_teleop_planning_msgs::PlanToJointTargetRequest request;
-
-  if ( use_drake_ik_ )
-  {
-    request.position.clear();
-    request.planning_group = msg->data;
-
-    // get ghost robot state for planning group
-    const robot_state::RobotState *current_robot_state = ocs_model_->getState().get();
-
-    //request.planning_group = "whole_body_group";
-    if ( current_robot_state->getJointModelGroup(msg->data) == NULL) {
-      ROS_ERROR("Request for unknown planning group: %s - Aborting...", msg->data.c_str());
-      return;
-    }
-
-    const robot_state::JointModelGroup *current_model_group = current_robot_state->getJointModelGroup(msg->data);
-    std::vector<std::string> current_joint_names = current_model_group->getJointModelNames();
-    for ( int i = 0; i < current_joint_names.size(); i++) {
-      std::string current_joint_name = current_joint_names[i];
-      double current_position = current_robot_state->getVariablePosition(current_joint_name);
-      request.position.push_back(current_position);
-    }
-
-    request.planner_id = "drake";
-  }else{
     ROS_INFO("Received plan to joint config request, sending group %s", msg->data.c_str());
+
+    vigir_teleop_planning_msgs::PlanToJointTargetRequest request;
+
+    if ( use_drake_ik_ )
+    {
+        request.planner_id = "drake";
+    }
+    else {
+        request.planner_id = ""; // default planner
+    }
 
     const std::string& group = msg->data;
 
@@ -367,10 +351,8 @@ void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::Strin
     }
 
     request.planning_group = group;
-    request.planner_id = ""; // use default planner
-  }
 
-  joint_plan_request_pub_.publish(request);
+    joint_plan_request_pub_.publish(request);
 }
 
 void MoveItOcsModelRos::ghostStateCallback(const std_msgs::Bool::ConstPtr& msg)
@@ -406,8 +388,22 @@ void MoveItOcsModelRos::setLinkColors(double r, double g, double b, double a)
 void MoveItOcsModelRos::setPoseWithWholeBodyIK(std::vector<geometry_msgs::PoseStamped> target_poses, std::vector<std_msgs::String> target_link_names, const std::string& group_name)
 {
     if ( target_link_names.size() != target_poses.size() ) {
-        ROS_WARN("Different sizes for target_link_names and target_poses => Aborting");
+        ROS_ERROR("[vigir_ocs_robot_model] Different sizes for target_link_names and target_poses => Aborting");
         return;
+    }
+
+    // transform poses to world frame if necessary
+    for ( int i = 0; i < target_poses.size(); i++ ) {
+        geometry_msgs::PoseStamped current_pose = target_poses[i];
+        if ( current_pose.header.frame_id != "world" && current_pose.header.frame_id != "/world" ) {
+            try {
+                transform_listener_.transformPose("world", current_pose, target_poses[i]);
+            }
+            catch(...) {
+                ROS_ERROR("[vigir_ocs_robot_model] Error transforming target pose to world frame => Aborting!");
+                return;
+            }
+        }
     }
 
     // build request message

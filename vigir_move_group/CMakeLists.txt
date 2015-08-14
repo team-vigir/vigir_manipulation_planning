@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(vigir_move_group)
 
+#set(CMAKE_BUILD_TYPE Debug)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -14,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   vigir_plan_execution
   vigir_moveit_utils
   vigir_planning_msgs
+  tf
 )
 
 catkin_package(
@@ -33,6 +36,11 @@ add_library(vigir_move_group_capabilities
   src/manipulation_action_capability.cpp
   src/octomap_access_capability.cpp
   src/robot_state_retrieval_capability.cpp
+  include/vigir_move_group/continuous_replanning_capability.h
+  include/vigir_move_group/manipulation_action_capability.h
+  include/vigir_move_group/octomap_access_capability.h
+  include/vigir_move_group/robot_state_retrieval_capability.h
+  #src/sample_rotational_motion_capability.cpp
   )
 
 target_link_libraries(vigir_move_group_capabilities ${catkin_LIBRARIES} ${Boost_LIBRARIES})

@@ -97,8 +97,14 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+set(SOURCE
+  src/drake_bridge_node.cpp
+  src/drake_bridge.cpp
+  include/vigir_drake_matlab/drake_bridge.h
+)
+
 ## Declare a cpp executable
-add_executable(drake_bridge_node src/drake_bridge_node.cpp src/drake_bridge.cpp)
+add_executable(drake_bridge_node ${SOURCE})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes

@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2013-2015, Team ViGIR ( TORC Robotics LLC, TU Darmstadt, Virginia Tech, Oregon State University, Cornell University, and Leibniz University Hanover )
+ *  Copyright (c) 2015, Achim Stein, TU Darmstadt ( Team ViGIR )
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -14,7 +14,7 @@
  *     copyright notice, this list of conditions and the following
  *     disclaimer in the documentation and/or other materials provided
  *     with the distribution.
- *   * Neither the name of Team ViGIR, TORC Robotics, nor the names of its
+ *   * Neither the name of TU Darmstadt, Team ViGIR, nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -31,7 +31,7 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
-//@TODO_ADD_AUTHOR_INFO
+
 #include "vigir_drake_cpp/planner_modules/trajectory_planner_module.h"
 
 #include "RigidBodyManipulator.h"

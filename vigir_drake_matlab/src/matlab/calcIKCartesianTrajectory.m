@@ -1,15 +1,30 @@
-function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_model, q0, request )
+function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualizer, robot_model, q0, request )
     %CALCIKCARTESIANTRAJECTORY Summary of this function goes here
     %   Detailed explanation goes here
-  
+    
+    if ( isempty(request.waypoints) )
+        success = false;
+        trajectory = [];        
+        return;
+    end
+    
     if ( ~isempty(visualizer) )
         visualizer.draw(cputime, q0);
+    end
+    
+    if ( isempty(request.target_link_axis) )
+        request.target_link_axis = deal(struct('x', {}, 'y', {}, 'z', {}));
+        for i = 1:length(request.waypoints)
+            request.target_link_axis(end+1).x = 0;
+            request.target_link_axis(end).y = 0;
+            request.target_link_axis(end).z = 1;
+        end
     end
 
     if ( isempty(request.waypoint_times) )
         request.waypoint_times = estimateWaypointTimes(robot_model, q0, request.target_link_names, request.waypoints);
     end
-    
+     
     interpolated_waypoints = extractOrderedWaypoints(request, robot_model, q0);
     
     nq = robot_model.getNumPositions();
@@ -17,8 +32,23 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
     success = true;
     start_waypoint.waypoint_time = 0;
     start_waypoint.target_link_names = interpolated_waypoints(1).target_link_names;
-    start_waypoint.waypoints = struct('position', {}, 'orientation', {});
-    start_waypoint.keep_line_and_orientation = zeros(length(start_waypoint.target_link_names), 1);
+    
+    kinsol0 = doKinematics(robot_model,q0,false,true);
+    start_waypoint.waypoints = deal(struct('position', {}, 'orientation', {}));
+    for i = 1:length(start_waypoint.target_link_names)
+        current_link_name = start_waypoint.target_link_names{i};
+        eef_id = robot_model.findLinkId(current_link_name);
+        eef_pts = [0;0;0];
+        starting_pose = forwardKin(robot_model,kinsol0,eef_id,eef_pts,2);        
+        start_waypoint.waypoints(end+1).position.x = starting_pose(1);
+        start_waypoint.waypoints(end).position.y = starting_pose(2);
+        start_waypoint.waypoints(end).position.z = starting_pose(3);
+        start_waypoint.waypoints(end).orientation.w = starting_pose(4);
+        start_waypoint.waypoints(end).orientation.x = starting_pose(5);
+        start_waypoint.waypoints(end).orientation.y = starting_pose(6);
+        start_waypoint.waypoints(end).orientation.z = starting_pose(7);
+    end
+
     % set waypoint for time = 0
 
     trajectory = [];
@@ -78,6 +108,32 @@ function [ trajectory, success ] = calcIKCartesianTrajectory( visualizer, robot_
     if ( ~isempty(visualizer) && ~isempty(trajectory))
         visualizer.playback(trajectory,struct('slider',true));
     end
+    
+    % get eef frame axis
+    l_hand = robot_model.findLinkId('l_hand');
+%     kinsol0 = doKinematics(robot_model,q0_save,false,true);
+%         world_pos_x = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;1,0,0]',0);
+%         world_pos_y = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;0,1,0]',0);
+%         world_pos_z = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;0,0,1]',0);
+%         axis_world_x = world_pos_x(:,2)-world_pos_x(:,1);
+%         axis_world_y = world_pos_y(:,2)-world_pos_y(:,1);
+%         axis_world_z = world_pos_z(:,2)-world_pos_z(:,1);
+%         disp(['start-x-axis:  ' num2str(axis_world_x')]);
+%         disp(['start-y-axis:  ' num2str(axis_world_y')]);
+%         disp(['start-z-axis:  ' num2str(axis_world_z')]);
+%         disp(['start-[0,0,0]: ' num2str(world_pos_x(:,1)')]);
+        
+        kinsol0 = doKinematics(robot_model,q0,false,true);
+        world_pos_x = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;1,0,0]',0);
+        world_pos_y = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;0,1,0]',0);
+        world_pos_z = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;0,0,1]',0);
+        axis_world_x = world_pos_x(:,2)-world_pos_x(:,1);
+        axis_world_y = world_pos_y(:,2)-world_pos_y(:,1);
+        axis_world_z = world_pos_z(:,2)-world_pos_z(:,1);
+        disp(['final-x-axis:  ' num2str(axis_world_x')]);
+        disp(['final-y-axis:  ' num2str(axis_world_y')]);
+        disp(['final-z-axis:  ' num2str(axis_world_z')]);
+        disp(['final-[0,0,0]: ' num2str(world_pos_x(:,1)')]);
 end
 
 function interpolated_waypoints = extractOrderedWaypoints(request, robot_model, q0)
@@ -227,7 +283,8 @@ function interpolated_waypoints = extractOrderedWaypoints(request, robot_model, 
 end
 
 function waypoint_times = estimateWaypointTimes(robot_model, q0, target_link_names, target_poses)
-    scale_factor = 8; % TODO: Where to get that from?    
+    scale_factor = 8; % TODO: Where to get that from? 
+    minimum_trajectory_time = 0.5;
 
     kinsol = doKinematics(robot_model,q0,false,true);    
     start_link_names = unique(target_link_names);
@@ -282,5 +339,11 @@ function waypoint_times = estimateWaypointTimes(robot_model, q0, target_link_nam
     end
     
     waypoint_times = waypoint_times(num_poses_per_time_step+1:end);
+    
+    % ensure that trajectory takes at least some minimum time
+    if ( waypoint_times(end) < minimum_trajectory_time )
+        scale = minimum_trajectory_time / waypoint_times(end);
+        waypoint_times = waypoint_times * scale;
+    end
 end
 

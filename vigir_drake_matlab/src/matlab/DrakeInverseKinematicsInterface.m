@@ -14,6 +14,8 @@ classdef DrakeInverseKinematicsInterface
         
         robot_model
         robot_visualizer
+        
+        robot_nominal_pose
     end
     
     methods
@@ -56,12 +58,21 @@ classdef DrakeInverseKinematicsInterface
             % setup collision groups from srdf
             %obj.robot_model = loadCollisionFilterGroupsFromSRDFString(obj.robot_model,srdf_string);
             
+            % load nominal pose from param server
+            pose_str = ros.param.get('/drake_nominal_pose');
+            if ( isempty(pose_str) ) 
+                ros.log('ERROR', 'Please specify /drake_nominal_pose ROS parameter...');
+                error('Please specify /drake_nominal_pose ROS parameter...');
+            end
+            obj.robot_nominal_pose = sscanf(pose_str, '%f, ');
+            
             % construct visualizer
             if ( strcmpi(getenv('SHOW_DRAKE_VISUALIZATION'), 'TRUE' ) )
                 obj.robot_visualizer = obj.robot_model.constructVisualizer();
+                obj.robot_visualizer.draw(cputime, obj.robot_nominal_pose);
             else
                 obj.robot_visualizer = [];
-            end
+            end          
             
             % init IK publishers / subscribers
             obj.ik_result_publisher = ros.Publisher('/drake_planner/ik_result', 'vigir_planning_msgs/ResultDrakeIK', 1, false);
@@ -108,15 +119,9 @@ classdef DrakeInverseKinematicsInterface
                 ros.log('WARN', 'Did not receive unique world joint position...');
             end
             
-            %disp('q0 = ');
-            %obj.printSortedQs(q0);
-            
-            [ posture, success ] = calcIKPosture( obj.robot_visualizer, obj.robot_model, q0, event.message );
+            [ posture, success ] = calcIKPosture( obj.robot_visualizer, obj.robot_model, obj.robot_nominal_pose, q0, event.message );
             
             if(success) % all is well
-                %disp('q_sol = ');
-                %obj.printSortedQs(posture);
-
                 % build result message form q values
                 result_message = vigir_planning_msgs.ResultDrakeIK;
                 result_message.result_state = event.message.robot_state;
@@ -181,12 +186,16 @@ classdef DrakeInverseKinematicsInterface
                 send_world_joint = false;
             end
             
+            if ( event.message.duration <= 0 ) % set default duration, if it is not set correctly
+                event.message.duration = 5;
+            end
+            
             [trajectory, success] = calcIKTrajectory(obj.robot_visualizer, obj.robot_model, q0, event.message);
             
             if(success) % all is right
                 % calculate time points for trajectory evaluation
                 if ( event.message.trajectory_sample_rate == 0.0 )
-                    event.message.trajectory_saple_rate = 4.0;
+                    event.message.trajectory_sample_rate = 4.0;
                 end
                 
                 time_steps = 1/event.message.trajectory_sample_rate;                    
@@ -240,20 +249,21 @@ classdef DrakeInverseKinematicsInterface
                 send_world_joint = false;
             end
             
-            %disp( 'q0 = ' );
-            %obj.printSortedQs(q0);
-            
             % calculate trajectory            
-            [trajectory, success] = calcIKCartesianTrajectory(obj.robot_visualizer, obj.robot_model, q0, event.message);
+            [trajectory, success, request] = calcIKCartesianTrajectory(obj.robot_visualizer, obj.robot_model, q0, event.message);
             
             if(success) % if everything is okay, send trajectory message
                 % calculate time points for trajectory evaluation
-                if ( event.message.trajectory_sample_rate == 0.0 )
-                    event.message.trajectory_saple_rate = 4.0;
+                if ( request.trajectory_sample_rate == 0.0 )
+                    request.trajectory_sample_rate = 4.0;
                 end
                 
-                time_steps = 1/event.message.trajectory_sample_rate;
+                time_steps = 1/request.trajectory_sample_rate;
                 t = 0:time_steps:request.waypoint_times(end);
+                
+                if ( t(end) < request.waypoint_times(end) )
+                    t = [t, request.waypoint_times(end)];
+                end
                 
                 result_message = obj.buildTrajectoryResultMessage(trajectory, t, send_world_joint, event.message.free_joint_names);
                 
@@ -270,9 +280,6 @@ classdef DrakeInverseKinematicsInterface
             str = sprintf('Sending response (calculation took %f seconds', used_time);
             ros.log('INFO', str);
             obj.cartesian_trajectory_result_publisher.publish(result_message);
-                        
-            
-            
         end
        
         function visualizer = getVisualizer(obj)
@@ -327,13 +334,7 @@ classdef DrakeInverseKinematicsInterface
             nq = obj.robot_model.getNumPositions();
             qs = qqdot_values(1:nq, :);
             qds = qqdot_values(nq+1:2*nq, :);
-            
-            %disp('Result Qs: ');
-            %obj.printSortedQs(qs);
-            
-            %disp('Result QDs: ');
-            %obj.printSortedQs(qds);
-            
+
             % build result message from trajectory
             result_message = vigir_planning_msgs.ResultDrakeTrajectory;
             result_message.result_trajectory = moveit_msgs.RobotTrajectory;

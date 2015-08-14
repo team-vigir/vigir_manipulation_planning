@@ -202,6 +202,23 @@ public:
     goal_.request.num_planning_attempts = 1;
     goal_.request.allowed_planning_time = 1.0;
 
+    if ( planner_configuration_.planner_id != "" ) {
+        goal_.request.planner_id = planner_configuration_.planner_id;
+    }
+
+    if ( planner_configuration_.planner_id == "drake") {
+        goal_.extended_planning_options.target_link_axis.clear();
+        goal_.extended_planning_options.target_link_axis.push_back( msg->target_link_axis );
+
+        goal_.extended_planning_options.target_link_names.clear();
+        if ( !msg->target_link_name.empty() )
+            goal_.extended_planning_options.target_link_names.push_back(msg->target_link_name);
+
+        goal_.extended_planning_options.target_orientation_type = msg->orientation_type;
+        goal_.extended_planning_options.trajectory_sample_rate = planner_configuration_.trajectory_sample_rate;
+
+    }
+
     goal_.extended_planning_options.target_frame = msg->rotation_center_pose.header.frame_id;
     goal_.extended_planning_options.keep_endeffector_orientation = msg->keep_endeffector_orientation;
     goal_.extended_planning_options.rotation_angle = msg->rotation_angle;
@@ -230,6 +247,21 @@ public:
     goal_.request.num_planning_attempts = 1;
     goal_.request.allowed_planning_time = 1.0;
 
+    if ( planner_configuration_.planner_id != "" ) {
+        goal_.request.planner_id = planner_configuration_.planner_id;
+    }
+
+    if ( planner_configuration_.planner_id == "drake") {
+        goal_.extended_planning_options.target_link_axis.assign(msg->waypoints.size(), msg->target_link_axis);
+
+        if ( !msg->target_link_name.empty() ) {
+            goal_.extended_planning_options.target_link_names.assign(msg->waypoints.size(), msg->target_link_name);
+        }
+
+        goal_.extended_planning_options.target_orientation_type = msg->orientation_type;
+        goal_.extended_planning_options.trajectory_sample_rate = planner_configuration_.trajectory_sample_rate;
+    }
+
     goal_.extended_planning_options.target_frame = msg->header.frame_id;
     goal_.extended_planning_options.allow_environment_collisions = !msg->use_environment_obstacle_avoidance;
     goal_.extended_planning_options.execute_incomplete_cartesian_plans = true;
@@ -238,7 +270,13 @@ public:
 
     goal_.extended_planning_options.target_poses.clear();
     goal_.extended_planning_options.target_poses = msg->waypoints;
-    goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
+
+    if ( msg->free_motion ) {
+        goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION;
+    }
+    else {
+        goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
+    }
 
     move_action_client_->sendGoal(goal_,
                                   boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
