@@ -3,8 +3,14 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
     %   Detailed explanation goes here
     
     if ( isempty(request.waypoints) )
-        success = false;
-        trajectory = [];        
+        success = true;
+        request.waypoint_times = 1;   
+        
+        qqdot = [q0; zeros(size(q0, 1), 1)];
+        
+        q_lin = interp1([0 1], [qqdot, qqdot]', [0 1])';
+        trajectory = PPTrajectory(foh([0 1],q_lin));
+       
         return;
     end
     
