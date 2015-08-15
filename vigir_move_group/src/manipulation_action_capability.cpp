@@ -563,6 +563,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakePlanOnly(
     gettimeofday(&end_time, NULL);
     timersub(&end_time, &start_time, &diff);
     action_res.planning_time = (double)diff.tv_sec + (double)diff.tv_usec/1000000.0;
+    action_res.extended_planning_result.plan_completion_fraction = 1.0; // TODO: add correct fraction
 }
 
 
@@ -591,6 +592,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCartesian
     gettimeofday(&end_time, NULL);
     timersub(&end_time, &start_time, &diff);
     action_res.planning_time = (double)diff.tv_sec + (double)diff.tv_usec/1000000.0;
+    action_res.extended_planning_result.plan_completion_fraction = 1.0; // TODO: add correct fraction
 }
 
 void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCircularMotionPlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
@@ -618,6 +620,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCircularM
     gettimeofday(&end_time, NULL);
     timersub(&end_time, &start_time, &diff);
     action_res.planning_time = (double)diff.tv_sec + (double)diff.tv_usec/1000000.0;
+    action_res.extended_planning_result.plan_completion_fraction = 1.0; // TODO: add correct fraction
 }
 
 void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
