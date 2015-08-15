@@ -52,6 +52,7 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
     % set waypoint for time = 0
 
     trajectory = [];
+    last_trajectory_step = [];
     for i = 1:num_steps
       if (i > 1)
         start_waypoint = target_waypoint;
@@ -100,6 +101,8 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
             trajectory = trajectory.append(current_traj);
         end
         
+        last_trajectory_step = current_traj;
+        
         q0 = current_traj.eval(interpolated_waypoints(i).waypoint_time);
         q0 = q0(1:nq);
     end
@@ -107,6 +110,8 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
     % visualize result
     if ( ~isempty(visualizer) && ~isempty(trajectory))
         visualizer.playback(trajectory,struct('slider',true));
+    elseif ( ~isempty(visualizer) && ~isempty(last_trajectory_step) )
+        visualizer.playback(last_trajectory_step);
     end
     
     % get eef frame axis
