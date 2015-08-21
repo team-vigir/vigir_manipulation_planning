@@ -65,6 +65,10 @@ classdef DrakeInverseKinematicsInterface
                 error('Please specify /drake_nominal_pose ROS parameter...');
             end
             obj.robot_nominal_pose = sscanf(pose_str, '%f, ');
+            if ( length(obj.robot_nominal_pose) ~= obj.robot_model.num_positions)
+                ros.log('WARN', 'Nominal pose does not match number of robot joints. Setting to 0');
+                obj.robot_nominal_pose = zeros(obj.robot_model.num_positions, 1);
+            end
             
             % construct visualizer
             if ( strcmpi(getenv('SHOW_DRAKE_VISUALIZATION'), 'TRUE' ) )
