@@ -107,6 +107,7 @@ private:
   ros::ServiceClient drake_cartesian_trajectory_srv_client_;
 
   ros::Publisher trajectory_result_display_pub_;
+  ros::Publisher circular_target_path_pub_;
 
   tf::TransformListener transform_listener_;
 
