@@ -58,6 +58,8 @@
 #include <vigir_moveit_utils/robot_model_utils.h>
 #include <vigir_moveit_utils/collision_utils.h>
 
+#include <nav_msgs/Path.h>
+
 
 namespace
 {
@@ -102,6 +104,7 @@ void move_group::MoveGroupManipulationAction::initialize()
   drake_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyTrajectory>("drake_planner/request_whole_body_trajectory");
   drake_cartesian_trajectory_srv_client_ = root_node_handle_.serviceClient<vigir_planning_msgs::RequestWholeBodyCartesianTrajectory>("drake_planner/request_whole_body_cartesian_trajectory");
   trajectory_result_display_pub_ = root_node_handle_.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10);
+  circular_target_path_pub_ = root_node_handle_.advertise<nav_msgs::Path>("/move_group/circular_target_path", 1);
 }
 
 void move_group::MoveGroupManipulationAction::setupHandData()
@@ -696,6 +699,23 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
                                                     goal->extended_planning_options.keep_endeffector_orientation,
                                                     goal->extended_planning_options.pitch);
     }
+
+    if ( circular_target_path_pub_.getNumSubscribers() > 0 ) {
+        nav_msgs::Path path_msg;
+        path_msg.header.frame_id = context_->planning_scene_monitor_->getRobotModel()->getModelFrame();
+        path_msg.header.stamp = ros::Time::now();
+
+        for ( int i = 0; i < pose_vec.size(); i++ ) {
+            geometry_msgs::PoseStamped current_pose;
+            current_pose.header.frame_id = context_->planning_scene_monitor_->getRobotModel()->getModelFrame();
+            current_pose.header.stamp = ros::Time::now();
+            current_pose.pose = pose_vec[i];
+
+            path_msg.poses.push_back(current_pose);
+        }
+
+        circular_target_path_pub_.publish(path_msg);
+    }
   }
 
   cart_path.request.waypoints = pose_vec;
@@ -1079,6 +1099,23 @@ bool move_group::MoveGroupManipulationAction::planCircularMotionUsingDrake(const
                                                       goal->extended_planning_options.rotation_angle,
                                                       goal->extended_planning_options.keep_endeffector_orientation,
                                                       goal->extended_planning_options.pitch);
+
+        if ( circular_target_path_pub_.getNumSubscribers() > 0 ) {
+            nav_msgs::Path path_msg;
+            path_msg.header.frame_id = context_->planning_scene_monitor_->getRobotModel()->getModelFrame();
+            path_msg.header.stamp = ros::Time::now();
+
+            for ( int i = 0; i < pose_vec.size(); i++ ) {
+                geometry_msgs::PoseStamped current_pose;
+                current_pose.header.frame_id = context_->planning_scene_monitor_->getRobotModel()->getModelFrame();
+                current_pose.header.stamp = ros::Time::now();
+                current_pose.pose = pose_vec[i];
+
+                path_msg.poses.push_back(current_pose);
+            }
+
+            circular_target_path_pub_.publish(path_msg);
+        }
 
         // make a copy of goal, so I can modify it
         vigir_planning_msgs::MoveGoalPtr new_goal( new vigir_planning_msgs::MoveGoal( *goal ) );
