@@ -68,7 +68,16 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
         
         % get endeffector body ids and points
         eef_body_id = robot_model.findLinkId(target_link_name);
-        eef_pts = [0;0;0];
+        
+        if ( isfield(target_waypoint, 'pos_on_eef') )
+            eef_pts = [target_waypoint.pos_on_eef(i).x; target_waypoint.pos_on_eef(i).y; target_waypoint.pos_on_eef(i).z];
+        else
+            eef_pts = [0;0;0];
+        end
+        
+        %target_waypoint.waypoints(i).position.x = target_waypoint.waypoints(i).position.x + target_waypoint.pos_on_eef(i).x;
+        %target_waypoint.waypoints(i).position.y = target_waypoint.waypoints(i).position.y + target_waypoint.pos_on_eef(i).y;
+        %target_waypoint.waypoints(i).position.z = target_waypoint.waypoints(i).position.z + target_waypoint.pos_on_eef(i).z;
         
         % goal orientation constraint
         orientation = target_waypoint.waypoints(i).orientation;

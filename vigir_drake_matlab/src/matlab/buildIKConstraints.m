@@ -52,12 +52,10 @@ function activeConstraints = buildIKConstraints(robot_model, request, q0)
         % goal orientation constraint
         goal_orientation = request.target_poses(i).pose.orientation;
         goal_orientation_quat = [goal_orientation.w; goal_orientation.x; goal_orientation.y; goal_orientation.z];
-        if ( all(goal_orientation_quat==0) )
-            goal_orientation_quat = [1;0;0;0];
-        end
-        
-        eef_orientation_constr = WorldQuatConstraint(robot_model, eef_body_id, goal_orientation_quat, 0);
-        activeConstraints{end+1} = eef_orientation_constr;
+        if ( ~all(goal_orientation_quat==0) )
+            eef_orientation_constr = WorldQuatConstraint(robot_model, eef_body_id, goal_orientation_quat, 0);
+			activeConstraints{end+1} = eef_orientation_constr;
+        end       
     end
     
     % handle joint group

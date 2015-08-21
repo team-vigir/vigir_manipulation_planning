@@ -225,6 +225,8 @@ public:
     goal_.extended_planning_options.allow_environment_collisions = !msg->use_environment_obstacle_avoidance;
     goal_.extended_planning_options.execute_incomplete_cartesian_plans = true;
 
+    goal_.extended_planning_options.reference_point = msg->reference_point;
+
     goal_.request.goal_constraints.clear();
 
     goal_.extended_planning_options.target_poses.clear();
@@ -277,6 +279,8 @@ public:
     else {
         goal_.extended_planning_options.target_motion_type = vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS;
     }
+
+    goal_.extended_planning_options.reference_point = msg->reference_point;
 
     move_action_client_->sendGoal(goal_,
                                   boost::bind(&PlanToAction::moveActionDoneCallback, this, _1, _2),
