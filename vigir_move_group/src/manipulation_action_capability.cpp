@@ -1091,6 +1091,22 @@ bool move_group::MoveGroupManipulationAction::planCircularMotionUsingDrake(const
         Eigen::Affine3d rotation_center;
         tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
 
+        // Transform eef-pose according to reference_point
+        if ( goal->extended_planning_options.reference_point.orientation.x != 0.0 ||
+             goal->extended_planning_options.reference_point.orientation.y != 0.0 ||
+             goal->extended_planning_options.reference_point.orientation.z != 0.0 ||
+             goal->extended_planning_options.reference_point.orientation.w != 0.0 ) {
+
+            tf::Transform wrist_T_referencePoint, targetFrame_T_referencePoint;
+            geometry_msgs::Pose tmp_pose;
+            tf::poseMsgToTF(goal->extended_planning_options.reference_point, wrist_T_referencePoint);
+            tf::poseEigenToMsg(eef_start_pose, tmp_pose);
+            tf::poseMsgToTF(tmp_pose, targetFrame_T_referencePoint);
+            tf::Transform targetFrame_T_wrist = targetFrame_T_referencePoint * wrist_T_referencePoint.inverse();
+            tf::poseTFToMsg(targetFrame_T_wrist,tmp_pose);
+            tf::poseMsgToEigen(tmp_pose, eef_start_pose);
+        }
+
         std::vector <geometry_msgs::Pose> pose_vec;
         constrained_motion_utils::getCircularArcPoses(rotation_center,
                                                       eef_start_pose,
