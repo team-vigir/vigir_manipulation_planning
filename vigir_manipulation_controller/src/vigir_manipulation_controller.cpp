@@ -103,7 +103,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
     template_stitch_pose_pub_   = nh.advertise<geometry_msgs::PoseStamped>("template_stitch_pose",  1, true);
     wrist_plan_pub_             = nh.advertise<vigir_teleop_planning_msgs::PlanRequest>("wrist_plan",       1, true);
     grasp_status_pub_           = nh.advertise<vigir_ocs_msgs::OCSRobotStatus>("grasp_status",       1, true);
-    template_mass_pub_          = nh.advertise<flor_atlas_msgs::AtlasHandMass>("hand_mass",         1, true);
+    template_mass_pub_          = nh.advertise<vigir_control_msgs::VigirHandMass>("hand_mass",         1, true);
     tactile_feedback_pub_       = nh.advertise<vigir_grasp_msgs::LinkState>("link_states",           1, true);
     circular_plan_request_pub_  = nh.advertise<vigir_teleop_planning_msgs::CircularMotionRequest>( "/flor/planning/upper_body/plan_circular_request",  1, false );
     cartesian_plan_request_pub_ = nh.advertise<vigir_teleop_planning_msgs::CartesianMotionRequest>("/flor/planning/upper_body/plan_cartesian_request", 1, false );

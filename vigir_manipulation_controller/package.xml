@@ -40,7 +40,7 @@
   <!-- Use test_depend for packages you need only for testing: -->
   <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>flor_control_msgs</build_depend>
+  <build_depend>vigir_control_msgs</build_depend>
   <build_depend>vigir_grasp_msgs</build_depend>
   <build_depend>vigir_ocs_msgs</build_depend>
   <build_depend>geometric_shapes</build_depend>
@@ -55,7 +55,7 @@
   <build_depend>vigir_planning_interface</build_depend>
   <build_depend>vigir_planning_msgs</build_depend>
   <build_depend>actionlib</build_depend>
-  <run_depend>flor_control_msgs</run_depend>
+  <run_depend>vigir_control_msgs</run_depend>
   <run_depend>vigir_grasp_msgs</run_depend>
   <run_depend>vigir_ocs_msgs</run_depend>
   <run_depend>geometric_shapes</run_depend>
