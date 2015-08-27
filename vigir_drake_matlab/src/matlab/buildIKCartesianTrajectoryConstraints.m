@@ -14,10 +14,10 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
         activeConstraints{end+1} = no_self_collision_constr;
     end
 
-    % keep torso more or less upright
+    % prefer solutions with an upright torso
     torso_body_idx = robot_model.findLinkId('utorso');
-    torso_upright_constr = WorldGazeDirConstraint(robot_model, torso_body_idx, [0; 0; 1], [0;0;1], 0.1, [start_waypoint.waypoint_time, target_waypoint.waypoint_time]);
-    %activeConstraints{end+1} = torso_upright_constr;
+    torso_upright_constr = WorldGazeDirConstraint(robot_model, torso_body_idx, [0; 0; 1], [0;0;1], pi/2, [start_waypoint.waypoint_time, target_waypoint.waypoint_time]);
+    activeConstraints{end+1} = torso_upright_constr;
 
     % fixed foot placement
     l_foot = robot_model.findLinkId('l_foot');
