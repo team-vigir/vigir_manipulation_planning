@@ -34,7 +34,7 @@
 
 namespace planning_scene_utils{
 
-  bool get_eef_link(const std::string group_name, std::string& eef_link)
+  static bool get_eef_link(const std::string group_name, std::string& eef_link)
   {
     std::string first_char = group_name.substr(0,1);
 
@@ -49,7 +49,7 @@ namespace planning_scene_utils{
     return true;
   }
 
-  bool getEndeffectorTransformOfLink(const std::string &eef_link_name,
+  static bool getEndeffectorTransformOfLink(const std::string &eef_link_name,
                                const planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor,
                                Eigen::Affine3d& transform)
   {
@@ -60,7 +60,7 @@ namespace planning_scene_utils{
       return true;
   }
 
-  bool getEndeffectorTransform(const std::string& group_name,
+  static bool getEndeffectorTransform(const std::string& group_name,
                                const planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor,
                                Eigen::Affine3d& transform)
   {

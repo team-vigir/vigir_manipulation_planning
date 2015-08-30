@@ -41,17 +41,19 @@
 #include <actionlib/server/simple_action_server.h>
 #include <vigir_planning_msgs/MoveAction.h>
 
-#include <vigir_moveit_utils/trajectory_utils.h>
+
 #include <vigir_plan_execution/continuous_plan_execution.h>
 #include <moveit_msgs/GetCartesianPath.h>
 
-#include <tf/transform_listener.h>
+#include <vigir_move_group/helper/drake_planning_helper.h>
 
 namespace move_group
 {
 
 class MoveGroupManipulationAction : public MoveGroupCapability
 {
+    friend class DrakePlanningHelper;
+
 public:
 
   MoveGroupManipulationAction();
@@ -71,19 +73,12 @@ private:
   void executeMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
   void executeMoveCallback_PlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
 
-  void executeMoveCallback_DrakePlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
-  void executeMoveCallback_DrakeCartesianPlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
-  void executeMoveCallback_DrakeCircularMotionPlanOnly(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
-
   void executeCartesianMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res);
   void startMoveExecutionCallback();
   void startMoveLookCallback();
   void preemptMoveCallback();
   void setMoveState(MoveGroupState state);
   bool planUsingPlanningPipeline(const planning_interface::MotionPlanRequest &req, plan_execution::ExecutableMotionPlan &plan);
-  bool planUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
-  bool planCartesianUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
-  bool planCircularMotionUsingDrake(const vigir_planning_msgs::MoveGoalConstPtr& goal, plan_execution::ExecutableMotionPlan &plan);
 
   // Mostly copy of MoveGroup CartesianPath service with modifications
   bool computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req,
@@ -103,8 +98,7 @@ private:
   boost::shared_ptr<trajectory_utils::TrajectoryVisualization> planned_traj_vis_;
   boost::shared_ptr<trajectory_utils::TrajectoryVisualization> executed_traj_vis_;
 
-  ros::ServiceClient drake_trajectory_srv_client_;
-  ros::ServiceClient drake_cartesian_trajectory_srv_client_;
+  boost::shared_ptr<DrakePlanningHelper> drake_planning_adapter_;
 
   ros::Publisher trajectory_result_display_pub_;
   ros::Publisher circular_target_path_pub_;
