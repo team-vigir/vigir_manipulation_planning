@@ -14,10 +14,10 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
         activeConstraints{end+1} = no_self_collision_constr;
     end
 
-    % keep torso more or less upright
+    % prefer solutions with an upright torso
     torso_body_idx = robot_model.findLinkId('utorso');
-    torso_upright_constr = WorldGazeDirConstraint(robot_model, torso_body_idx, [0; 0; 1], [0;0;1], 0.1, [start_waypoint.waypoint_time, target_waypoint.waypoint_time]);
-    %activeConstraints{end+1} = torso_upright_constr;
+    torso_upright_constr = WorldGazeDirConstraint(robot_model, torso_body_idx, [0; 0; 1], [0;0;1], pi/2, [start_waypoint.waypoint_time, target_waypoint.waypoint_time]);
+    activeConstraints{end+1} = torso_upright_constr;
 
     % fixed foot placement
     l_foot = robot_model.findLinkId('l_foot');
@@ -68,7 +68,16 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
         
         % get endeffector body ids and points
         eef_body_id = robot_model.findLinkId(target_link_name);
-        eef_pts = [0;0;0];
+        
+        if ( isfield(target_waypoint, 'pos_on_eef') )
+            eef_pts = [target_waypoint.pos_on_eef(i).x; target_waypoint.pos_on_eef(i).y; target_waypoint.pos_on_eef(i).z];
+        else
+            eef_pts = [0;0;0];
+        end
+        
+        %target_waypoint.waypoints(i).position.x = target_waypoint.waypoints(i).position.x + target_waypoint.pos_on_eef(i).x;
+        %target_waypoint.waypoints(i).position.y = target_waypoint.waypoints(i).position.y + target_waypoint.pos_on_eef(i).y;
+        %target_waypoint.waypoints(i).position.z = target_waypoint.waypoints(i).position.z + target_waypoint.pos_on_eef(i).z;
         
         % goal orientation constraint
         orientation = target_waypoint.waypoints(i).orientation;

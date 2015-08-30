@@ -907,8 +907,58 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
         //Everything OK in the beginning, this will be changed below if we encounter problems
         res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
 
-        // transform waypoints to world frame if necessary
+        std::vector<std::string> target_link_names = goal->extended_planning_options.target_link_names;
+        if ( target_link_names.empty()) {
+            std::string eef_link_name;
+            if( ! planning_scene_utils::get_eef_link(goal->request.group_name, eef_link_name)) {
+              ROS_ERROR("Cannot get endeffector link name, circular planning not possible!");
+              res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+              return false;
+            }
+            target_link_names.assign(goal->extended_planning_options.target_poses.size(), eef_link_name);
+        }
+
+        // handle reference points
         std::vector<geometry_msgs::Pose> world_target_poses = goal->extended_planning_options.target_poses;
+
+        std::vector<geometry_msgs::Point> reference_points;
+        if ( goal->extended_planning_options.reference_point.orientation.w != 0 ||
+             goal->extended_planning_options.reference_point.orientation.x != 0 ||
+             goal->extended_planning_options.reference_point.orientation.y != 0 ||
+             goal->extended_planning_options.reference_point.orientation.z != 0 ) {
+
+            geometry_msgs::PoseStamped reference_point_transformed;
+            reference_point_transformed.pose = goal->extended_planning_options.reference_point;
+            reference_point_transformed.header.frame_id = goal->extended_planning_options.reference_point_frame;
+
+            // if we have a different reference frame, transform to end-effector frame
+            if ( !goal->extended_planning_options.reference_point_frame.empty() ) {
+                 transform_listener_.transformPose(target_link_names[0], reference_point_transformed, reference_point_transformed);
+            }
+
+            // update end-effector orientation of target poses
+            tf::Transform base_orientation;
+            tf::poseMsgToTF(reference_point_transformed.pose, base_orientation);
+            base_orientation.setOrigin(tf::Vector3(0,0,0));
+
+            for ( int i = 0; i < world_target_poses.size(); i++ ) {
+                tf::Transform current_orientation;
+                tf::poseMsgToTF(world_target_poses[i], current_orientation);
+                current_orientation.setOrigin(tf::Vector3(0,0,0));
+
+                tf::Transform result_orientation = current_orientation * base_orientation;
+                tf::Quaternion result_quat = result_orientation.getRotation();
+                world_target_poses[i].orientation.x = result_quat.getX();
+                world_target_poses[i].orientation.y = result_quat.getY();
+                world_target_poses[i].orientation.z = result_quat.getZ();
+                world_target_poses[i].orientation.w = result_quat.getW();
+            }
+
+            // TODO: ExtendedPlanningOptions should have one of those per target pose to allow multiple end-effectors
+            reference_points.assign(goal->extended_planning_options.target_poses.size(), reference_point_transformed.pose.position);
+        }
+
+        // transform waypoints to world frame if necessary
         if ( goal->extended_planning_options.target_frame != "/world" && goal->extended_planning_options.target_frame != "world" && goal->extended_planning_options.target_frame != "") {
             for ( int i = 0; i < world_target_poses.size(); i++ ) {
                 geometry_msgs::PoseStamped current_pose_stamped, world_pose_stamped;
@@ -926,22 +976,13 @@ bool move_group::MoveGroupManipulationAction::planCartesianUsingDrake(const vigi
             }
         }
 
-        std::vector<std::string> target_link_names = goal->extended_planning_options.target_link_names;
-        if ( target_link_names.empty()) {
-            std::string eef_link_name;
-            if( ! planning_scene_utils::get_eef_link(goal->request.group_name, eef_link_name)) {
-              ROS_ERROR("Cannot get endeffector link name, circular planning not possible!");
-              res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
-              return false;
-            }
-            target_link_names.assign(goal->extended_planning_options.target_poses.size(), eef_link_name);
-        }
 
         // build request message
         vigir_planning_msgs::RequestWholeBodyCartesianTrajectory::Request drake_request_msg;
         drake_request_msg.trajectory_request.current_state = current_state_msg;
         drake_request_msg.trajectory_request.waypoints = world_target_poses;
         drake_request_msg.trajectory_request.waypoint_times = goal->extended_planning_options.target_pose_times;
+        drake_request_msg.trajectory_request.pos_on_eef = reference_points;
         drake_request_msg.trajectory_request.target_link_names = target_link_names;
         drake_request_msg.trajectory_request.target_link_axis = goal->extended_planning_options.target_link_axis;
         drake_request_msg.trajectory_request.free_joint_names = joint_model_group->getJointModelNames();
@@ -1049,6 +1090,22 @@ bool move_group::MoveGroupManipulationAction::planCircularMotionUsingDrake(const
         {
         Eigen::Affine3d rotation_center;
         tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
+
+        // Transform eef-pose according to reference_point
+        if ( goal->extended_planning_options.reference_point.orientation.x != 0.0 ||
+             goal->extended_planning_options.reference_point.orientation.y != 0.0 ||
+             goal->extended_planning_options.reference_point.orientation.z != 0.0 ||
+             goal->extended_planning_options.reference_point.orientation.w != 0.0 ) {
+
+            tf::Transform wrist_T_referencePoint, targetFrame_T_referencePoint;
+            geometry_msgs::Pose tmp_pose;
+            tf::poseMsgToTF(goal->extended_planning_options.reference_point, wrist_T_referencePoint);
+            tf::poseEigenToMsg(eef_start_pose, tmp_pose);
+            tf::poseMsgToTF(tmp_pose, targetFrame_T_referencePoint);
+            tf::Transform targetFrame_T_wrist = targetFrame_T_referencePoint * wrist_T_referencePoint.inverse();
+            tf::poseTFToMsg(targetFrame_T_wrist,tmp_pose);
+            tf::poseMsgToEigen(tmp_pose, eef_start_pose);
+        }
 
         std::vector <geometry_msgs::Pose> pose_vec;
         constrained_motion_utils::getCircularArcPoses(rotation_center,

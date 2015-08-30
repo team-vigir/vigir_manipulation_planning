@@ -162,13 +162,21 @@ function interpolated_waypoints = extractOrderedWaypoints(request, robot_model, 
     [interpolated_waypoints.target_link_names] = deal({});
     [interpolated_waypoints.target_link_axis] = deal(struct('x', {}, 'y', {}, 'z', {}));
     [interpolated_waypoints.keep_line_and_orientation] = deal([]);
+    
+    if ( length(request.pos_on_eef) == length(request.waypoint_times) )
+        [interpolated_waypoints.pos_on_eef] = deal(struct('x', {}, 'y', {},  'z', {}));
+    end
 
     for i = 1 : length(request.waypoint_times)
         interpolated_waypoints(target_idx(i)).waypoint_time = request.waypoint_times(i);
         interpolated_waypoints(target_idx(i)).waypoints(end+1) = request.waypoints(i);
         interpolated_waypoints(target_idx(i)).target_link_names(end+1) = request.target_link_names(i);
-        interpolated_waypoints(target_idx(i)).target_link_axis(end+1) = request.target_link_axis(i);
+        interpolated_waypoints(target_idx(i)).target_link_axis(end+1) = request.target_link_axis(i);        
         interpolated_waypoints(target_idx(i)).keep_line_and_orientation(end+1) = true;
+        
+        if ( length(request.pos_on_eef) == length(request.waypoint_times) )
+			interpolated_waypoints(target_idx(i)).pos_on_eef(end+1) = request.pos_on_eef(i);
+        end
     end
 
 %    % get starting pose
