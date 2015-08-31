@@ -75,11 +75,11 @@ namespace head_control{
           }
 
       } else if (tracking_mode == vigir_planning_msgs::HeadControlCommand::TRACK_LEFT_HAND) {
-          std::vector<double> joints = computeJointsForTracking("l_hand");
+          std::vector<double> joints = computeJointsForTracking("l_f1_link_0");
           if (joints.size() < 2) return;
           setHeadJointPosition(joints[0], joints[1]);
       } else if (tracking_mode == vigir_planning_msgs::HeadControlCommand::TRACK_RIGHT_HAND) {
-          std::vector<double> joints = computeJointsForTracking("r_hand");
+          std::vector<double> joints = computeJointsForTracking("r_f1_link_0");
           if (joints.size() < 2) return;
           setHeadJointPosition(joints[0], joints[1]);
       } else if (tracking_mode == vigir_planning_msgs::HeadControlCommand::USE_PROVIDED_JOINTS) {
