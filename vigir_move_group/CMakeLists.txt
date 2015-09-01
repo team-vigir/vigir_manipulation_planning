@@ -36,10 +36,12 @@ add_library(vigir_move_group_capabilities
   src/manipulation_action_capability.cpp
   src/octomap_access_capability.cpp
   src/robot_state_retrieval_capability.cpp
+  src/helper/drake_planning_helper.cpp
   include/vigir_move_group/continuous_replanning_capability.h
   include/vigir_move_group/manipulation_action_capability.h
   include/vigir_move_group/octomap_access_capability.h
   include/vigir_move_group/robot_state_retrieval_capability.h
+  include/vigir_move_group/helper/drake_planning_helper.h
   #src/sample_rotational_motion_capability.cpp
   )
 
