@@ -91,7 +91,7 @@ move_group::MoveGroupManipulationAction::MoveGroupManipulationAction() :
 void move_group::MoveGroupManipulationAction::initialize()
 {  
   continuous_plan_execution_.reset(new plan_execution::ContinuousPlanExecution(context_));
-  drake_planning_adapter_.reset(new DrakePlanningHelper(this));
+  drake_planning_helper_.reset(new DrakePlanningHelper(this));
 
   ros::NodeHandle pnh("~/visualization");
 
@@ -187,8 +187,6 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
 
   if (goal->request.planner_id == "drake")
   {
-    // @DRAKE Plan using Drake here. Alternatively, could also implement alternative callback below where @DRAKE is marked
-
     if (goal->planning_options.plan_only || !context_->allow_trajectory_execution_)
     {
       if (!goal->planning_options.plan_only)
@@ -197,15 +195,15 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
       // check for cartesian motion
       if ( goal->extended_planning_options.target_poses.size() != 0 && ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS || goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION))
       {
-        drake_planning_adapter_->actionPlanCartesianMotion(goal, action_res);
+        drake_planning_helper_->planCartesianMotionAction(goal, action_res);
       }
       else if ( goal->extended_planning_options.target_poses.size() == 0) // non-cartesian planning
       {
-        drake_planning_adapter_->actionPlan(goal, action_res);
+        drake_planning_helper_->planAction(goal, action_res);
       }
       else if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION)
       {
-        drake_planning_adapter_->actionPlanCircularMotion(goal, action_res);
+        drake_planning_helper_->planCircularMotionAction(goal, action_res);
       }
       else {
         ROS_WARN("Motion request type %d not implemented for Drake!", goal->extended_planning_options.target_motion_type);
@@ -219,6 +217,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
 
     action_res.error_code.val == moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
   }
+
   // Below if not using Drake and not using copy of standard MoveIt! Action
   else if (goal->extended_planning_options.target_poses.size() != 0)
   {
@@ -237,10 +236,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
     new_goal.reset(new vigir_planning_msgs::MoveGoal());
     *new_goal = *goal;
 
-    if(goal->extended_planning_options.reference_point.position.x    != 0.0 ||
-       goal->extended_planning_options.reference_point.position.y    != 0.0 ||
-       goal->extended_planning_options.reference_point.position.z    != 0.0 ||
-       goal->extended_planning_options.reference_point.orientation.x != 0.0 ||
+    if(goal->extended_planning_options.reference_point.orientation.x != 0.0 ||
        goal->extended_planning_options.reference_point.orientation.y != 0.0 ||
        goal->extended_planning_options.reference_point.orientation.z != 0.0 ||
        goal->extended_planning_options.reference_point.orientation.w != 0.0 )
@@ -265,8 +261,9 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
           targetFrame_T_wrist = targetFrame_T_referencePoint * wrist_T_referencePoint.inverse();
           tf::poseTFToMsg(targetFrame_T_wrist,new_target_poses[i]);
         }
-      }else{ //Circular motions behave different when reference point is given. Waypoint is translated but not rotated.
-
+      }
+      else  //Circular motions behave different when reference point is given. Waypoint is translated but not rotated.
+      {
         if(goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION &&
            goal->extended_planning_options.keep_endeffector_orientation)
         {
@@ -433,68 +430,68 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
 
 void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res)
 {
-  ROS_INFO("Combined planning and execution request received for MoveGroup action. Forwarding to planning and execution pipeline.");
+    ROS_INFO("Combined planning and execution request received for MoveGroup action. Forwarding to planning and execution pipeline.");
 
-  if (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff))
-  {
-    planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
-    const robot_state::RobotState &current_state = lscene->getCurrentState();
+    if (planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff))
+    {
+        planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
+        const robot_state::RobotState &current_state = lscene->getCurrentState();
 
-    // check to see if the desired constraints are already met
-    for (std::size_t i = 0 ; i < goal->request.goal_constraints.size() ; ++i)
-      if (lscene->isStateConstrained(current_state, kinematic_constraints::mergeConstraints(goal->request.goal_constraints[i],
-                                                                                            goal->request.path_constraints)))
-      {
-        ROS_INFO("Goal constraints are already satisfied. No need to plan or execute any motions");
-        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+        // check to see if the desired constraints are already met
+        for (std::size_t i = 0 ; i < goal->request.goal_constraints.size() ; ++i)
+            if (lscene->isStateConstrained(current_state, kinematic_constraints::mergeConstraints(goal->request.goal_constraints[i],
+                                                                                                  goal->request.path_constraints)))
+            {
+                ROS_INFO("Goal constraints are already satisfied. No need to plan or execute any motions");
+                action_res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+                return;
+            }
+    }
+
+    plan_execution::PlanExecution::Options opt;
+
+    const moveit_msgs::MotionPlanRequest &motion_plan_request = planning_scene::PlanningScene::isEmpty(goal->request.start_state) ?
+                goal->request : clearRequestStartState(goal->request);
+    const moveit_msgs::PlanningScene &planning_scene_diff = planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff.robot_state) ?
+                goal->planning_options.planning_scene_diff : clearSceneRobotState(goal->planning_options.planning_scene_diff);
+
+    opt.replan_ = goal->planning_options.replan;
+    opt.replan_attempts_ = goal->planning_options.replan_attempts;
+    opt.replan_delay_ = goal->planning_options.replan_delay;
+    opt.before_execution_callback_ = boost::bind(&MoveGroupManipulationAction::startMoveExecutionCallback, this);
+
+    if (goal->extended_planning_options.continuous_replanning){
+        ROS_WARN("Continuous replanning not integrated yet!");
+        action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
         return;
-      }
-  }
+    }
 
-  plan_execution::PlanExecution::Options opt;
-
-  const moveit_msgs::MotionPlanRequest &motion_plan_request = planning_scene::PlanningScene::isEmpty(goal->request.start_state) ?
-    goal->request : clearRequestStartState(goal->request);
-  const moveit_msgs::PlanningScene &planning_scene_diff = planning_scene::PlanningScene::isEmpty(goal->planning_options.planning_scene_diff.robot_state) ?
-    goal->planning_options.planning_scene_diff : clearSceneRobotState(goal->planning_options.planning_scene_diff);
-
-  opt.replan_ = goal->planning_options.replan;
-  opt.replan_attempts_ = goal->planning_options.replan_attempts;
-  opt.replan_delay_ = goal->planning_options.replan_delay;
-  opt.before_execution_callback_ = boost::bind(&MoveGroupManipulationAction::startMoveExecutionCallback, this);
-
-  if (goal->extended_planning_options.continuous_replanning){
-    ROS_WARN("Continuous replanning not integrated yet!");
-  }else{
     if (goal->request.planner_id == "drake") // plan using drake
     {
         // check if it is a cartesian request
         if ( goal->extended_planning_options.target_poses.size() != 0 && (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS || goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_FREE_MOTION))
-        {
-            opt.plan_callback_ = boost::bind(&DrakePlanningHelper::planCartesianMotion, drake_planning_adapter_.get(), boost::cref(goal), _1);
-        }
+            opt.plan_callback_ = boost::bind(&DrakePlanningHelper::planCartesianMotion, drake_planning_helper_.get(), boost::cref(goal), _1);
         else if ( goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION)
-        {
-            opt.plan_callback_ = boost::bind(&DrakePlanningHelper::planCircularMotion, drake_planning_adapter_.get(), boost::cref(goal), _1);
-        }
-        else if ( goal->extended_planning_options.target_poses.size() == 0 ) { // normal joint-level planning
-            opt.plan_callback_ = boost::bind(&DrakePlanningHelper::plan, drake_planning_adapter_.get(), boost::cref(goal), _1);
-        }
+            opt.plan_callback_ = boost::bind(&DrakePlanningHelper::planCircularMotion, drake_planning_helper_.get(), boost::cref(goal), _1);
+        else if ( goal->extended_planning_options.target_poses.size() == 0 ) // normal joint-level planning
+            opt.plan_callback_ = boost::bind(&DrakePlanningHelper::plan, drake_planning_helper_.get(), boost::cref(goal), _1);
         else {
             ROS_WARN("Selected motion type %d not implemented for Drake!", goal->extended_planning_options.target_motion_type);
+            action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+            return;
         }
-
     }
-    else {
-    opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
-
-    //We normally don't plan with lookaround so the below can be ignored
-    if (goal->planning_options.look_around && context_->plan_with_sensing_)
+    else
     {
-      opt.plan_callback_ = boost::bind(&plan_execution::PlanWithSensing::computePlan, context_->plan_with_sensing_.get(), _1, opt.plan_callback_,
-                                       goal->planning_options.look_around_attempts, goal->planning_options.max_safe_execution_cost);
-      context_->plan_with_sensing_->setBeforeLookCallback(boost::bind(&MoveGroupManipulationAction::startMoveLookCallback, this));
-    }
+        opt.plan_callback_ = boost::bind(&MoveGroupManipulationAction::planUsingPlanningPipeline, this, boost::cref(motion_plan_request), _1);
+
+        //We normally don't plan with lookaround so the below can be ignored
+        if (goal->planning_options.look_around && context_->plan_with_sensing_)
+        {
+            opt.plan_callback_ = boost::bind(&plan_execution::PlanWithSensing::computePlan, context_->plan_with_sensing_.get(), _1, opt.plan_callback_,
+                                             goal->planning_options.look_around_attempts, goal->planning_options.max_safe_execution_cost);
+            context_->plan_with_sensing_->setBeforeLookCallback(boost::bind(&MoveGroupManipulationAction::startMoveLookCallback, this));
+        }
     }
 
     plan_execution::ExecutableMotionPlan plan;
@@ -508,11 +505,10 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_PlanAndExecute
 
     convertToMsg(plan.plan_components_, action_res.trajectory_start, action_res.planned_trajectory);
     if (plan.executed_trajectory_){
-      plan.executed_trajectory_->getRobotTrajectoryMsg(action_res.executed_trajectory);
-      executed_traj_vis_->publishTrajectoryEndeffectorVis(*plan.executed_trajectory_);
+        plan.executed_trajectory_->getRobotTrajectoryMsg(action_res.executed_trajectory);
+        executed_traj_vis_->publishTrajectoryEndeffectorVis(*plan.executed_trajectory_);
     }
     action_res.error_code = plan.error_code_;
-  }
 }
 
 

@@ -98,7 +98,7 @@ private:
   boost::shared_ptr<trajectory_utils::TrajectoryVisualization> planned_traj_vis_;
   boost::shared_ptr<trajectory_utils::TrajectoryVisualization> executed_traj_vis_;
 
-  boost::shared_ptr<DrakePlanningHelper> drake_planning_adapter_;
+  boost::shared_ptr<DrakePlanningHelper> drake_planning_helper_;
 
   ros::Publisher trajectory_result_display_pub_;
   ros::Publisher circular_target_path_pub_;

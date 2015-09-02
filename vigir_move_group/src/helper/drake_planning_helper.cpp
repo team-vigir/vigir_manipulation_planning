@@ -36,7 +36,7 @@ DrakePlanningHelper::~DrakePlanningHelper() {
 
 }
 
-void DrakePlanningHelper::actionPlan(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res) {
+void DrakePlanningHelper::planAction(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res) {
     struct timeval start_time;
     gettimeofday(&start_time, NULL);
 
@@ -63,7 +63,7 @@ void DrakePlanningHelper::actionPlan(const vigir_planning_msgs::MoveGoalConstPtr
     action_res.extended_planning_result.plan_completion_fraction = 1.0; // TODO: add correct fraction
 }
 
-void DrakePlanningHelper::actionPlanCartesianMotion(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res) {
+void DrakePlanningHelper::planCartesianMotionAction(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res) {
     struct timeval start_time;
     gettimeofday(&start_time, NULL);
 
@@ -90,7 +90,7 @@ void DrakePlanningHelper::actionPlanCartesianMotion(const vigir_planning_msgs::M
     action_res.extended_planning_result.plan_completion_fraction = 1.0; // TODO: add correct fraction
 }
 
-void DrakePlanningHelper::actionPlanCircularMotion(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res) {
+void DrakePlanningHelper::planCircularMotionAction(const vigir_planning_msgs::MoveGoalConstPtr& goal, vigir_planning_msgs::MoveResult &action_res) {
     struct timeval start_time;
     gettimeofday(&start_time, NULL);
 
