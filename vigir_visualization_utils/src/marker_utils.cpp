@@ -32,12 +32,12 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-#include <flor_visualization_utils/marker_utils.h>
+#include <vigir_visualization_utils/marker_utils.h>
 
 #include <ros/ros.h>
 
 
-namespace flor_visualization_utils {
+namespace vigir_visualization_utils {
 
   void drawEllipsoid(const geometry_msgs::PoseStamped& pose,
                      const Eigen::MatrixXcd &eigen_values,

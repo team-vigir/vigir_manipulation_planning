@@ -54,7 +54,7 @@ MoveItOcsModelRos::MoveItOcsModelRos()
     use_drake_ik_ = false;
     whole_body_ik_client_ = nh.serviceClient<vigir_planning_msgs::RequestWholeBodyIK>("drake_planner/request_whole_body_ik");
 
-    //flor_visualization_utils::test();
+    //vigir_visualization_utils::test();
 
     robot_state_vis_pub_ = nh.advertise<moveit_msgs::DisplayRobotState>("/flor/ghost/robot_state_vis",1, true);
     robot_state_diff_real_vis_pub_ = nh.advertise<moveit_msgs::DisplayRobotState>("/flor/ghost/robot_state_diff_vis",1, true);
@@ -260,7 +260,7 @@ void MoveItOcsModelRos::onModelUpdated()
       tmp.header.frame_id = "/world";
       ocs_model_->getLinkPose("l_hand",tmp.pose);
 
-      flor_visualization_utils::drawEllipsoid(tmp, eigen_values, eigen_vectors, markers);
+      vigir_visualization_utils::drawEllipsoid(tmp, eigen_values, eigen_vectors, markers);
 
       marker_array_pub_.publish(markers);
     }

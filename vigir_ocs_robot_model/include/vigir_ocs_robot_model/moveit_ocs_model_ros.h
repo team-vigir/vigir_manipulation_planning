@@ -45,7 +45,7 @@
 
 #include <boost/make_shared.hpp>
 
-#include <flor_visualization_utils/marker_utils.h>
+#include <vigir_visualization_utils/marker_utils.h>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <tf/transform_listener.h>

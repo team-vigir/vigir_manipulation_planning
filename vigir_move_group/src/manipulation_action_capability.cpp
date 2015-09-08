@@ -769,7 +769,7 @@ bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::
   /*
   if (marker_array_pub_.getNumSubscribers() > 0){
     visualization_msgs::MarkerArray markers;
-    flor_visualization_utils::drawPoses(req.waypoints, markers, req.header.frame_id, ros::Time::now(), 0.1, 1.0);
+    vigir_visualization_utils::drawPoses(req.waypoints, markers, req.header.frame_id, ros::Time::now(), 0.1, 1.0);
     marker_array_pub_.publish(markers);
   }
   */

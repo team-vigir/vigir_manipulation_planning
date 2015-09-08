@@ -36,7 +36,7 @@
 #include <visualization_msgs/Marker.h>
 #include <geometry_msgs/PoseStamped.h>
 
-namespace flor_visualization_utils {
+namespace vigir_visualization_utils {
 
   void drawEllipsoid(const geometry_msgs::PoseStamped& pose,
                      const Eigen::MatrixXcd &eigen_values,

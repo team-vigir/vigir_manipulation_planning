@@ -6,7 +6,7 @@ project(vigir_ocs_robot_model)
 find_package(Boost REQUIRED COMPONENTS system)
 
 find_package(Boost REQUIRED system filesystem date_time program_options signals thread)
-find_package(catkin REQUIRED COMPONENTS cmake_modules vigir_utilities geometry_msgs vigir_teleop_planning_msgs vigir_planning_msgs vigir_ocs_msgs roscpp moveit_core moveit_ros_planning  flor_visualization_utils eigen_conversions vigir_moveit_utils tf)
+find_package(catkin REQUIRED COMPONENTS cmake_modules vigir_utilities geometry_msgs vigir_teleop_planning_msgs vigir_planning_msgs vigir_ocs_msgs roscpp moveit_core moveit_ros_planning  vigir_visualization_utils eigen_conversions vigir_moveit_utils tf)
 #flor_moveit_tools
 find_package(Eigen REQUIRED)
 

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>flor_visualization_utils</name>
+  <name>vigir_visualization_utils</name>
   <version>0.0.0</version>
-  <description>flor_visualization_utils provides utilities for visualization such as code for creating rviz markers</description>
+  <description>vigir_visualization_utils provides utilities for visualization such as code for creating rviz markers</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

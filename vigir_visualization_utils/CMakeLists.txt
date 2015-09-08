@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(flor_visualization_utils)
+project(vigir_visualization_utils)
 
 #set(CMAKE_BUILD_TYPE RelWithDebInfo)
 #set(CMAKE_BUILD_TYPE Debug)
@@ -25,7 +25,7 @@ set (SOURCES
 )
 
 set (HEADERS
-  include/flor_visualization_utils/marker_utils.h
+  include/vigir_visualization_utils/marker_utils.h
 )
 
 #######################################
@@ -62,7 +62,7 @@ set (HEADERS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES flor_visualization_utils
+  LIBRARIES vigir_visualization_utils
 #  CATKIN_DEPENDS roscpp std_msgs
   DEPENDS
    Eigen
