@@ -17,8 +17,8 @@ function activeConstraints = buildIKTrajectoryConstraints(robot_model, joint_con
 
     l_foot_position_constr    = WorldPositionConstraint(robot_model, l_foot, l_foot_pts, l_foot_pos(1:3), l_foot_pos(1:3));
     r_foot_position_constr    = WorldPositionConstraint(robot_model, r_foot, r_foot_pts, r_foot_pos(1:3), r_foot_pos(1:3));
-    l_foot_orientation_constr = WorldQuatConstraint(robot_model, l_foot, l_foot_pos(4:7), 0);
-    r_foot_orientation_constr = WorldQuatConstraint(robot_model, r_foot, r_foot_pos(4:7), 0);
+    l_foot_orientation_constr = WorldQuatConstraint(robot_model, l_foot, l_foot_pos(4:7), 0.01);
+    r_foot_orientation_constr = WorldQuatConstraint(robot_model, r_foot, r_foot_pos(4:7), 0.01);
     activeConstraints{end+1} = l_foot_position_constr;
     activeConstraints{end+1} = r_foot_position_constr;
     activeConstraints{end+1} = l_foot_orientation_constr;
