@@ -2,7 +2,6 @@ function [ posture, success ] = calcIKPosture( visualizer, robot_model, nominal_
     nq = robot_model.getNumPositions();
 
     q_seed = q0;
-    %q_nom = q_seed;
     q_nom = nominal_pose;
 
     % comma-separated q0
@@ -17,7 +16,7 @@ function [ posture, success ] = calcIKPosture( visualizer, robot_model, nominal_
     activeConstraints = buildIKConstraints(robot_model, request, q0);
 
     % run inverse kinematics (mex)
-    ikoptions = initIKOptions(robot_model);
+    ikoptions = initIKOptions(robot_model, request.free_joint_names);
     [posture,info_mex,infeasible_constraints] = inverseKin(robot_model,q_seed,q_nom,activeConstraints{:},ikoptions);
 
     % visualize result
