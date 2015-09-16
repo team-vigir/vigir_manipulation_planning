@@ -54,15 +54,38 @@ protected:
   bool handleWholeBodyTrajectoryRequest(vigir_planning_msgs::RequestWholeBodyTrajectory::Request &request, vigir_planning_msgs::RequestWholeBodyTrajectory::Response &response);
   bool handleWholeBodyCartesianTrajectoryRequest(vigir_planning_msgs::RequestWholeBodyCartesianTrajectory::Request &request, vigir_planning_msgs::RequestWholeBodyCartesianTrajectory::Response &response);
 
+  void handleIKResult(vigir_planning_msgs::ResultDrakeIKConstPtr result);
+  void handleTrajectoryResult(vigir_planning_msgs::ResultDrakeTrajectoryConstPtr result);
+  void handleCartesianTrajectoryResult(vigir_planning_msgs::ResultDrakeTrajectoryConstPtr result);
+
 private:
   ros::NodeHandle node_handle_;
+
+  // offer service interface to ROS side
   ros::ServiceServer whole_body_ik_service_;
   ros::ServiceServer whole_body_trajectory_service_;
   ros::ServiceServer whole_body_cartesian_trajectory_service_;
 
+  // send requests to Drake (via rosmatlab)
   ros::Publisher ik_request_publisher_;
   ros::Publisher trajectory_request_publisher_;
   ros::Publisher cartesian_trajectory_request_publisher_;
+
+  // receive results from Drake (via rosmatlab)
+  ros::Subscriber ik_result_subscriber_;
+  ros::Subscriber trajectory_result_subscriber_;
+  ros::Subscriber cartesian_trajectory_result_subscriber_;
+
+  // stores last received result message
+  vigir_planning_msgs::ResultDrakeIKConstPtr last_ik_result_;
+  vigir_planning_msgs::ResultDrakeTrajectoryConstPtr last_trajectory_result_;
+  vigir_planning_msgs::ResultDrakeTrajectoryConstPtr last_cartesian_trajectory_result_;
+
+  // maximum times to wait before returning failure
+  const ros::Duration MaxIKTime = ros::Duration(0.4);
+  const ros::Duration MaxTrajectoryTime = ros::Duration(2.0);
+  const ros::Duration MaxCartesianTrajectoryTime = ros::Duration(10.0);
+
 };
 
 };

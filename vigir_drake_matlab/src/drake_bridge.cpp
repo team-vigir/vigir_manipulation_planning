@@ -50,6 +50,14 @@ DrakeBridge::DrakeBridge()
 
   whole_body_cartesian_trajectory_service_ = node_handle_.advertiseService("drake_planner/request_whole_body_cartesian_trajectory", &DrakeBridge::handleWholeBodyCartesianTrajectoryRequest, this);
   cartesian_trajectory_request_publisher_ = node_handle_.advertise<vigir_planning_msgs::RequestDrakeCartesianTrajectory>("/drake_planner/request_drake_cartesian_trajectory", 1, false);
+
+  ik_result_subscriber_ = node_handle_.subscribe("/drake_planner/ik_result", 1, &DrakeBridge::handleIKResult, this);
+  trajectory_result_subscriber_ = node_handle_.subscribe("/drake_planner/trajectory_result", 1, &DrakeBridge::handleTrajectoryResult, this);
+  cartesian_trajectory_result_subscriber_ = node_handle_.subscribe("/drake_planner/cartesian_trajectory_result", 1, &DrakeBridge::handleCartesianTrajectoryResult, this);
+
+  last_ik_result_.reset();
+  last_trajectory_result_.reset();
+  last_cartesian_trajectory_result_.reset();
 }
 
 DrakeBridge::~DrakeBridge() 
@@ -59,10 +67,10 @@ DrakeBridge::~DrakeBridge()
 
 bool DrakeBridge::handleWholeBodyIKRequest(vigir_planning_msgs::RequestWholeBodyIK::Request &request, vigir_planning_msgs::RequestWholeBodyIK::Response &response)
 {
-  ROS_INFO("received IK request");
+  ROS_INFO("[DrakeBridge] Received IK request");
 
   if ( request.ik_request.target_link_names.size() != request.ik_request.target_poses.size() ) {
-      ROS_WARN("number of target poses and names does not match => aborting");
+      ROS_WARN("[DrakeBridge] Number of target poses and names does not match => aborting");
       return false;
   }
 
@@ -70,12 +78,25 @@ bool DrakeBridge::handleWholeBodyIKRequest(vigir_planning_msgs::RequestWholeBody
   // send request via regular topic
   ik_request_publisher_.publish(request.ik_request);
 
-  // wait for 0.5 secs at maximum
-  vigir_planning_msgs::ResultDrakeIKConstPtr response_msg = ros::topic::waitForMessage<vigir_planning_msgs::ResultDrakeIK>("/drake_planner/ik_result", ros::Duration(0.5));
+  last_ik_result_.reset();
+
+  ros::Rate r(100); // try every 10ms
+  ros::Duration waiting_time(0);
+
+  while (waiting_time <= MaxIKTime )
+  {
+    ros::spinOnce();
+    waiting_time += r.cycleTime();
+
+    if ( last_ik_result_ )
+        break;
+
+    r.sleep();
+  }
 
   // received a valid response?
-  if (response_msg && response_msg->is_valid) {
-    response.ik_result.result_state = response_msg->result_state;
+  if (last_ik_result_ && last_ik_result_->is_valid) {
+    response.ik_result.result_state = last_ik_result_->result_state;
     response.ik_result.is_valid = true;
     return true;
   }
@@ -87,15 +108,30 @@ bool DrakeBridge::handleWholeBodyIKRequest(vigir_planning_msgs::RequestWholeBody
 
 bool DrakeBridge::handleWholeBodyTrajectoryRequest(vigir_planning_msgs::RequestWholeBodyTrajectory::Request &request, vigir_planning_msgs::RequestWholeBodyTrajectory::Response &response)
 {
+  ROS_INFO("[DrakeBridge] Received trajectory request");
+
   // send request via regular topic
   trajectory_request_publisher_.publish(request.trajectory_request);
 
-  // wait for 2 secs at maximum
-  vigir_planning_msgs::ResultDrakeTrajectoryConstPtr response_msg = ros::topic::waitForMessage<vigir_planning_msgs::ResultDrakeTrajectory>("/drake_planner/trajectory_result", ros::Duration(2.0));
+  last_trajectory_result_.reset();
+
+  ros::Rate r(100); // try every 10ms
+  ros::Duration waiting_time(0);
+
+  while (waiting_time <= MaxTrajectoryTime )
+  {
+    ros::spinOnce();
+    waiting_time += r.cycleTime();
+
+    if ( last_trajectory_result_ )
+        break;
+
+    r.sleep();
+  }
 
   // received a valid response?
-  if (response_msg && response_msg->is_valid) {
-    response.trajectory_result.result_trajectory = response_msg->result_trajectory;
+  if (last_trajectory_result_ && last_trajectory_result_->is_valid) {
+    response.trajectory_result.result_trajectory = last_trajectory_result_->result_trajectory;
     response.trajectory_result.is_valid = true;
     return true;
   }
@@ -107,15 +143,29 @@ bool DrakeBridge::handleWholeBodyTrajectoryRequest(vigir_planning_msgs::RequestW
 
 bool DrakeBridge::handleWholeBodyCartesianTrajectoryRequest(vigir_planning_msgs::RequestWholeBodyCartesianTrajectory::Request &request, vigir_planning_msgs::RequestWholeBodyCartesianTrajectory::Response &response)
 {
+  ROS_INFO("[DrakeBridge] Received Cartesian trajectory request");
+
   // send request via regular topic
   cartesian_trajectory_request_publisher_.publish(request.trajectory_request);
 
-  // wait for 5 secs at maximum
-  vigir_planning_msgs::ResultDrakeTrajectoryConstPtr response_msg = ros::topic::waitForMessage<vigir_planning_msgs::ResultDrakeTrajectory>("/drake_planner/cartesian_trajectory_result", ros::Duration(5.0));
+  last_cartesian_trajectory_result_.reset();
 
+  ros::Rate r(100); // try every 10ms
+  ros::Duration waiting_time(0);
+
+  while (waiting_time <= MaxCartesianTrajectoryTime )
+  {
+    ros::spinOnce();
+    waiting_time += r.cycleTime();
+
+    if ( last_cartesian_trajectory_result_ )
+        break;
+
+    r.sleep();
+  }
   // received a valid response?
-  if (response_msg && response_msg->is_valid) {
-    response.trajectory_result.result_trajectory = response_msg->result_trajectory;
+  if (last_cartesian_trajectory_result_ && last_cartesian_trajectory_result_->is_valid) {
+    response.trajectory_result.result_trajectory = last_cartesian_trajectory_result_->result_trajectory;
     response.trajectory_result.is_valid = true;
     return true;
   }
@@ -123,6 +173,21 @@ bool DrakeBridge::handleWholeBodyCartesianTrajectoryRequest(vigir_planning_msgs:
     response.trajectory_result.is_valid = false;
     return false;
   }
+}
+
+void DrakeBridge::handleIKResult(vigir_planning_msgs::ResultDrakeIKConstPtr result) {
+    last_ik_result_ = result;
+    ROS_INFO("[DrakeBridge] Received IK response");
+}
+
+void DrakeBridge::handleTrajectoryResult(vigir_planning_msgs::ResultDrakeTrajectoryConstPtr result) {
+    last_trajectory_result_ = result;
+    ROS_INFO("[DrakeBridge] Received trajectory response");
+}
+
+void DrakeBridge::handleCartesianTrajectoryResult(vigir_planning_msgs::ResultDrakeTrajectoryConstPtr result) {
+    last_cartesian_trajectory_result_ = result;
+    ROS_INFO("[DrakeBridge] Received Cartesian trajectory response");
 }
 
 }
