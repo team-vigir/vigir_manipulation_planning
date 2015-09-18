@@ -38,7 +38,11 @@ classdef DrakeInverseKinematicsInterface
             % model correctly)
             vigir_paths = getenv('ROS_VIGIR_PACKAGE_PATH');
             rosmatlab_paths = getenv('ROS_PACKAGE_PATH');
-            setenv('ROS_PACKAGE_PATH', [rosmatlab_paths ':' vigir_paths]);
+            if ( length([rosmatlab_paths ':' vigir_paths]) <= 32766 )
+                setenv('ROS_PACKAGE_PATH', [rosmatlab_paths ':' vigir_paths]);
+            else
+                warning('Unable to set ROS_PACKAGE_PATH');
+            end
             
             % load robot from rosparam /robot_description
             ros.log('INFO', 'Loading robot model...');

@@ -4,7 +4,7 @@
   <param name="drake_nominal_pose" value="0.039456, -0.030599, 0.791476, 0.000545, 0.177307, 0.019694, 0.001684, -0.005898, 0.008928, -0.060167, -0.756784, 1.181566, 0.604177, -0.058606, -0.009039, 0.060133, 0.755749, -1.182246, -0.605823, 0.057437, 0.768950, -0.275115, 0.022722, -1.516567, -0.252635, 0.033393, -0.000543, -0.770410, 0.485897, -0.144217, 1.521950, 0.008484, -0.024665, 0.005161, 0.000005, 0.004326, -0.212836, 2.684994, 1.073997, 2.684994, 1.073997, 2.684994, 1.073997, 2.684993, 1.073997" />
   
   <!-- Bridge node to create service for drake integration -->
-  <node name="drake_bridge_node"   pkg="vigir_drake_matlab"        type="drake_bridge_node" respawn="true"/>
+  <node name="drake_bridge_node"   pkg="vigir_drake_matlab"        type="drake_bridge_node" output="screen" respawn="true"/>
   
   <!-- Drake-Matlab node - allowed to be killed for controlled restart -->
   <node name="drake_matlab_node" pkg="vigir_drake_matlab" type="drake_matlab_node.py" args="--with-gui" output="screen" respawn="false"/> 
