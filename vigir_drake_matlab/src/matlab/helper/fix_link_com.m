@@ -1,9 +1,14 @@
-function visualize_com()
+function fix_link_com(link_name)   
+    if ( nargin == 0 )
+        link_name = 'utorso';
+        warning(['No link name specified, using ' link_name]);
+    end
+
     addpath('/usr/local/MATLAB/R2014a/ros/indigo/matlab');
     sensor_msgs;
-    
+
     ros.init();
-      
+
     if(~checkDependency('snopt'))
         ros.log('ERROR', 'Need package "snopt" to run...');
         error('Need package "snopt" to run...');
@@ -40,39 +45,71 @@ function visualize_com()
         ros.log('WARN', 'Nominal pose does not match number of robot joints. Setting to 0');
         robot_nominal_pose = zeros(robot_model.num_positions, 1);
     end
-    
+
     current_robot_pose = robot_nominal_pose;
 
     % construct visualizer
     robot_visualizer = robot_model.constructVisualizer();
 
-    
+    % get current robot position and visualize
     joint_state_sub = ros.Subscriber('/thor_mang/joint_states','sensor_msgs/JointState', 1);
     imu_sub = ros.Subscriber('/thor_mang/pelvis_imu', 'sensor_msgs/Imu', 1);
 
-    % update visualization from current pose
-    figure;
-    hold on
+    [joint_state_msg, ~, ~] = joint_state_sub.poll(10);
+    [imu_msg, ~, ~] = imu_sub.poll(10);
 
-    while(1)
-        [joint_state_msg, ~, ~] = joint_state_sub.poll(10);
-        [imu_msg, ~, ~] = imu_sub.poll(10);
-        
-        orientation_quat = [imu_msg.orientation.w;imu_msg.orientation.x;imu_msg.orientation.y;imu_msg.orientation.z];
-        orientation_rpy = quat2rpy(orientation_quat);
-        current_robot_pose(4:6) = orientation_rpy;
-        
-        current_robot_pose = handle_new_joint_state(joint_state_msg, robot_model, current_robot_pose, 'current robot CoM');
-        
-        robot_visualizer.draw(cputime, current_robot_pose);
+    orientation_quat = [imu_msg.orientation.w;imu_msg.orientation.x;imu_msg.orientation.y;imu_msg.orientation.z];
+    orientation_rpy = quat2rpy(orientation_quat);
+    current_robot_pose(4:6) = orientation_rpy;
 
-        % calculate foot contact points in world
-        plot_robot_com(robot_model, current_robot_pose);
+    current_robot_pose = handle_new_joint_state(joint_state_msg, robot_model, current_robot_pose);
+    
+    robot_visualizer.draw(cputime, current_robot_pose);
+    
+    % display current state
+    figure    
+    plot_robot_com(robot_model, current_robot_pose, 'current CoM state');
+    
+    % get current chest values
+    body_idx = robot_model.findLinkId(link_name);
+    body = robot_model.getBody(body_idx);
+    
+    body_com = body.com;
+    body_mass = body.mass;
+    body_inertia = body.inertia;
+    
+    % change chest com to fit    
+    figure
+    title('new CoM state');
+    
+    while ( true )
+        com_delta = input('Enter CoM delta (or nothing to quit): ');
+        if ( isempty(com_delta) )
+            break;
+        end
         
-        pause(0.1);
+        old_body_com = body_com;
+        if ( size(com_delta, 1) == 1 )
+            body_com(1) = body_com(1) + com_delta;
+        elseif ( all( size(com_delta) == [3, 1] ))
+            body_com = body_com + com_delta;
+        else
+            disp('Invalid delta value: enter "dx" or "[dx; dy; dz]"');
+            continue;
+        end            
+
+        body = body.setInertial(body_mass, body_com, body_inertia);
+        robot_model = robot_model.setBody(body_idx, body);
+        robot_model = robot_model.compile();
+
+        % display changes        
+        plot_robot_com(robot_model, current_robot_pose, 'new CoM state');
+
+        % display final com
+        disp(['new body CoM: ' num2str(body_com') '  (old was: ' num2str(old_body_com') ')']);                    
     end
-
 end
+
 
 function current_robot_pose = handle_new_joint_state(joint_state_msg, robot_model, old_robot_pose)
     message_joint_names = joint_state_msg.name;
