@@ -1,4 +1,4 @@
-function plot_robot_com( robot_model, robot_pose, figure_title )
+function hull_distance = plot_robot_com( robot_model, robot_pose, figure_title )
     kinsol0 = doKinematics(robot_model,robot_pose,false,true);
 
     l_foot = robot_model.findLinkId('l_foot');
@@ -17,7 +17,6 @@ function plot_robot_com( robot_model, robot_pose, figure_title )
     opt_com = mean(all_contact_pts, 2);
 
     % display results
-    clf
     hold on
     title(figure_title)
     scatter3(l_foot_contact_pts(1,:), l_foot_contact_pts(2, :), l_foot_contact_pts(3, :), 'MarkerFaceColor', [0.0, 0.0, 0.0]);
@@ -32,5 +31,7 @@ function plot_robot_com( robot_model, robot_pose, figure_title )
     % calculate distance CoM to hull
     com_dist = p_poly_dist(com(1), com(2), hull_pts(1,:), hull_pts(2,:));    
     disp(['CoM dist to hull: ' num2str(com_dist)]);
+    
+    hull_distance = com_dist;
 end
 

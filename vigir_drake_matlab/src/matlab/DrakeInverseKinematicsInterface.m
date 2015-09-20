@@ -75,12 +75,12 @@ classdef DrakeInverseKinematicsInterface
             end
             
             % construct visualizer
-            if ( strcmpi(getenv('SHOW_DRAKE_VISUALIZATION'), 'TRUE' ) )
-                obj.robot_visualizer = obj.robot_model.constructVisualizer();
-                obj.robot_visualizer.draw(cputime, obj.robot_nominal_pose);
-            else
+            %if ( strcmpi(getenv('SHOW_DRAKE_VISUALIZATION'), 'TRUE' ) )
+            %    obj.robot_visualizer = obj.robot_model.constructVisualizer();
+            %    obj.robot_visualizer.draw(cputime, obj.robot_nominal_pose);
+            %else
                 obj.robot_visualizer = [];
-            end          
+            %end          
             
             % init IK publishers / subscribers
             obj.ik_result_publisher = ros.Publisher('/drake_planner/ik_result', 'vigir_planning_msgs/ResultDrakeIK', 1, false);
@@ -296,7 +296,11 @@ classdef DrakeInverseKinematicsInterface
         
         function robot_model = getRobotModel(obj)
             robot_model = obj.robot_model;
-        end        
+        end     
+        
+        function obj = update_robot_model(obj, new_robot_model)
+            obj.robot_model = new_robot_model;
+        end
     end
     
     methods(Access = private)

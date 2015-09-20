@@ -67,6 +67,7 @@ function visualize_com()
         robot_visualizer.draw(cputime, current_robot_pose);
 
         % calculate foot contact points in world
+        clf
         plot_robot_com(robot_model, current_robot_pose);
         
         pause(0.1);

@@ -67,7 +67,8 @@ function fix_link_com(link_name)
     robot_visualizer.draw(cputime, current_robot_pose);
     
     % display current state
-    figure    
+    figure  
+    clf
     plot_robot_com(robot_model, current_robot_pose, 'current CoM state');
     
     % get current chest values
@@ -102,7 +103,8 @@ function fix_link_com(link_name)
         robot_model = robot_model.setBody(body_idx, body);
         robot_model = robot_model.compile();
 
-        % display changes        
+        % display changes   
+        clf
         plot_robot_com(robot_model, current_robot_pose, 'new CoM state');
 
         % display final com
