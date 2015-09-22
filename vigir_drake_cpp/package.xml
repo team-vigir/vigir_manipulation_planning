@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
   <name>vigir_drake_cpp</name>
-  <version>0.0.0</version>
-  <description>The vigir_drake_cpp package</description>
+  <version>0.0.1</version>
+  <description>Wrapper for the Drake C++ implementation (experimental!)</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->

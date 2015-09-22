@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
   <name>vigir_drake_matlab</name>
-  <version>0.0.0</version>
-  <description>The vigir_drake_matlab package</description>
+  <version>0.1.0</version>
+  <description>Planner and bridge to access Drake IK planning from ROS</description>
   <maintainer email="steinachim@gmx.de">Achim Stein</maintainer>
   <license>BSD</license>
 
