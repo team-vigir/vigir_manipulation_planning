@@ -44,6 +44,7 @@ end
 % End initialization code - DO NOT EDIT
 
 
+
 % --- Executes just before fix_link_com_ui is made visible.
 function fix_link_com_ui_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
@@ -56,9 +57,9 @@ function fix_link_com_ui_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 if ( nargin >= 4 )
-    handles.update_robot_model_fn = varargin{1};
+    handles.drake_ik_interface = varargin{1};
 else
-    handles.update_robot_model_fn = [];
+    handles.drake_ik_interface = [];
 end
 
 % init ROS subscribers
@@ -303,9 +304,9 @@ function handle_slider_change(handles)
     body = body.setInertial(body.mass, new_body_com, body.inertia);
     handles.robot_model = handles.robot_model.setBody(body_idx, body);
     handles.robot_model = handles.robot_model.compile();
-    
-    if ( ~isempty(handles.update_robot_model_fn ))
-        handles.update_robot_model_fn(handles.robot_model);
+
+    if ( ~isempty(handles.drake_ik_interface ))        
+        handles.drake_ik_interface.update_robot_model(handles.robot_model);
     end
     
     robot_com = handles.robot_model.getCOM(handles.current_robot_pose);
@@ -317,6 +318,7 @@ function handle_slider_change(handles)
     hull_distance = plot_robot_com(handles.robot_model, handles.current_robot_pose, 'CoM state');
     set(handles.hull_distance_value, 'String', sprintf('% .3f', hull_distance));
     
+    disp( sprintf('Done with slider change to position [% .3f, % .3f, % .3f]', delta_x, delta_y, delta_z) );
     guidata(handles.fix_link_com_ui_fig, handles);
 
 

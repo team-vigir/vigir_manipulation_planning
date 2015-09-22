@@ -1,4 +1,4 @@
-classdef DrakeInverseKinematicsInterface
+classdef DrakeInverseKinematicsInterface < handle
     %DRAKEINVERSEKINEMATICSINTERFACE Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -75,34 +75,18 @@ classdef DrakeInverseKinematicsInterface
             end
             
             % construct visualizer
-            %if ( strcmpi(getenv('SHOW_DRAKE_VISUALIZATION'), 'TRUE' ) )
-            %    obj.robot_visualizer = obj.robot_model.constructVisualizer();
-            %    obj.robot_visualizer.draw(cputime, obj.robot_nominal_pose);
-            %else
+            if ( strcmpi(getenv('SHOW_DRAKE_VISUALIZATION'), 'TRUE' ) )
+                obj.robot_visualizer = obj.robot_model.constructVisualizer();
+                obj.robot_visualizer.draw(cputime, obj.robot_nominal_pose);
+            else
                 obj.robot_visualizer = [];
-            %end          
+            end          
             
-            % init IK publishers / subscribers
-            obj.ik_result_publisher = ros.Publisher('/drake_planner/ik_result', 'vigir_planning_msgs/ResultDrakeIK', 1, false);
-            obj.ik_request_subscriber = ros.Subscriber('/drake_planner/request_drake_ik','vigir_planning_msgs/RequestDrakeIK', 1);
-            obj.ik_request_subscriber.addlistener('Callback', @obj.handleIKRequest);
-            obj.ik_request_subscriber.start();
-            
-            % init IK trajectory publishers / subscribers
-            obj.trajectory_result_publisher = ros.Publisher('/drake_planner/trajectory_result', 'vigir_planning_msgs/ResultDrakeTrajectory', 1, false);
-            obj.trajectory_request_subscriber = ros.Subscriber('/drake_planner/request_drake_trajectory','vigir_planning_msgs/RequestDrakeTrajectory', 1);
-            obj.trajectory_request_subscriber.addlistener('Callback', @obj.handleIKTrajectoryRequest);
-            obj.trajectory_request_subscriber.start();
-            
-            % init IK cartesian trajectory publishers / subscribers
-            obj.cartesian_trajectory_result_publisher = ros.Publisher('/drake_planner/cartesian_trajectory_result', 'vigir_planning_msgs/ResultDrakeTrajectory', 1, false);
-            obj.cartesian_trajectory_request_subscriber = ros.Subscriber('/drake_planner/request_drake_cartesian_trajectory','vigir_planning_msgs/RequestDrakeCartesianTrajectory', 1);
-            obj.cartesian_trajectory_request_subscriber.addlistener('Callback', @obj.handleIKCartesianTrajectoryRequest);
-            obj.cartesian_trajectory_request_subscriber.start();
-            
+            obj.reset_ros_interface();
+                
             ros.log('INFO', 'DrakeKinematicsInterface: Initialization complete!');
         end
-        
+             
         function handleIKRequest(obj, ~, event)
             ros.log('INFO', 'Received IK request...');
             tic
@@ -298,9 +282,14 @@ classdef DrakeInverseKinematicsInterface
             robot_model = obj.robot_model;
         end     
         
-        function obj = update_robot_model(obj, new_robot_model)
-            obj.robot_model = new_robot_model;
-        end
+        function update_robot_model(obj, new_robot_model)
+            obj.robot_model = new_robot_model;                        
+            
+            % update visualizer with new model (if necessary)
+            if ( ~isempty(obj.robot_visualizer) )
+                obj.robot_visualizer = obj.robot_model.constructVisualizer();            
+            end    
+        end        
     end
     
     methods(Access = private)
@@ -422,13 +411,56 @@ classdef DrakeInverseKinematicsInterface
                 end
             end
         end
+        
+        function reset_ros_interface(obj)                        
+            % (re-)init IK publishers / subscribers
+            if ( ~isempty(obj.ik_result_publisher) )
+               obj.ik_result_publisher.delete();               
+               obj.ik_result_publisher = [];
+            end
+            obj.ik_result_publisher = ros.Publisher('/drake_planner/ik_result', 'vigir_planning_msgs/ResultDrakeIK', 1, false);
+            
+            if ( ~isempty(obj.ik_request_subscriber) )
+                obj.ik_request_subscriber.stop();
+                obj.ik_request_subscriber.delete();
+                obj.ik_request_subscriber = [];
+            end
+            obj.ik_request_subscriber = ros.Subscriber('/drake_planner/request_drake_ik','vigir_planning_msgs/RequestDrakeIK', 1);
+            obj.ik_request_subscriber.addlistener('Callback', @obj.handleIKRequest);            
+            obj.ik_request_subscriber.start();
+            
+            
+            % (re-)init IK trajectory publishers / subscribers
+            if ( ~isempty(obj.trajectory_result_publisher) )
+               obj.trajectory_result_publisher.delete();
+               obj.trajectory_result_publisher = [];
+            end
+            obj.trajectory_result_publisher = ros.Publisher('/drake_planner/trajectory_result', 'vigir_planning_msgs/ResultDrakeTrajectory', 1, false);
+            
+            if ( ~isempty(obj.trajectory_request_subscriber) )
+                obj.trajectory_request_subscriber.stop();
+                obj.trajectory_request_subscriber.delete();
+                obj.trajectory_request_subscriber = [];
+            end
+            obj.trajectory_request_subscriber = ros.Subscriber('/drake_planner/request_drake_trajectory','vigir_planning_msgs/RequestDrakeTrajectory', 1);
+            obj.trajectory_request_subscriber.addlistener('Callback', @obj.handleIKTrajectoryRequest);
+            obj.trajectory_request_subscriber.start();
+            
+            % (re-)init IK cartesian trajectory publishers / subscribers
+            if ( ~isempty(obj.cartesian_trajectory_result_publisher) )
+               obj.cartesian_trajectory_result_publisher.delete();
+               obj.cartesian_trajectory_result_publisher = [];
+            end
+            obj.cartesian_trajectory_result_publisher = ros.Publisher('/drake_planner/cartesian_trajectory_result', 'vigir_planning_msgs/ResultDrakeTrajectory', 1, false);
+            
+            if ( ~isempty(obj.cartesian_trajectory_request_subscriber) )
+                obj.cartesian_trajectory_request_subscriber.stop();
+                obj.cartesian_trajectory_request_subscriber.delete();
+                obj.cartesian_trajectory_request_subscriber = [];
+            end
+            obj.cartesian_trajectory_request_subscriber = ros.Subscriber('/drake_planner/request_drake_cartesian_trajectory','vigir_planning_msgs/RequestDrakeCartesianTrajectory', 1);
+            obj.cartesian_trajectory_request_subscriber.addlistener('Callback', @obj.handleIKCartesianTrajectoryRequest);
+            obj.cartesian_trajectory_request_subscriber.start();
+        end
     end
 end
-
-
-
-
-
-
-
-
