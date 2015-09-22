@@ -99,14 +99,22 @@ function update_robot_state_Callback(hObject, eventdata, handles)
 % hObject    handle to update_robot_state (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-    [joint_state_msg, ~, ~] = handles.joint_state_sub.poll(10);
-    [imu_msg, ~, ~] = handles.imu_sub.poll(10);
+    [joint_state_msg, ~, ~] = handles.joint_state_sub.poll(2);
+    [imu_msg, ~, ~] = handles.imu_sub.poll(2);
+    
+    if ( isempty( joint_state_msg ) )
+        error('fix_link_com_ui: Unable to retrieve current joint state');
+    end
+    
+    if ( isempty( imu_msg ) )
+        error('fix_link_com_ui: Unable to retrieve current imu values');
+    end
 
     orientation_quat = [imu_msg.orientation.w;imu_msg.orientation.x;imu_msg.orientation.y;imu_msg.orientation.z];
     orientation_rpy = quat2rpy(orientation_quat);
     handles.current_robot_pose(4:6) = orientation_rpy;
 
-    handles.current_robot_pose = handle_new_joint_state(joint_state_msg, handles.robot_model, handles.current_robot_pose);
+    handles.current_robot_pose = robot_pose_from_msg(joint_state_msg, handles.robot_model, handles.current_robot_pose);
     
     cla(handles.robot_com_figure);
     hull_distance = plot_robot_com(handles.robot_model, handles.current_robot_pose, 'CoM state');
@@ -322,7 +330,7 @@ function handle_slider_change(handles)
     guidata(handles.fix_link_com_ui_fig, handles);
 
 
-function current_robot_pose = handle_new_joint_state(joint_state_msg, robot_model, old_robot_pose)
+function current_robot_pose = robot_pose_from_msg(joint_state_msg, robot_model, old_robot_pose)
     message_joint_names = joint_state_msg.name;
     message_qs = joint_state_msg.position;
     

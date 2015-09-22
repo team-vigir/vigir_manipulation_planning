@@ -20,13 +20,11 @@ package_path = rospkg.RosPack().get_path('vigir_drake_matlab')
 matlab_codepath = package_path + "/src/matlab"
 matlab_command =  "startNode"
 
-os.chdir(matlab_codepath);
+os.chdir(matlab_codepath)
 
-if ( with_gui == True ):
-  os.environ['SHOW_DRAKE_VISUALIZATION'] = 'TRUE'
+if ( with_gui == True ):  
   os.system(rosmatlab_path + "/env.sh matlab -desktop")
-else:
-  os.environ['SHOW_DRAKE_VISUALIZATION'] = 'FALSE'
+else:  
   os.system(rosmatlab_path + "/env.sh matlab -nodesktop -r \"run('startNode.m')\"")
 
 

@@ -27,7 +27,7 @@ classdef DrakeInverseKinematicsInterface < handle
             
             % init rosmatlab
             ros.init();
-            ros.log('INFO', 'Initializing DrakeInverseKinematicsInterface...');
+            ros.log('INFO', '[DrakeInverseKinematicsInterface] Initializing...');
             
             if(~checkDependency('snopt'))
                 ros.log('ERROR', 'Need package "snopt" to run...');
@@ -45,7 +45,7 @@ classdef DrakeInverseKinematicsInterface < handle
             end
             
             % load robot from rosparam /robot_description
-            ros.log('INFO', 'Loading robot model...');
+            ros.log('INFO', '[DrakeInverseKinematicsInterface] Loading robot model...');
             obj.robot_model = RigidBodyManipulator();
             
             options.floating = 'rpy';
@@ -64,18 +64,16 @@ classdef DrakeInverseKinematicsInterface < handle
             
             % load nominal pose from param server
             pose_str = ros.param.get('/drake_nominal_pose');
-            if ( isempty(pose_str) ) 
-                ros.log('ERROR', 'Please specify /drake_nominal_pose ROS parameter...');
-                error('Please specify /drake_nominal_pose ROS parameter...');
-            end
             obj.robot_nominal_pose = sscanf(pose_str, '%f, ');
             if ( length(obj.robot_nominal_pose) ~= obj.robot_model.num_positions)
-                ros.log('WARN', 'Nominal pose does not match number of robot joints. Setting to 0');
+                ros.log('WARN', '[DrakeInverseKinematicsInterface] Nominal pose does not match number of robot joints. Setting to 0');
                 obj.robot_nominal_pose = zeros(obj.robot_model.num_positions, 1);
             end
             
             % construct visualizer
-            if ( strcmpi(getenv('SHOW_DRAKE_VISUALIZATION'), 'TRUE' ) )
+            show_visualization = ros.param.get('/drake_show_visualization');
+            if ( show_visualization )
+                ros.log('INFO', '[DrakeInverseKinematicsInterface] Initializing visualizer');
                 obj.robot_visualizer = obj.robot_model.constructVisualizer();
                 obj.robot_visualizer.draw(cputime, obj.robot_nominal_pose);
             else
@@ -84,11 +82,11 @@ classdef DrakeInverseKinematicsInterface < handle
             
             obj.reset_ros_interface();
                 
-            ros.log('INFO', 'DrakeKinematicsInterface: Initialization complete!');
+            ros.log('INFO', '[DrakeInverseKinematicsInterface] Initialization complete!');
         end
              
         function handleIKRequest(obj, ~, event)
-            ros.log('INFO', 'Received IK request...');
+            ros.log('INFO', '[DrakeInverseKinematicsInterface] Received IK request...');
             tic
             
             % get current qs from message
@@ -108,7 +106,7 @@ classdef DrakeInverseKinematicsInterface < handle
                 rotation_rpy = quat2rpy(rotation_quat);
                 q0(4:6) = rotation_rpy;
             else
-                ros.log('WARN', 'Did not receive unique world joint position...');
+                ros.log('WARN', '[DrakeInverseKinematicsInterface] Did not receive unique world joint position...');
             end
             
             [ posture, success ] = calcIKPosture( obj.robot_visualizer, obj.robot_model, obj.robot_nominal_pose, q0, event.message );
@@ -144,14 +142,13 @@ classdef DrakeInverseKinematicsInterface < handle
             end
             
             % publish result message
-            used_time = toc;
-            str = sprintf('Sending response (calculation took %f seconds', used_time);
-            ros.log('INFO', str);
+            used_time = toc;            
+            ros.log('INFO', sprintf('[DrakeInverseKinematicsInterface] Sending response (calculation took %f seconds', used_time));
             obj.ik_result_publisher.publish(result_message);
         end
         
         function handleIKTrajectoryRequest(obj, ~, event)
-            ros.log('INFO', 'Received IK trajectory request');
+            ros.log('INFO', '[DrakeInverseKinematicsInterface] Received IK trajectory request');
             tic
             
             % start qs from request message current state and potential
@@ -174,7 +171,7 @@ classdef DrakeInverseKinematicsInterface < handle
                 q0(4:6) = rotation_rpy;
                 send_world_joint = true;
             else
-                ros.log('WARN', 'Did not receive unique world joint position...');
+                ros.log('WARN', '[DrakeInverseKinematicsInterface] Did not receive unique world joint position...');
                 send_world_joint = false;
             end
             
@@ -204,18 +201,15 @@ classdef DrakeInverseKinematicsInterface < handle
             end
             
             % publish result message
-            used_time = toc;
-            str = sprintf('Sending response (calculation took %f seconds', used_time);
-            ros.log('INFO', str);
+            used_time = toc;            
+            ros.log('INFO', sprintf('[DrakeInverseKinematicsInterface] Sending response (calculation took %f seconds', used_time));
             obj.trajectory_result_publisher.publish(result_message);
             
         end
         
         function handleIKCartesianTrajectoryRequest(obj, ~, event)
-            ros.log('INFO', 'Received IK cartesian trajectory request');
+            ros.log('INFO', '[DrakeInverseKinematicsInterface] Received IK cartesian trajectory request');
             tic
-            
-            request = event.message;
             
             % start qs from request message current state and potential
             % updates (motion_plan_request.start_state)
@@ -237,7 +231,7 @@ classdef DrakeInverseKinematicsInterface < handle
                 
                 send_world_joint = true;
             else
-                ros.log('WARN', 'Did not receive unique world joint position...');
+                ros.log('WARN', '[DrakeInverseKinematicsInterface] Did not receive unique world joint position...');
                 send_world_joint = false;
             end
             
@@ -267,10 +261,8 @@ classdef DrakeInverseKinematicsInterface < handle
             end
             
             % publish result message
-            used_time = toc;
-                        
-            str = sprintf('Sending response (calculation took %f seconds', used_time);
-            ros.log('INFO', str);
+            used_time = toc;            
+            ros.log('INFO', sprintf('[DrakeInverseKinematicsInterface] Sending response (calculation took %f seconds', used_time));
             obj.cartesian_trajectory_result_publisher.publish(result_message);
         end
        
