@@ -2,9 +2,13 @@
 
 <launch>
   <param name="drake_nominal_pose" value="-0.009230, 0.000514, 0.881035, -0.000657, -0.013505, -0.000273, 0.000052, 0.003642, -0.000188, -0.264347, 0.020890, 0.071107, -0.475180, 0.935862, -0.447324, -0.070374, -1.331809, 1.964666, 0.471711, -0.052037, -0.007066, -0.053099, 0.299744, -0.020839, -0.071062, -0.474746, 0.934580, -0.446498, 0.071598, 1.336397, 1.864208, -0.483993, -0.051947, 0.007145, -0.053058, -0.020861, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000" />
-  
+    
   <param name="drake_show_visualization" value="true"/>
   <param name="drake_show_com_widget" value="true"/>   
+  
+  <!-- Parameters for CoM widget only -->
+  <param name="drake_joint_state_topic" value="/atlas/joint_states"/>
+  <param name="drake_imu_topic" value="/atlas/imu"/>
   
   <!-- Bridge node to create service for drake integration -->
   <node name="drake_bridge_node"   pkg="vigir_drake_matlab"        type="drake_bridge_node" output="log" respawn="true"/>

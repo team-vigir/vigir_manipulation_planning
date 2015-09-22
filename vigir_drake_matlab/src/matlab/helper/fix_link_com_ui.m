@@ -324,9 +324,15 @@ function handle_slider_change(handles)
     
     cla(handles.robot_com_figure);
     hull_distance = plot_robot_com(handles.robot_model, handles.current_robot_pose, 'CoM state');
-    set(handles.hull_distance_value, 'String', sprintf('% .3f', hull_distance));
+    drawnow();
     
-    disp( sprintf('Done with slider change to position [% .3f, % .3f, % .3f]', delta_x, delta_y, delta_z) );
+    if ( hull_distance >= 0 )
+        set(handles.hull_distance_value, 'String', sprintf('% .3f (outside)', hull_distance));
+    else
+        set(handles.hull_distance_value, 'String', sprintf('% .3f (inside)', -hull_distance));
+    end
+    
+    fprintf('Done with slider change to position [% .3f, % .3f, % .3f]\n', delta_x, delta_y, delta_z);
     guidata(handles.fix_link_com_ui_fig, handles);
 
 
@@ -351,6 +357,16 @@ function handles = init_ros(handles)
 
     ros.init();
     
+   joint_state_topic = ros.param.get('drake_joint_state_topic');
+   if ( isempty(joint_state_topic) )
+       joint_state_topic = '/joint_states';
+   end
+   
+   imu_topic = ros.param.get('drake_imu_topic');
+   if (isempty(imu_topic) )
+       imu_topic = '/imu';
+   end
+    
     % add vigir paths to ros package path (needed to load robot
     % model correctly)
     vigir_paths = getenv('ROS_VIGIR_PACKAGE_PATH');
@@ -361,8 +377,8 @@ function handles = init_ros(handles)
         warning('Unable to set ROS_PACKAGE_PATH');
     end
     
-    handles.joint_state_sub = ros.Subscriber('/thor_mang/joint_states','sensor_msgs/JointState', 1);
-    handles.imu_sub = ros.Subscriber('/thor_mang/pelvis_imu', 'sensor_msgs/Imu', 1);
+    handles.joint_state_sub = ros.Subscriber(joint_state_topic,'sensor_msgs/JointState', 1);
+    handles.imu_sub = ros.Subscriber(imu_topic', 'sensor_msgs/Imu', 1);
 
         
 function handles = init_robot_model(handles)
