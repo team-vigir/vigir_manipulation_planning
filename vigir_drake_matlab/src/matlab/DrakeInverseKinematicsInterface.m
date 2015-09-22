@@ -279,7 +279,8 @@ classdef DrakeInverseKinematicsInterface < handle
             
             % update visualizer with new model (if necessary)
             if ( ~isempty(obj.robot_visualizer) )
-                obj.robot_visualizer = obj.robot_model.constructVisualizer();            
+                obj.robot_visualizer = obj.robot_model.constructVisualizer();   
+                obj.robot_visualizer.draw(cputime, obj.robot_nominal_pose);
             end    
         end        
     end
