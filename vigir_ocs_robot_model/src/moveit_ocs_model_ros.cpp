@@ -319,8 +319,8 @@ void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String
       vigir_teleop_planning_msgs::PlanRequest plan_request;
 
       plan_request.pose = target_pose;
-      plan_request.use_environment_obstacle_avoidance.data = true;
-      plan_request.planning_group.data = group_name;
+      plan_request.use_environment_obstacle_avoidance = true;
+      plan_request.planning_group = group_name;
 
       pose_plan_request_pub_.publish(plan_request);
     }else{
