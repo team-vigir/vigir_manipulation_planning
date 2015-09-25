@@ -395,12 +395,13 @@ void MoveItOcsModelRos::setPoseWithWholeBodyIK(std::vector<geometry_msgs::PoseSt
     // transform poses to world frame if necessary
     for ( int i = 0; i < target_poses.size(); i++ ) {
         geometry_msgs::PoseStamped current_pose = target_poses[i];
-        if ( current_pose.header.frame_id != "world" && current_pose.header.frame_id != "/world" ) {
+        if ( current_pose.header.frame_id != "" && current_pose.header.frame_id != "world" && current_pose.header.frame_id != "/world" ) {
             try {
                 transform_listener_.transformPose("world", current_pose, target_poses[i]);
             }
             catch(...) {
                 ROS_ERROR("[vigir_ocs_robot_model] Error transforming target pose to world frame => Aborting!");
+                ROS_ERROR("[vigir_ocs_robot_model] Target pose = %s", current_pose.header.frame_id.c_str());
                 return;
             }
         }
