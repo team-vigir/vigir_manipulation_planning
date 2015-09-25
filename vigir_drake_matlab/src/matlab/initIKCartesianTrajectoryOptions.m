@@ -21,14 +21,12 @@ function ikoptions = initIKCartesianTrajectoryOptions( robot_model, duration, fr
     
     Q = diag(cost(1:nq));
     ikoptions = ikoptions.setQ(Q);
-    %ikoptions = ikoptions.setQv(duration * ikoptions.Qv);
-    %ikoptions = ikoptions.setQa(duration * duration * ikoptions.Qa);
-    ikoptions = ikoptions.setQv(0.1 * duration * Q);
-    ikoptions = ikoptions.setQa(0.01 * duration * duration * Q);
+    ikoptions = ikoptions.setQv(0.01 * duration * Q);
+    ikoptions = ikoptions.setQa(0.001 * duration * duration * Q);
     ikoptions = ikoptions.setMajorIterationsLimit(10000);
     ikoptions = ikoptions.setIterationsLimit(500000);
     ikoptions = ikoptions.setSuperbasicsLimit(1000);
-    ikoptions = ikoptions.setMajorOptimalityTolerance(2e-8);
-    ikoptions = ikoptions.setDebug(false);
+    ikoptions = ikoptions.setMajorOptimalityTolerance(2e-4);
+    ikoptions = ikoptions.setDebug(true);
     ikoptions = ikoptions.setMex(true);
 end

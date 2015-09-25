@@ -16,7 +16,7 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
 
     % prefer solutions with an upright torso
     torso_body_idx = robot_model.findLinkId('utorso');
-    torso_upright_constr = WorldGazeDirConstraint(robot_model, torso_body_idx, [0; 0; 1], [0;0;1], pi/2, [start_waypoint.waypoint_time, target_waypoint.waypoint_time]);
+    torso_upright_constr = WorldGazeDirConstraint(robot_model, torso_body_idx, [0; 0; 1], [0;0;1], pi/4, [start_waypoint.waypoint_time, target_waypoint.waypoint_time]);
     activeConstraints{end+1} = torso_upright_constr;
 
     % fixed foot placement
@@ -33,13 +33,11 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
     r_foot_contact_pts = robot_model.getBody(r_foot).getTerrainContactPoints();
     l_foot_contact_pts = robot_model.getBody(l_foot).getTerrainContactPoints();
     quasi_static_constr = QuasiStaticConstraint(robot_model);
-    quasi_static_constr = quasi_static_constr.addContact(r_foot,r_foot_contact_pts);
-    quasi_static_constr = quasi_static_constr.addContact(l_foot,l_foot_contact_pts);
-
+    
     if ( strcmp(target_waypoint.target_link_names, 'l_foot' ) == 0 )
         l_foot_pos = forwardKin(robot_model,kinsol0,l_foot,l_foot_pts,2);
-        l_foot_position_constr    = WorldPositionConstraint(robot_model, l_foot, l_foot_pts, l_foot_pos(1:3)-0.001, l_foot_pos(1:3)+0.001);
-        l_foot_orientation_constr = WorldQuatConstraint(robot_model, l_foot, l_foot_pos(4:7), 0.01);
+        l_foot_position_constr    = WorldPositionConstraint(robot_model, l_foot, l_foot_pts, l_foot_pos(1:3), l_foot_pos(1:3));
+        l_foot_orientation_constr = WorldQuatConstraint(robot_model, l_foot, l_foot_pos(4:7), 0.0);
 
         activeConstraints{end+1} = l_foot_position_constr;
         activeConstraints{end+1} = l_foot_orientation_constr;
@@ -48,8 +46,8 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
 
     if ( strcmp(target_waypoint.target_link_names, 'r_foot' ) == 0 )
         r_foot_pos = forwardKin(robot_model,kinsol0,r_foot,r_foot_pts,2);
-        r_foot_position_constr    = WorldPositionConstraint(robot_model, r_foot, r_foot_pts, r_foot_pos(1:3)-0.001, r_foot_pos(1:3)+0.001);
-        r_foot_orientation_constr = WorldQuatConstraint(robot_model, r_foot, r_foot_pos(4:7), 0.01);
+        r_foot_position_constr    = WorldPositionConstraint(robot_model, r_foot, r_foot_pts, r_foot_pos(1:3), r_foot_pos(1:3));
+        r_foot_orientation_constr = WorldQuatConstraint(robot_model, r_foot, r_foot_pos(4:7), 0.0);
 
         activeConstraints{end+1} = r_foot_position_constr;
         activeConstraints{end+1} = r_foot_orientation_constr;
@@ -74,11 +72,7 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
         else
             eef_pts = [0;0;0];
         end
-        
-        %target_waypoint.waypoints(i).position.x = target_waypoint.waypoints(i).position.x + target_waypoint.pos_on_eef(i).x;
-        %target_waypoint.waypoints(i).position.y = target_waypoint.waypoints(i).position.y + target_waypoint.pos_on_eef(i).y;
-        %target_waypoint.waypoints(i).position.z = target_waypoint.waypoints(i).position.z + target_waypoint.pos_on_eef(i).z;
-        
+
         % goal orientation constraint
         orientation = target_waypoint.waypoints(i).orientation;
         orientation_quat = [orientation.w; orientation.x; orientation.y; orientation.z];
@@ -124,7 +118,7 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
             activeConstraints{end+1} = line_dist_constr;
         end
     end
-    
+        
     % handle joint group
     posture_constr = PostureConstraint(robot_model);    
     for current_joint_name = {robot_model.body.jointname}
@@ -142,10 +136,8 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
                 ros.log('WARN', ['joint ' robot_model.body(body_idx).jointname ': target joint value > max joint limit (' num2str(target_joint_value) ' > ' num2str(joint_limit_max) ')' ]);
             else 
                 posture_constr = posture_constr.setJointLimits(fix_joint_idx, target_joint_value, target_joint_value);
-            end         
-        end
-            
+            end           
+        end            
     end
-
-    activeConstraints{end+1} = posture_constr;   
+    activeConstraints{end+1} = posture_constr; 
 end

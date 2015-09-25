@@ -2,10 +2,10 @@ function activeConstraints = buildIKConstraints(robot_model, request, q0)
     % build constraints from message
     activeConstraints = {};
 
-    % do not allow collisions
-    %min_dist_constr = AllBodiesClosestDistanceConstraint(robot_model,0,inf);
-    %activeConstraints{end+1} = min_dist_constr;
-   
+    % do not allow self-collisions
+    %no_self_collision_constr = MinDistanceConstraint(robot_model, 0.001);
+    %activeConstraints{end+1} = no_self_collision_constr;
+       
     torso_body_idx = robot_model.findLinkId('utorso');
     torso_upright_constr = WorldGazeDirConstraint(robot_model, torso_body_idx, [0; 0; 1], [0;0;1], pi/18);
     activeConstraints{end+1} = torso_upright_constr;
