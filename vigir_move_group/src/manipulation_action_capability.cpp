@@ -223,10 +223,8 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
   {
 
     /* Implement reference point from the request
-       * Output needed: targetFrame_T_wrist.
-       * Input needed:  targetFrame_T_referencePoint. This is given in the request as targetPose, but in this case it refers to the reference point, not the wrist.
-       *                wrist_T_referencePoint.   This is the reference point in wrist frame (need to use inverse transform)
-       * targetFrame_T_wrist = targetFrame_T_referencePoint * referencePoint_T_wrist.
+       * Output needed: pose vector of target frame.
+       * Input needed:  targetFrame_T_referencePoint. Transforms target_pose to reference point
        * For n waypoints:
        *    waypoint[i] = waypoint[i] * reference_point.inverse;  //User gives point of reference in wrist frame, but need to use inverse: */
 
@@ -242,9 +240,9 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
        goal->extended_planning_options.reference_point.orientation.w != 0.0 )
     {
       ROS_INFO("Using reference point in the request");
-      tf::Transform wrist_T_referencePoint;
       tf::Transform targetFrame_T_referencePoint;
-      tf::Transform targetFrame_T_wrist;
+      tf::Transform target_pose;
+      tf::Transform transformed_pose;
 
       new_target_poses = goal->extended_planning_options.target_poses;
 
@@ -253,14 +251,16 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
       {
         ROS_INFO("Calculating new waypoints given reference point for FREE MOTIONS and CATRTESIAN WAYPOINTS");
 
-        tf::poseMsgToTF(goal->extended_planning_options.reference_point, wrist_T_referencePoint);
+        tf::poseMsgToTF(goal->extended_planning_options.reference_point, targetFrame_T_referencePoint);
 
         for (size_t i = 0; i < goal->extended_planning_options.target_poses.size(); ++i)
         {
-          tf::poseMsgToTF(goal->extended_planning_options.target_poses[i], targetFrame_T_referencePoint);
-          targetFrame_T_wrist = targetFrame_T_referencePoint * wrist_T_referencePoint.inverse();
-          tf::poseTFToMsg(targetFrame_T_wrist,new_target_poses[i]);
+          tf::poseMsgToTF(goal->extended_planning_options.target_poses[i], target_pose);
+          transformed_pose = target_pose * targetFrame_T_referencePoint.inverse();
+          tf::poseTFToMsg(transformed_pose,new_target_poses[i]);
         }
+
+        new_goal->extended_planning_options.target_poses = new_target_poses;
       }
       else  //Circular motions behave different when reference point is given. Waypoint is translated but not rotated.
       {
