@@ -62,15 +62,14 @@ function visualize_com()
         orientation_rpy = quat2rpy(orientation_quat);
         current_robot_pose(4:6) = orientation_rpy;
         
-        current_robot_pose = handle_new_joint_state(joint_state_msg, robot_model, current_robot_pose, 'current robot CoM');
+        current_robot_pose = handle_new_joint_state(joint_state_msg, robot_model, current_robot_pose);
         
         robot_visualizer.draw(cputime, current_robot_pose);
 
         % calculate foot contact points in world
         clf
-        plot_robot_com(robot_model, current_robot_pose);
-        
-        pause(0.1);
+        plot_robot_com(robot_model, current_robot_pose, 'current robot CoM');
+        drawnow
     end
 
 end
