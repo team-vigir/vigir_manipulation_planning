@@ -23,7 +23,7 @@ function visualize_drake_trajectory_com(trajectory, robot_model)
     qs = qqdot_values(1:nq, :);
     
     % update visualization from current pose
-    figure;
+    com_fig = figure;
     hold on
 
     for i = 1:length(t)
@@ -32,6 +32,7 @@ function visualize_drake_trajectory_com(trajectory, robot_model)
         robot_visualizer.draw(cputime, current_q);
 
         % calculate foot contact points in world
+        figure(com_fig);
         clf
         plot_robot_com(robot_model, current_q, sprintf('Current trajectory CoM (time = %f)', t(i)));
         drawnow

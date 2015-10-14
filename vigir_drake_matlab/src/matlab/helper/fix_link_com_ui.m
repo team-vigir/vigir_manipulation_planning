@@ -121,7 +121,13 @@ function update_robot_state_Callback(hObject, eventdata, handles)
     
     robot_com = handles.robot_model.getCOM(handles.current_robot_pose);
     set(handles.current_com_value, 'String', sprintf('% .3f   ', robot_com'));
-    set(handles.hull_distance_value, 'String', sprintf('% .3f', hull_distance));
+    
+    if ( hull_distance >= 0 )
+        set(handles.hull_distance_value, 'String', sprintf('% .3f (outside)', hull_distance));
+    else
+        set(handles.hull_distance_value, 'String', sprintf('% .3f (inside)', -hull_distance));
+    end
+
     guidata(hObject, handles);
 
 

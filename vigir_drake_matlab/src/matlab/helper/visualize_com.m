@@ -1,4 +1,9 @@
-function visualize_com()
+function q_values = visualize_com(record)
+    if ( nargin < 1 )
+        record = false;
+        q_values = [];
+    end
+
     addpath('/usr/local/MATLAB/R2014a/ros/indigo/matlab');
     sensor_msgs;
     
@@ -51,10 +56,13 @@ function visualize_com()
     imu_sub = ros.Subscriber('/thor_mang/pelvis_imu', 'sensor_msgs/Imu', 1);
 
     % update visualization from current pose
-    figure;
+    com_fig = figure;
     hold on
 
-    while(1)
+    q_values = zeros(robot_model.num_positions, 0);
+    
+    continue_loop = true;
+    while( continue_loop )
         [joint_state_msg, ~, ~] = joint_state_sub.poll(10);
         [imu_msg, ~, ~] = imu_sub.poll(10);
         
@@ -64,9 +72,14 @@ function visualize_com()
         
         current_robot_pose = handle_new_joint_state(joint_state_msg, robot_model, current_robot_pose);
         
+        if ( record )
+            q_values(:, end+1) = current_robot_pose;
+        end
+        
         robot_visualizer.draw(cputime, current_robot_pose);
 
         % calculate foot contact points in world
+        figure(com_fig);
         clf
         plot_robot_com(robot_model, current_robot_pose, 'current robot CoM');
         drawnow

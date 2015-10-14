@@ -16,6 +16,14 @@ classdef DrakeInverseKinematicsInterface < handle
         robot_visualizer
         
         robot_nominal_pose
+        
+        % gravity compensation stuff
+        do_gravity_compensation
+        gravity_compensation_factor
+        
+        % pose correction stuff
+        do_current_pose_error_compensation
+        controller_state_subscribers
     end
     
     methods
@@ -23,6 +31,7 @@ classdef DrakeInverseKinematicsInterface < handle
             addpath('/usr/local/MATLAB/R2014a/ros/indigo/matlab');
             % load message packages
             moveit_msgs;
+            control_msgs;
             vigir_planning_msgs;
             
             % init rosmatlab
@@ -78,7 +87,29 @@ classdef DrakeInverseKinematicsInterface < handle
                 obj.robot_visualizer.draw(cputime, obj.robot_nominal_pose);
             else
                 obj.robot_visualizer = [];
-            end          
+            end        
+            
+            obj.do_gravity_compensation = ros.param.get('/drake_do_gravity_compensation');
+            if ( isempty(obj.do_gravity_compensation ))
+                obj.do_gravity_compensation = false;
+            end
+            
+            obj.gravity_compensation_factor = ros.param.get('/drake_gravity_compensation_factor');
+            if ( isempty(obj.gravity_compensation_factor ))
+                obj.gravity_compensation_factor = 0.0032;
+            end
+            
+            obj.do_current_pose_error_compensation = ros.param.get('/drake_do_current_pose_error_compensation');
+            if ( isempty(obj.gravity_compensation_factor ))
+                obj.do_current_pose_error_compensation = false;
+            end
+            
+            controller_topics = ros.param.get('/drake_controller_state_topics');
+            obj.controller_state_subscribers = {};
+            for i = 1:length(controller_topics)
+                obj.controller_state_subscribers{end+1} = ros.Subscriber(controller_topics{i}, 'control_msgs/JointTrajectoryControllerState', 1);
+            end
+            
             
             obj.reset_ros_interface();
                 
@@ -176,7 +207,7 @@ classdef DrakeInverseKinematicsInterface < handle
             end
             
             if ( event.message.duration <= 0 ) % set default duration, if it is not set correctly
-                event.message.duration = 5;
+                event.message.duration = 10;
             end
             
             [trajectory, success] = calcIKTrajectory(obj.robot_visualizer, obj.robot_model, q0, event.message);
@@ -186,7 +217,7 @@ classdef DrakeInverseKinematicsInterface < handle
                 if ( event.message.trajectory_sample_rate == 0.0 )
                     event.message.trajectory_sample_rate = 4.0;
                 end
-                
+
                 time_steps = 1/event.message.trajectory_sample_rate;                    
                 t = 0:time_steps:event.message.duration;
                 if ( t(end) < event.message.duration )
@@ -282,7 +313,19 @@ classdef DrakeInverseKinematicsInterface < handle
                 obj.robot_visualizer = obj.robot_model.constructVisualizer();   
                 obj.robot_visualizer.draw(cputime, obj.robot_nominal_pose);
             end    
-        end        
+        end     
+        
+        function obj = set_do_gravity_compensation(obj, do_gravity_compensation, gravity_compensation_factor)
+            obj.do_gravity_compensation = do_gravity_compensation;
+            
+            if ( nargin > 2 )
+                obj.gravity_compensation_factor = gravity_compensation_factor;
+            end
+        end
+        
+         function obj = set_do_current_pose_error_compensation(obj, do_current_pose_error_compensation)
+            obj.do_current_pose_error_compensation = do_current_pose_error_compensation;
+        end
     end
     
     methods(Access = private)
@@ -322,12 +365,24 @@ classdef DrakeInverseKinematicsInterface < handle
         end
         
         function result_message = buildTrajectoryResultMessage(obj, trajectory, t, send_world_joint, joint_names)
+            % store last trajectory in global variable for easy access
+            global last_trajectory;
+            last_trajectory = trajectory;
+            
             % get q and qdot values from trajectory
             qqdot_values = trajectory.eval(t);
             
             nq = obj.robot_model.getNumPositions();
             qs = qqdot_values(1:nq, :);
             qds = qqdot_values(nq+1:2*nq, :);
+            
+            if ( obj.do_gravity_compensation )
+                qs = obj.correct_gravity_influence(qs);
+            end
+            
+            if ( obj.do_current_pose_error_compensation )
+                qs = obj.correct_current_pose_error(qs);
+            end
 
             % build result message from trajectory
             result_message = vigir_planning_msgs.ResultDrakeTrajectory;
@@ -384,6 +439,45 @@ classdef DrakeInverseKinematicsInterface < handle
             end
             
             result_message.is_valid = 1;
+        end
+        
+        function corrected_qs = correct_gravity_influence(obj, qs)
+            corrected_qs = zeros(size(qs));
+            Gs = zeros(size(qs));
+            
+            for i = 1:size(qs, 2)
+                current_qs = qs(:, i);
+                [~, G] = obj.manipulatorDynamics(current_qs, zeros(obj.getNumVelocities,1));
+                corrected_qs(:, i) = current_qs + obj.gravity_compensation_factor * G;
+                Gs(:, i) = G;
+            end
+        end
+        
+        function corrected_qs = correct_current_pose_error(obj, qs)
+            % get current robot pose error
+            current_errors = [];
+            error_joint_names = {};
+            for i = 1:length(obj.controller_state_subscribers)
+                [joint_state_msg, ~, ~] = obj.controller_state_subscribers{i}.poll(10);
+                
+                error_joint_names = {error_joint_names{:}, joint_state_msg.joint_names{:}};
+                current_errors = [current_errors, joint_state_msg.error.positions];
+            end
+            
+            % get error joint indexes
+            error_joint_idx = zeros( size(current_errors) );
+            for i = 1:length(error_joint_names)
+                error_joint_idx(i) = obj.robot_model.findPositionIndices(error_joint_names{i});
+            end
+            
+            % update q values
+            influence = 1.0;
+            influence_step = 1.0/size(qs, 2);
+            corrected_qs = qs;
+            for i = 1:size(qs, 2)
+                corrected_qs(error_joint_idx,i) = qs(error_joint_idx,i) + current_errors'*influence;                
+                influence = influence - influence_step;
+            end
         end
         
             

@@ -37,7 +37,7 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
     if ( strcmp(target_waypoint.target_link_names, 'l_foot' ) == 0 )
         l_foot_pos = forwardKin(robot_model,kinsol0,l_foot,l_foot_pts,2);
         l_foot_position_constr    = WorldPositionConstraint(robot_model, l_foot, l_foot_pts, l_foot_pos(1:3), l_foot_pos(1:3));
-        l_foot_orientation_constr = WorldQuatConstraint(robot_model, l_foot, l_foot_pos(4:7), 0.0);
+        l_foot_orientation_constr = WorldQuatConstraint(robot_model, l_foot, l_foot_pos(4:7), 0.01);
 
         activeConstraints{end+1} = l_foot_position_constr;
         activeConstraints{end+1} = l_foot_orientation_constr;
@@ -47,7 +47,7 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
     if ( strcmp(target_waypoint.target_link_names, 'r_foot' ) == 0 )
         r_foot_pos = forwardKin(robot_model,kinsol0,r_foot,r_foot_pts,2);
         r_foot_position_constr    = WorldPositionConstraint(robot_model, r_foot, r_foot_pts, r_foot_pos(1:3), r_foot_pos(1:3));
-        r_foot_orientation_constr = WorldQuatConstraint(robot_model, r_foot, r_foot_pos(4:7), 0.0);
+        r_foot_orientation_constr = WorldQuatConstraint(robot_model, r_foot, r_foot_pos(4:7), 0.01);
 
         activeConstraints{end+1} = r_foot_position_constr;
         activeConstraints{end+1} = r_foot_orientation_constr;
