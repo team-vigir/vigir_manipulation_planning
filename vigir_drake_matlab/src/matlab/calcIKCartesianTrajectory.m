@@ -114,6 +114,7 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
         % build IK options (add additional constraint checks)
         waypoints = [ initial_waypoint; interpolated_waypoints ];
         duration = waypoints(end).waypoint_time - waypoints(1).waypoint_time;
+        
         ikoptions = initIKCartesianTrajectoryOptions(robot_model, duration, request.free_joint_names);
 
         % build list of constraints from message
