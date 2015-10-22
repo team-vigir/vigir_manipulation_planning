@@ -29,7 +29,7 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
     kinsol0 = doKinematics(robot_model,q0,false,true);
     
 
-    % add quasi static constraint
+    % add quasi static constraint   
     r_foot_contact_pts = robot_model.getBody(r_foot).getTerrainContactPoints();
     l_foot_contact_pts = robot_model.getBody(l_foot).getTerrainContactPoints();
     quasi_static_constr = QuasiStaticConstraint(robot_model);
@@ -56,7 +56,11 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
 
     quasi_static_constr = quasi_static_constr.setActive(true);
     quasi_static_constr = quasi_static_constr.setShrinkFactor(0.9);
-    activeConstraints{end+1} = quasi_static_constr;
+    
+    ignore_quasi_static_constraint = ros.getparam('/drake_ignore_quasi_static_constraint');
+    if ( isempty(ignore_quasi_static_constraint) || ignore_quasi_static_constraint == false )
+        activeConstraints{end+1} = quasi_static_constr;
+    end
 
     % add waypoint constraints
     for i = 1:length(target_waypoint.target_link_names)
