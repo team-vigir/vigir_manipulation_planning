@@ -24,6 +24,9 @@ classdef DrakeInverseKinematicsInterface < handle
         % pose correction stuff
         do_current_pose_error_compensation
         controller_state_subscribers
+        
+        % for Cartesian trajectories: do final global optimization
+        do_cartesian_global_optimization
     end
     
     methods
@@ -108,6 +111,11 @@ classdef DrakeInverseKinematicsInterface < handle
             obj.controller_state_subscribers = {};
             for i = 1:length(controller_topics)
                 obj.controller_state_subscribers{end+1} = ros.Subscriber(controller_topics{i}, 'control_msgs/JointTrajectoryControllerState', 1);
+            end
+            
+            obj.do_cartesian_global_optimization = ros.param.get('/drake_do_cartesian_global_optimization');
+            if ( isempty( obj.do_cartesian_global_optimization )
+                obj.do_cartesian_global_optimization = false;
             end
             
             
@@ -267,7 +275,7 @@ classdef DrakeInverseKinematicsInterface < handle
             end
             
             % calculate trajectory            
-            [trajectory, success, request] = calcIKCartesianTrajectory(obj.robot_visualizer, obj.robot_model, q0, event.message);
+            [trajectory, success, request] = calcIKCartesianTrajectory(obj.robot_visualizer, obj.robot_model, q0, event.message, obj.do_cartesian_global_optimization);
             
             if(success) % if everything is okay, send trajectory message
                 % calculate time points for trajectory evaluation

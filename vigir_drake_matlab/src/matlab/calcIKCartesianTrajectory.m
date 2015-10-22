@@ -1,4 +1,4 @@
-function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualizer, robot_model, q0, request )
+function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualizer, robot_model, q0, request, do_global_optimization )
     %CALCIKCARTESIANTRAJECTORY Summary of this function goes here
     %   Detailed explanation goes here
     
@@ -111,38 +111,51 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
         q0 = q0(1:nq);
     end
 
+    if ( success && do_global_optimization )
+        % build IK options (add additional constraint checks)
+        duration = target_waypoint.waypoint_time - start_waypoint.waypoint_time;
+        ikoptions = initIKCartesianTrajectoryOptions(robot_model, duration, request.free_joint_names);
+
+        % build list of constraints from message
+        activeConstraints = buildCartesianOptimizationConstraints(robot_model, request, waypoints, q0);
+
+        % run inverse kinematics (mex)
+        [opt_traj,info_mex,infeasible_constraints] = inverseKinTraj(robot_model, [start_waypoint.waypoint_time target_waypoint.waypoint_time], current_traj, current_traj, activeConstraints{:},ikoptions);
+
+        if(info_mex>10) % something went wrong
+            ros.log('WARN', 'SNOPT calculation failed');
+
+            str = sprintf('Current step: %d / %d', i, num_steps);
+            ros.log('INFO', str);
+
+            ros.log('INFO', 'Infeasible constraints:');
+            str = sprintf('%s |  ', infeasible_constraints{:});
+            ros.log('INFO', str);
+        else
+            trajectory = opt_traj;
+        end
+    end
+    
     % visualize result
     if ( ~isempty(visualizer) && ~isempty(trajectory))
         visualizer.playback(trajectory,struct('slider',true));
     elseif ( ~isempty(visualizer) && ~isempty(last_trajectory_step) )
         visualizer.playback(last_trajectory_step);
     end
-    
-    % get eef frame axis
-    l_hand = robot_model.findLinkId('l_hand');
-%     kinsol0 = doKinematics(robot_model,q0_save,false,true);
-%         world_pos_x = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;1,0,0]',0);
-%         world_pos_y = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;0,1,0]',0);
-%         world_pos_z = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;0,0,1]',0);
-%         axis_world_x = world_pos_x(:,2)-world_pos_x(:,1);
-%         axis_world_y = world_pos_y(:,2)-world_pos_y(:,1);
-%         axis_world_z = world_pos_z(:,2)-world_pos_z(:,1);
-%         disp(['start-x-axis:  ' num2str(axis_world_x')]);
-%         disp(['start-y-axis:  ' num2str(axis_world_y')]);
-%         disp(['start-z-axis:  ' num2str(axis_world_z')]);
-%         disp(['start-[0,0,0]: ' num2str(world_pos_x(:,1)')]);
         
-        kinsol0 = doKinematics(robot_model,q0,false,true);
-        world_pos_x = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;1,0,0]',0);
-        world_pos_y = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;0,1,0]',0);
-        world_pos_z = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;0,0,1]',0);
-        axis_world_x = world_pos_x(:,2)-world_pos_x(:,1);
-        axis_world_y = world_pos_y(:,2)-world_pos_y(:,1);
-        axis_world_z = world_pos_z(:,2)-world_pos_z(:,1);
-        disp(['final-x-axis:  ' num2str(axis_world_x')]);
-        disp(['final-y-axis:  ' num2str(axis_world_y')]);
-        disp(['final-z-axis:  ' num2str(axis_world_z')]);
-        disp(['final-[0,0,0]: ' num2str(world_pos_x(:,1)')]);
+%     % DEBUG: get eef frame axis
+%     l_hand = robot_model.findLinkId('l_hand');
+%     kinsol0 = doKinematics(robot_model,q0,false,true);
+%     world_pos_x = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;1,0,0]',0);
+%     world_pos_y = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;0,1,0]',0);
+%     world_pos_z = forwardKin(robot_model,kinsol0,l_hand,[0,0,0;0,0,1]',0);
+%     axis_world_x = world_pos_x(:,2)-world_pos_x(:,1);
+%     axis_world_y = world_pos_y(:,2)-world_pos_y(:,1);
+%     axis_world_z = world_pos_z(:,2)-world_pos_z(:,1);
+%     disp(['final-x-axis:  ' num2str(axis_world_x')]);
+%     disp(['final-y-axis:  ' num2str(axis_world_y')]);
+%     disp(['final-z-axis:  ' num2str(axis_world_z')]);
+%      disp(['final-[0,0,0]: ' num2str(world_pos_x(:,1)')]);
 end
 
 function interpolated_waypoints = extractOrderedWaypoints(request, robot_model, q0)
