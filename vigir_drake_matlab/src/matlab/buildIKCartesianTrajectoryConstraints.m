@@ -60,7 +60,7 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
     quasi_static_constr = quasi_static_constr.setActive(true);
     quasi_static_constr = quasi_static_constr.setShrinkFactor(0.9);
     
-    ignore_quasi_static_constraint = ros.getparam('/drake_ignore_quasi_static_constraint');
+    ignore_quasi_static_constraint = ros.param.get('/drake_ignore_quasi_static_constraint');
     if ( isempty(ignore_quasi_static_constraint) || ignore_quasi_static_constraint == false )
         activeConstraints{end+1} = quasi_static_constr;
     end

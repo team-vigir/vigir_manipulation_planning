@@ -114,7 +114,7 @@ classdef DrakeInverseKinematicsInterface < handle
             end
             
             obj.do_cartesian_global_optimization = ros.param.get('/drake_do_cartesian_global_optimization');
-            if ( isempty( obj.do_cartesian_global_optimization )
+            if ( isempty( obj.do_cartesian_global_optimization) )
                 obj.do_cartesian_global_optimization = false;
             end
             
