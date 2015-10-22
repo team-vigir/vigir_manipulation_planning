@@ -41,7 +41,8 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
     
     kinsol0 = doKinematics(robot_model,q0,false,true);
     initial_waypoint.waypoints = deal(struct('position', {}, 'orientation', {}));
-    for i = 1:length(initial_waypoint.target_link_names)
+    num_target_links = length(initial_waypoint.target_link_names);
+    for i = 1:num_target_links
         current_link_name = initial_waypoint.target_link_names{i};
         eef_id = robot_model.findLinkId(current_link_name);
         eef_pts = [0;0;0];
@@ -54,19 +55,23 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
         initial_waypoint.waypoints(end).orientation.y = starting_pose(6);
         initial_waypoint.waypoints(end).orientation.z = starting_pose(7);
     end
-
+    initial_waypoint.keep_line_and_orientation = false;
+    initial_waypoint.pos_on_eef       = deal(struct('x', {interpolated_waypoints(1).pos_on_eef.x}, 'y', {interpolated_waypoints(1).pos_on_eef.y}, 'z', {interpolated_waypoints(1).pos_on_eef.z}));
+    initial_waypoint.target_link_axis = deal(struct('x', {interpolated_waypoints(1).target_link_axis.x}, 'y', {interpolated_waypoints(1).target_link_axis.y}, 'z', {interpolated_waypoints(1).target_link_axis.z}));
+    
     % set waypoint for time = 0
 
     trajectory = [];
     last_trajectory_step = [];
     target_waypoint = initial_waypoint;
+    step_q0 = q0;
     for i = 1:num_steps
         start_waypoint = target_waypoint;
         target_waypoint = interpolated_waypoints(i);
         
 
         % stay at q0 for nominal trajectory
-        q_lin = interp1([start_waypoint.waypoint_time target_waypoint.waypoint_time], [q0, q0]', [start_waypoint.waypoint_time target_waypoint.waypoint_time])';
+        q_lin = interp1([start_waypoint.waypoint_time target_waypoint.waypoint_time], [step_q0, step_q0]', [start_waypoint.waypoint_time target_waypoint.waypoint_time])';
         q_nom_traj = PPTrajectory(foh([start_waypoint.waypoint_time target_waypoint.waypoint_time],q_lin));
         q_seed_traj = q_nom_traj;
         
@@ -75,20 +80,16 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
         ikoptions = initIKCartesianTrajectoryOptions(robot_model, duration, request.free_joint_names);
 
         % build list of constraints from message
-        activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, request, start_waypoint,  target_waypoint, q0);
+        activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, request, start_waypoint,  target_waypoint, step_q0);
 
         % run inverse kinematics (mex)
         [current_traj,info_mex,infeasible_constraints] = inverseKinTraj(robot_model, [start_waypoint.waypoint_time target_waypoint.waypoint_time], q_seed_traj, q_nom_traj, activeConstraints{:},ikoptions);
 
         if(info_mex>10) % something went wrong
-            ros.log('WARN', 'SNOPT calculation failed');
-
-            str = sprintf('Current step: %d / %d', i, num_steps);
-            ros.log('INFO', str);
-
-            ros.log('INFO', 'Infeasible constraints:');
-            str = sprintf('%s |  ', infeasible_constraints{:});
-            ros.log('INFO', str);
+            ros.log('WARN', sprintf('[DrakeInverseKinematicsInterface] SNOPT calculation failed'));
+            ros.log('INFO', sprintf('[DrakeInverseKinematicsInterface] Current step: %d / %d', i, num_steps));
+            ros.log('INFO', sprintf('[DrakeInverseKinematicsInterface] Infeasible constraints:'));            
+            ros.log('INFO', sprintf('%s |  ', infeasible_constraints{:}));
             
             if ( i == 1 || request.execute_incomplete_cartesian_plans == false ) % fail if incomplete paths are not allowed or the first partial step was impossible
                 success = false;     
@@ -106,13 +107,13 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
         
         last_trajectory_step = current_traj;
         
-        q0 = current_traj.eval(interpolated_waypoints(i).waypoint_time);
-        q0 = q0(1:nq);
+        step_q0 = current_traj.eval(interpolated_waypoints(i).waypoint_time);
+        step_q0 = step_q0(1:nq);
     end
 
     if ( success && do_global_optimization )
         % build IK options (add additional constraint checks)
-        waypoints = [ initial_waypoint; interpolated_waypoints ];
+        waypoints = [ initial_waypoint, interpolated_waypoints ];
         duration = waypoints(end).waypoint_time - waypoints(1).waypoint_time;
         
         ikoptions = initIKCartesianTrajectoryOptions(robot_model, duration, request.free_joint_names);
@@ -121,17 +122,14 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
         activeConstraints = buildCartesianOptimizationConstraints(robot_model, request, waypoints, q0);
 
         % run inverse kinematics (mex)
-        [opt_traj,info_mex,infeasible_constraints] = inverseKinTraj(robot_model, [waypoints(1).waypoint_time waypoints(end).waypoint_time], current_traj, current_traj, activeConstraints{:},ikoptions);
+        [opt_traj,info_mex,infeasible_constraints] = inverseKinTraj(robot_model, cell2mat({waypoints.waypoint_time}), trajectory(1:nq,:), trajectory(1:nq,:), activeConstraints{:},ikoptions);
 
         if(info_mex>10) % something went wrong
-            ros.log('WARN', 'SNOPT calculation failed');
-
-            str = sprintf('Current step: %d / %d', i, num_steps);
-            ros.log('INFO', str);
-
-            ros.log('INFO', 'Infeasible constraints:');
-            str = sprintf('%s |  ', infeasible_constraints{:});
-            ros.log('INFO', str);
+            ros.log('WARN', sprintf('[DrakeInverseKinematicsInterface] SNOPT calculation failed'));
+            ros.log('INFO', sprintf('[DrakeInverseKinematicsInterface] Current step: Global optimization'));
+            ros.log('INFO', sprintf('[DrakeInverseKinematicsInterface] Infeasible constraints:'));            
+            ros.log('INFO', sprintf('%s |  ', infeasible_constraints{:}));
+            ros.log('INFO', sprintf('[DrakeInverseKinematicsInterface] Returning non-optimized result'));
         else
             trajectory = opt_traj;
         end

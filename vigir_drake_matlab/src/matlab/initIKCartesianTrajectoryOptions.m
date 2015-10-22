@@ -29,4 +29,8 @@ function ikoptions = initIKCartesianTrajectoryOptions( robot_model, duration, fr
     ikoptions = ikoptions.setMajorOptimalityTolerance(2e-4);
     ikoptions = ikoptions.setDebug(true);
     ikoptions = ikoptions.setMex(true);
+    
+    additional_sample_step = duration / 20;
+    additional_samples = additional_sample_step:additional_sample_step:duration-additional_sample_step;
+    ikoptions = ikoptions.setAdditionaltSamples(additional_samples);
 end
