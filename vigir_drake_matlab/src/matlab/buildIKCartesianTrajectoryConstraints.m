@@ -3,6 +3,9 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
     ORIENTATION_AXIS_ONLY = 1;
     ORIENTATION_IGNORE = 2;
 
+    %request.free_motion = true;
+    %request.target_orientation_type=ORIENTATION_FULL;
+    
     % build constraints from message
     activeConstraints = {};
 
