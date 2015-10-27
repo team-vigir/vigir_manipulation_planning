@@ -4,7 +4,7 @@ function activeConstraints = buildCartesianOptimizationConstraints(robot_model, 
     ORIENTATION_IGNORE = 2;
 
     %request.free_motion = true;
-    request.target_orientation_type=ORIENTATION_FULL;
+    %request.target_orientation_type=ORIENTATION_FULL;
     
     % build constraints from message
     activeConstraints = {};
@@ -96,7 +96,7 @@ function activeConstraints = buildCartesianOptimizationConstraints(robot_model, 
             elseif ( request.target_orientation_type == ORIENTATION_AXIS_ONLY && ~all(link_axis == 0) ) % goal axis orientation constraint
                 %dir = quat2axis(orientation_quat);
                 %eef_dir_constr = WorldGazeDirConstraint(robot_model,eef_body_id, link_axis, dir(1:3),0,duration);
-                eef_axis_constr = WorldGazeOrientConstraint(robot_model, eef_body_id, link_axis, orientation_quat, 0.00, pi, duration);
+                eef_axis_constr = WorldGazeOrientConstraint(robot_model, eef_body_id, -link_axis, orientation_quat, 0.00, pi, duration);
                 activeConstraints{end+1} = eef_axis_constr;
             end
 

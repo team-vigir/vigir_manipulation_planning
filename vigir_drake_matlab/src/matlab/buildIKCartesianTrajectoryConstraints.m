@@ -96,8 +96,8 @@ function activeConstraints = buildIKCartesianTrajectoryConstraints(robot_model, 
             activeConstraints{end+1} = eef_orientation_constr;
         elseif ( request.target_orientation_type == ORIENTATION_AXIS_ONLY && ~all(link_axis == 0) ) % goal axis orientation constraint
             %dir = quat2axis(orientation_quat);
-            %eef_dir_constr = WorldGazeDirConstraint(robot_model,eef_body_id, link_axis, dir(1:3),0,duration);
-            eef_axis_constr = WorldGazeOrientConstraint(robot_model, eef_body_id, link_axis, orientation_quat, 0.00, pi, duration);
+            %eef_axis_constr = WorldGazeDirConstraint(robot_model,eef_body_id, link_axis, dir(1:3),0,duration);
+            eef_axis_constr = WorldGazeOrientConstraint(robot_model, eef_body_id, -link_axis, orientation_quat, 0.00, pi, duration);
             activeConstraints{end+1} = eef_axis_constr;
         end
         
