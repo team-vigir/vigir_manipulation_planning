@@ -130,7 +130,7 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
     if ( ~isempty(visualizer) && ~isempty(trajectory))
         visualizer.playback(trajectory,struct('slider',true));
     elseif ( ~isempty(visualizer) && ~isempty(last_trajectory_step) )
-        visualizer.playback(last_trajectory_step);
+        visualizer.playback(last_trajectory_step,struct('slider',true));
     end
         
 %     % DEBUG: get eef frame axis
