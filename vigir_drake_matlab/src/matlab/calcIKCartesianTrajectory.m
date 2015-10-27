@@ -18,15 +18,6 @@ function [ trajectory, success, request ] = calcIKCartesianTrajectory( visualize
         visualizer.draw(cputime, q0);
     end
     
-    if ( isempty(request.target_link_axis) )
-        request.target_link_axis = deal(struct('x', {}, 'y', {}, 'z', {}));
-        for i = 1:length(request.waypoints)
-            request.target_link_axis(end+1).x = 0;
-            request.target_link_axis(end).y = 0;
-            request.target_link_axis(end).z = 1;
-        end
-    end
-
     if ( isempty(request.waypoint_times) )
         request.waypoint_times = estimateWaypointTimes(robot_model, q0, request.target_link_names, request.waypoints);
     end
@@ -162,7 +153,17 @@ function interpolated_waypoints = extractOrderedWaypoints(request, robot_model, 
     [request.waypoint_times, sorted_idx] = sort(request.waypoint_times);
     request.waypoints = request.waypoints(sorted_idx);
     request.target_link_names = request.target_link_names(sorted_idx);
-    request.target_link_axis = request.target_link_axis(sorted_idx);
+    
+    if ( isempty(request.target_link_axis) )
+        request.target_link_axis = deal(struct('x', {}, 'y', {}, 'z', {}));
+        for i = 1:length(request.waypoints)
+            request.target_link_axis(end+1).x = 0;
+            request.target_link_axis(end).y = 0;
+            request.target_link_axis(end).z = 1;
+        end
+    else
+        request.target_link_axis = request.target_link_axis(sorted_idx);
+    end
 
     % add element for each time point
     [unique_times, ~, target_idx] = unique(request.waypoint_times);
@@ -172,11 +173,8 @@ function interpolated_waypoints = extractOrderedWaypoints(request, robot_model, 
     [interpolated_waypoints.target_link_names] = deal({});
     [interpolated_waypoints.target_link_axis] = deal(struct('x', {}, 'y', {}, 'z', {}));
     [interpolated_waypoints.keep_line_and_orientation] = deal([]);
-    
-    if ( length(request.pos_on_eef) == length(request.waypoint_times) )
-        [interpolated_waypoints.pos_on_eef] = deal(struct('x', {}, 'y', {},  'z', {}));
-    end
-
+    [interpolated_waypoints.pos_on_eef] = deal(struct('x', {}, 'y', {},  'z', {}));
+   
     for i = 1 : length(request.waypoint_times)
         interpolated_waypoints(target_idx(i)).waypoint_time = request.waypoint_times(i);
         interpolated_waypoints(target_idx(i)).waypoints(end+1) = request.waypoints(i);
@@ -186,6 +184,10 @@ function interpolated_waypoints = extractOrderedWaypoints(request, robot_model, 
         
         if ( length(request.pos_on_eef) == length(request.waypoint_times) )
 			interpolated_waypoints(target_idx(i)).pos_on_eef(end+1) = request.pos_on_eef(i);
+        else
+            interpolated_waypoints(target_idx(i)).pos_on_eef(end+1).x = 0;
+            interpolated_waypoints(target_idx(i)).pos_on_eef(end).y = 0;
+            interpolated_waypoints(target_idx(i)).pos_on_eef(end).z = 0;
         end
     end
 
