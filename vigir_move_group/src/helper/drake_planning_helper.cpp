@@ -437,7 +437,7 @@ bool DrakePlanningHelper::planCircularMotion(const vigir_planning_msgs::MoveGoal
         constrained_motion_utils::getCircularArcPoses(rotation_center,
                                                       eef_start_pose,
                                                       pose_vec,
-                                                      0.2,
+                                                      0.02,
                                                       goal->extended_planning_options.rotation_angle,
                                                       goal->extended_planning_options.keep_endeffector_orientation,
                                                       goal->extended_planning_options.pitch);
