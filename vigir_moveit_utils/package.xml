@@ -16,10 +16,13 @@
   <build_depend>moveit_core</build_depend>
   <build_depend>moveit_msgs</build_depend>
   <build_depend>visualization_msgs</build_depend>
+  <build_depend>vigir_teleop_planning_msgs</build_depend>  
+  
   <run_depend>moveit_core</run_depend>
   <run_depend>moveit_msgs</run_depend>
   <run_depend>visualization_msgs</run_depend>
-
+  <run_depend>vigir_teleop_planning_msgs</run_depend>  
+  
   <!-- The export tag contains other, unspecified, tags -->
   <export>
   </export>

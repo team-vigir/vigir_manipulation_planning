@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_core
   moveit_msgs
   visualization_msgs
+  vigir_teleop_planning_msgs
 )
 
 find_package(Eigen REQUIRED)
@@ -16,7 +17,7 @@ find_package(Eigen REQUIRED)
 catkin_package(
 INCLUDE_DIRS include
 #  LIBRARIES vigir_moveit_utils
-CATKIN_DEPENDS moveit_core moveit_msgs visualization_msgs
+CATKIN_DEPENDS moveit_core moveit_msgs visualization_msgs vigir_teleop_planning_msgs
 #  DEPENDS system_lib
 )
 include_directories(
