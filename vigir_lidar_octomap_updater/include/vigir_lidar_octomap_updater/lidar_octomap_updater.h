@@ -87,6 +87,7 @@ private:
   double padding_;
   double max_range_;
   unsigned int point_subsample_;
+  unsigned filter_close_reflections_;
   std::string filtered_cloud_topic_;
   ros::Publisher filtered_cloud_publisher_;
 
@@ -104,8 +105,8 @@ private:
   boost::shared_ptr<sensor_msgs::PointCloud2> cloud_msg;
   laser_geometry::LaserProjection projector_;
   filters::FilterChain<sensor_msgs::LaserScan> filter_chain_;
-  sensor_msgs::LaserScan scan_filtered_;
-  sensor_msgs::LaserScan scan_self_filtered_;
+  boost::shared_ptr<sensor_msgs::LaserScan> scan_filtered_;
+  boost::shared_ptr<sensor_msgs::LaserScan> scan_self_filtered_;
 
   vigir_perception_msgs::FilteredLocalizedLaserScan filtered_localized_scan_;
 
