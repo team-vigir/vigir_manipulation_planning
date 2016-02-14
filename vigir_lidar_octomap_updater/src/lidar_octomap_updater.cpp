@@ -214,6 +214,7 @@ void LidarOctomapUpdater::updateMask(const sensor_msgs::PointCloud2 &cloud, cons
 
 void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPtr &scan_msg)
 {
+
   ros::WallTime time_start = ros::WallTime::now();
 
   if (!filter_chain_.update(*scan_msg, *scan_filtered_)){
@@ -242,7 +243,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   if (monitor_->getMapFrame().empty())
     monitor_->setMapFrame(scan_msg->header.frame_id);
 
-  /* get transform for cloud into map frame */
+  // get transform for cloud into map frame
   tf::StampedTransform map_H_sensor;
   tf::StampedTransform map_H_sensor_last_ray;
 
@@ -282,7 +283,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
 
   ros::WallTime time_tf_lookup_finished = ros::WallTime::now();
 
-  /* compute sensor origin in map frame */
+  // compute sensor origin in map frame
   const tf::Vector3 &sensor_origin_tf = map_H_sensor.getOrigin();
   octomap::point3d sensor_origin(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
   Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
@@ -332,15 +333,17 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   }
 
 
+
   //mask out points on the robot
 
   //We are in world frame, so using the scan max range cuts off things in a circle around world origin.
   //@TODO: Do this in a nicer way.
-  double max_mask_range = 20000.0;
+  double max_mask_range = 2000.0;
   shape_mask_->maskContainment(*cloud_msg, sensor_origin_eigen, 0.0, max_mask_range, mask_);
   updateMask(*cloud_msg, sensor_origin_eigen, mask_);
 
   ros::WallTime time_mask_containment_finished = ros::WallTime::now();
+
 
   octomap::KeySet free_cells, occupied_cells, model_cells, clip_cells;
   //free_cells.clear();
@@ -403,7 +406,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
         // check for NaN
         if (!isnan(pt_iter[0]) && !isnan(pt_iter[1]) && !isnan(pt_iter[2]))
         {
-          // transform to map frame */
+          // transform to map frame
           //tf::Vector3 point_tf = map_H_sensor * tf::Vector3(pt_iter[0], pt_iter[1],
           //  pt_iter[2]);
           tf::Vector3 point_tf (pt_iter[0], pt_iter[1], pt_iter[2]);
@@ -517,11 +520,11 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   // ----------------- Update octomap --------------------
 
 
-  /* cells that overlap with the model are not occupied */
+  // cells that overlap with the model are not occupied
   for (octomap::KeySet::iterator it = model_cells.begin(), end = model_cells.end(); it != end; ++it)
     occupied_cells.erase(*it);
 
-  /* occupied cells are not free */
+  // occupied cells are not free
   for (octomap::KeySet::iterator it = occupied_cells.begin(), end = occupied_cells.end(); it != end; ++it)
     free_cells.erase(*it);
 
@@ -556,7 +559,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
 //  time_transform_finished
 //  time_transform_cache_update_finished
 //  time_mask_containment_finished
-  ROS_INFO("Timing info: tf lookup: %f ms, transform scan: %f ms, update transform cache: %f ms, mask containment: %f ms, prep cell update: %f ms, post cell update: %f ms, post publich clouds: %f ms, post octomap update: %f ms, total: %f ms",
+  ROS_DEBUG("Timing info: tf lookup: %f ms, transform scan: %f ms, update transform cache: %f ms, mask containment: %f ms, prep cell update: %f ms, post cell update: %f ms, post publich clouds: %f ms, post octomap update: %f ms, total: %f ms",
      (time_tf_lookup_finished-time_start).toSec() * 1000.0,
      (time_transform_finished-time_tf_lookup_finished).toSec() * 1000.0,
      (time_transform_cache_update_finished-time_transform_finished).toSec()* 1000.0 ,
