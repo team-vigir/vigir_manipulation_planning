@@ -53,20 +53,8 @@ void move_group::OctomapManagementCapability::initialPoseCallback(const geometry
   {
     ROS_INFO("Received intialpose, resetting planning scene octomap");
 
-    /*
-    // Below hangs in lock
-    planning_scene_monitor::LockedPlanningSceneRW ls (context_->planning_scene_monitor_);
-    ls.getPlanningSceneMonitor()->clearOctomap();
-    */
-
-    /*
-    // This does not work either
-    context_->planning_scene_monitor_->lockSceneWrite();
-    context_->planning_scene_monitor_->clearOctomap();
-    context_->planning_scene_monitor_->unlockSceneWrite();
-    */
-
-    // This works
+    // Important: Locking octree performed in below call, doing it again here results
+    // in hanging
     context_->planning_scene_monitor_->clearOctomap();
 
     ROS_INFO("Finished clearing octomap");
