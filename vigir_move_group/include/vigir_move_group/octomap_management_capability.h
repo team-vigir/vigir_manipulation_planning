@@ -39,6 +39,7 @@
 
 #include <moveit/move_group/move_group_capability.h>
 #include <std_srvs/Empty.h>
+#include <std_msgs/String.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 namespace move_group
@@ -54,8 +55,10 @@ public:
 
 private:
   void initialPoseCallback(const geometry_msgs::PoseWithCovarianceStamped pose);
+  void sysCommandCallback(const std_msgs::String::ConstPtr& msg);
 
   ros::Subscriber initial_pose_sub_;
+  ros::Subscriber sys_command_sub_;
 
 };
 

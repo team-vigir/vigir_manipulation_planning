@@ -45,6 +45,9 @@ move_group::OctomapManagementCapability::OctomapManagementCapability():
 void move_group::OctomapManagementCapability::initialize()
 {
   initial_pose_sub_ = node_handle_.subscribe("/initialpose", 1, &move_group::OctomapManagementCapability::initialPoseCallback, this);
+
+  // Reset and others
+  sys_command_sub_ = node_handle_.subscribe("/syscommand", 1, &move_group::OctomapManagementCapability::sysCommandCallback, this);
 }
 
 
@@ -60,8 +63,28 @@ void move_group::OctomapManagementCapability::initialPoseCallback(const geometry
     ROS_INFO("Finished clearing octomap");
 
   }
-
 }
+
+
+void move_group::OctomapManagementCapability::sysCommandCallback(const std_msgs::String::ConstPtr& msg)
+{
+  if (msg->data == "save_octomap"){
+    std::string file_name;
+
+    file_name =  "/tmp/octo.bt";
+    {
+      planning_scene_monitor::LockedPlanningSceneRO ls (context_->planning_scene_monitor_);
+      collision_detection::CollisionWorld::ObjectConstPtr map = ls.getPlanningSceneMonitor()->getPlanningScene()->getWorld()->getObject("<octomap>");
+      const shapes::OcTree* octree_shape = static_cast<const shapes::OcTree*>(map->shapes_[0].get());
+      const boost::shared_ptr<const octomap::OcTree> octree_ = octree_shape->octree;
+
+      ROS_INFO("Writing octomap to %s", file_name.c_str());
+      octree_->write(file_name);
+    }
+  }
+}
+
+
 
 #include <class_loader/class_loader.h>
 CLASS_LOADER_REGISTER_CLASS(move_group::OctomapManagementCapability, move_group::MoveGroupCapability)
