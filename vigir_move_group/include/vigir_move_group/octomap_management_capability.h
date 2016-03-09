@@ -57,8 +57,15 @@ private:
   void initialPoseCallback(const geometry_msgs::PoseWithCovarianceStamped pose);
   void sysCommandCallback(const std_msgs::String::ConstPtr& msg);
 
+  void resetOctomapToPrior();
+
   ros::Subscriber initial_pose_sub_;
   ros::Subscriber sys_command_sub_;
+
+  ros::Publisher octomap_prior_pub_;
+
+  boost::shared_ptr<octomap::OcTree> octree;
+  boost::shared_ptr<octomap_msgs::Octomap> octomap_msg;
 
 };
 

@@ -36,14 +36,46 @@
 
 #include <vigir_move_group/octomap_management_capability.h>
 #include <moveit/move_group/capability_names.h>
+#include <octomap_msgs/conversions.h>
 
 move_group::OctomapManagementCapability::OctomapManagementCapability():
   MoveGroupCapability("OctomapManagementCapability")
 {
+
 }
 
 void move_group::OctomapManagementCapability::initialize()
 {
+
+  octree.reset(new octomap::OcTree(0.05));
+  octree->readBinary("/home/kohlbrecher/argo/src/argo_scenarios_gazebo/argo_scenario_data/maps/argo_taurob_test_arena_v1/octomap.bt");
+  //octree->read("/home/kohlbrecher/logs/argos/obstacles/taurob_near_stairs.ot");
+
+
+  if (!octree.get()){
+    ROS_WARN("Could not read octree from file, not using as prior map");
+  }else{
+    ROS_INFO("Successfully loaded octomap from file. Mem usage: %d", static_cast<int>(octree->memoryUsage()));
+
+    octomap_msg.reset(new octomap_msgs::Octomap);
+    if (!octomap_msgs::binaryMapToMsg(*octree, *octomap_msg)){
+      ROS_ERROR("Failed conversion to octomap msg.");
+      octomap_msg.reset();
+    }else{
+      octomap_msg->header.frame_id = "world";
+      //octomap_msg->id = "blaa";
+
+      octomap_prior_pub_ = node_handle_.advertise<octomap_msgs::Octomap>("octomap_prior_debug", 1, true);
+
+
+      //planning_scene_monitor::LockedPlanningSceneRW ls (context_->planning_scene_monitor_);
+      octomap_prior_pub_.publish(octomap_msg);
+
+      //this->resetOctomapToPrior();
+
+    }
+  }
+
   initial_pose_sub_ = node_handle_.subscribe("/initialpose", 1, &move_group::OctomapManagementCapability::initialPoseCallback, this);
 
   // Reset and others
@@ -59,6 +91,14 @@ void move_group::OctomapManagementCapability::initialPoseCallback(const geometry
     // Important: Locking octree performed in below call, doing it again here results
     // in hanging
     context_->planning_scene_monitor_->clearOctomap();
+
+    //planning_scene_monitor::LockedPlanningSceneRW ls (context_->planning_scene_monitor_);
+
+    //ls.planning_scene_monitor_->getPlanningScene()->processOctomapMsg(*octomap_msgs);
+
+    //context_->planning_scene_monitor_->getPlanningScene()->processOctomapMsg(*octomap_msg);
+
+    this->resetOctomapToPrior();
 
     ROS_INFO("Finished clearing octomap");
 
@@ -82,6 +122,39 @@ void move_group::OctomapManagementCapability::sysCommandCallback(const std_msgs:
       octree_->write(file_name);
     }
   }
+}
+
+void move_group::OctomapManagementCapability::resetOctomapToPrior()
+{
+  //ls.planning_scene_monitor_->getPlanningScene()->processOctomapMsg(*octomap_msgs);
+  ROS_INFO("Resetting octomap to pre-loaded state");
+
+  //planning_scene_monitor::LockedPlanningSceneRW ls (context_->planning_scene_monitor_);
+
+  const planning_scene::PlanningScenePtr& planning_scene = context_->planning_scene_monitor_->getPlanningScene();
+
+  //context_->planning_scene_monitor_->octomap_monitor_->tree_->lockWrite();
+  const occupancy_map_monitor::OccMapTreePtr& octree_ptr = context_->planning_scene_monitor_->octomap_monitor_->getOcTreePtr();
+
+  octree_ptr->lockWrite();
+  //octree_ptr = this->octree;
+
+  octree_ptr->readBinary("/home/kohlbrecher/argo/src/argo_scenarios_gazebo/argo_scenario_data/maps/argo_taurob_test_arena_v1/octomap.bt");
+      //octree->read("/home/kohlbrecher/logs/argos/obstacles/taurob_near_stairs.ot");
+
+  //octomap::OcTree* tree_mon = dynamic_cast<octomap::OcTree*>(octree_ptr.get());
+
+  //tree_mon = this->octree.get();
+  //octree_ptr->re
+
+  //octree_ptr
+  octree_ptr->unlockWrite();
+
+  //planning_scene->processOctomapMsg(*octomap_msg);
+
+
+
+  //context_->planning_scene_monitor_->getPlanningScene()->processOctomapPtr(octree, Eigen::Affine3d::Identity());
 }
 
 

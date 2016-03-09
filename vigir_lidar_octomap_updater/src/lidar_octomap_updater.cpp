@@ -511,7 +511,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     ROS_ERROR("Internal error while updating octree");
   }
   tree_->unlockWrite();  
-  tree_->triggerUpdateCallback();
+  //tree_->triggerUpdateCallback();
 
   ROS_DEBUG("Processed laser scan in %lf ms. Self filtering took %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0, (self_filter_finished_time - start).toSec() * 1000.0 );
 }
