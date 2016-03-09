@@ -137,6 +137,22 @@ bool LidarOctomapUpdater::initialize()
   scan_filtered_publisher_ = private_nh_.advertise<sensor_msgs::LaserScan>("scan_filtered", 10, false);
   scan_self_filtered_publisher_ = private_nh_.advertise<sensor_msgs::LaserScan>("scan_self_filtered", 10, false);
   filtered_localized_scan_publisher_ = private_nh_.advertise<vigir_perception_msgs::FilteredLocalizedLaserScan>("scan_filtered_localized", 10, false);
+
+
+  private_nh_.param("prior_octomap_to_load", p_prior_map_file_, std::string(""));
+
+  if (!p_prior_map_file_.empty()){
+    ROS_INFO("Using prior octomap file: %s", p_prior_map_file_.c_str());
+    tree_->lockWrite();
+    tree_->readBinary(p_prior_map_file_);
+    tree_->unlockWrite();
+  }else{
+    ROS_INFO("No prior octomap to use given, not loading any.");
+  }
+
+  initial_pose_sub_ = private_nh_.subscribe("/initialpose", 1, &LidarOctomapUpdater::initialPoseCallback, this);
+  clear_service_ = private_nh_.advertiseService("/clear_octomap", &LidarOctomapUpdater::clearOctomap, this);
+
   return true;
 }
 
@@ -514,6 +530,37 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   tree_->triggerUpdateCallback();
 
   ROS_DEBUG("Processed laser scan in %lf ms. Self filtering took %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0, (self_filter_finished_time - start).toSec() * 1000.0 );
+}
+
+void LidarOctomapUpdater::initialPoseCallback(const geometry_msgs::PoseWithCovarianceStamped pose)
+{
+  {
+    ROS_INFO("Received intialpose, resetting planning scene octomap");
+
+    this->resetOctomap();
+  }
+}
+
+bool LidarOctomapUpdater::clearOctomap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
+{
+  this->resetOctomap();
+
+  return true;
+}
+
+void LidarOctomapUpdater::resetOctomap(bool use_prior)
+{
+  if (use_prior && !p_prior_map_file_.empty()){
+    ROS_INFO("Resetting planning scene octomap to prior map");
+    tree_->lockWrite();
+    tree_->readBinary(p_prior_map_file_);
+    tree_->unlockWrite();
+  }else{
+    ROS_INFO("Resetting planning scene octomap to cleared map");
+    tree_->lockWrite();
+    tree_->clear();
+    tree_->unlockWrite();
+  }
 }
 
 }

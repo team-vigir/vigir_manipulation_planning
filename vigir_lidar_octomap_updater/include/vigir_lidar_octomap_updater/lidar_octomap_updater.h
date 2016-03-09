@@ -49,6 +49,9 @@
 #include <filters/filter_chain.h>
 #include <vigir_perception_msgs/FilteredLocalizedLaserScan.h>
 
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <std_srvs/Empty.h>
+
 namespace occupancy_map_monitor
 {
 
@@ -75,7 +78,11 @@ private:
 
   bool getShapeTransform(ShapeHandle h, Eigen::Affine3d &transform) const;
   void cloudMsgCallback(const sensor_msgs::LaserScan::ConstPtr &cloud_msg);
+  void initialPoseCallback(const geometry_msgs::PoseWithCovarianceStamped pose);
+  bool clearOctomap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
   void stopHelper();
+
+  void resetOctomap(bool load_prior = true);
 
   ros::NodeHandle root_nh_;
   ros::NodeHandle private_nh_;
@@ -89,6 +96,8 @@ private:
   unsigned int point_subsample_;
   std::string filtered_cloud_topic_;
   ros::Publisher filtered_cloud_publisher_;
+
+  std::string p_prior_map_file_;
 
   message_filters::Subscriber<sensor_msgs::LaserScan> *point_cloud_subscriber_;
   tf::MessageFilter<sensor_msgs::LaserScan> *point_cloud_filter_;
@@ -112,6 +121,9 @@ private:
   ros::Publisher scan_filtered_publisher_;
   ros::Publisher scan_self_filtered_publisher_;
   ros::Publisher filtered_localized_scan_publisher_;
+
+  ros::Subscriber initial_pose_sub_;
+  ros::ServiceServer clear_service_;
 
   //octomap::KeySet free_cells, occupied_cells, model_cells, clip_cells;
 
