@@ -44,7 +44,7 @@ move_group::OctomapManagementCapability::OctomapManagementCapability():
 
 void move_group::OctomapManagementCapability::initialize()
 {
-  initial_pose_sub_ = node_handle_.subscribe("/initialpose", 1, &move_group::OctomapManagementCapability::initialPoseCallback, this);
+  //initial_pose_sub_ = node_handle_.subscribe("/initialpose", 1, &move_group::OctomapManagementCapability::initialPoseCallback, this);
 
   // Reset and others
   sys_command_sub_ = node_handle_.subscribe("/syscommand", 1, &move_group::OctomapManagementCapability::sysCommandCallback, this);
