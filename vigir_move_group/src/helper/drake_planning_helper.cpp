@@ -30,6 +30,16 @@ DrakePlanningHelper::DrakePlanningHelper(MoveGroupManipulationAction *manipulati
     ros::NodeHandle nh;
     drake_trajectory_srv_client_ = nh.serviceClient<vigir_planning_msgs::RequestWholeBodyTrajectory>("drake_planner/request_whole_body_trajectory");
     drake_cartesian_trajectory_srv_client_ = nh.serviceClient<vigir_planning_msgs::RequestWholeBodyCartesianTrajectory>("drake_planner/request_whole_body_cartesian_trajectory");
+
+    //Get hand parameters from server
+    left_wrist_link_  = "l_hand";
+    right_wrist_link_ = "r_hand";
+
+    if(!nh.getParam("/left_wrist_link", left_wrist_link_))
+        ROS_WARN("No left wrist link defined, using l_hand as default");
+
+    if(!nh.getParam("/right_wrist_link", right_wrist_link_))
+        ROS_WARN("No right wrist link defined, using r_hand as default");
 }
 
 DrakePlanningHelper::~DrakePlanningHelper() {
@@ -393,9 +403,9 @@ bool DrakePlanningHelper::planCircularMotion(const vigir_planning_msgs::MoveGoal
                 return false;
             }
         }
-        else if ( !planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
-                                                                context_->planning_scene_monitor_,
-                                                                eef_start_pose)) { // infer link name from group
+        else if ( !planning_scene_utils::getEndeffectorTransformOfLink(goal->request.group_name.substr(0,1) == "r" ? right_wrist_link_ : left_wrist_link_,
+                                                                       context_->planning_scene_monitor_,
+                                                                       eef_start_pose)) { // infer link name from group
             ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
             plan.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
             return false;

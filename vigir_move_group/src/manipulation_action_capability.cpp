@@ -98,6 +98,16 @@ void move_group::MoveGroupManipulationAction::initialize()
   planned_traj_vis_.reset(new trajectory_utils::TrajectoryVisualization(pnh));
   executed_traj_vis_.reset(new trajectory_utils::TrajectoryVisualization(pnh, "eef_traj_executed", 0.0, 0.0, 1.0));
 
+  //Get hand parameters from server
+  left_wrist_link_  = "l_hand";
+  right_wrist_link_ = "r_hand";
+
+  if(!pnh.getParam("/left_wrist_link", left_wrist_link_))
+      ROS_WARN("No left wrist link defined, using l_hand as default");
+
+  if(!pnh.getParam("/right_wrist_link", right_wrist_link_))
+      ROS_WARN("No right wrist link defined, using r_hand as default");
+
   this->setupHandData();
 
   // start the move action server MOVE_ACTION
@@ -115,8 +125,8 @@ void move_group::MoveGroupManipulationAction::setupHandData()
 {
   const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
 
-  left_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,"l_hand");
-  right_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,"r_hand");
+  left_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,left_wrist_link_);
+  right_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,right_wrist_link_);
 }
 
 void move_group::MoveGroupManipulationAction::setCollisionOptions(bool all_env_collision_allow,
@@ -271,7 +281,10 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
           //Only used if keep endeffector orientation true or if circular motion requested
           Eigen::Affine3d eef_start_pose;
 
-          if(planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+          /*if(planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+                                                            context_->planning_scene_monitor_,
+                                                            eef_start_pose))*/
+          if(planning_scene_utils::getEndeffectorTransformOfLink(goal->request.group_name.substr(0,1) == "r" ? right_wrist_link_ : left_wrist_link_,
                                                             context_->planning_scene_monitor_,
                                                             eef_start_pose))
           {
@@ -553,9 +566,12 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
   if((goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION ||
      (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS &&
       goal->extended_planning_options.keep_endeffector_orientation)) &&
-     !planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
-                                                    context_->planning_scene_monitor_,
-                                                    eef_start_pose))
+//     !planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
+//                                                    context_->planning_scene_monitor_,
+//                                                    eef_start_pose)
+     !planning_scene_utils::getEndeffectorTransformOfLink(goal->request.group_name.substr(0,1) == "r" ? right_wrist_link_ : left_wrist_link_,
+                                                      context_->planning_scene_monitor_,
+                                                      eef_start_pose))
   {
     ROS_ERROR("Cannot get endeffector transform, cartesian planning not possible!");
     action_res.error_code.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;

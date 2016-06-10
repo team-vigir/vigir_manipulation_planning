@@ -109,6 +109,8 @@ private:
 
   std::vector<std::string> left_hand_links_vector_;
   std::vector<std::string> right_hand_links_vector_;
+  std::string left_wrist_link_;
+  std::string right_wrist_link_;
 };
 
 }

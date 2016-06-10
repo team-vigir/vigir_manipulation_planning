@@ -32,7 +32,10 @@ private:
     ros::ServiceClient drake_cartesian_trajectory_srv_client_;
 
     MoveGroupManipulationAction *manipulation_action_capability_;
-    MoveGroupContextPtr context_;
+    MoveGroupContextPtr context_;    
+
+    std::string left_wrist_link_;
+    std::string right_wrist_link_;
 };
 
 }
