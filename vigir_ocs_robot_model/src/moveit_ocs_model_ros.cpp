@@ -107,8 +107,18 @@ MoveItOcsModelRos::MoveItOcsModelRos()
     this->updateRobotStateColors();
 
     ros::param::param<std::string>("~base_frame", base_frame_, "/world");
-    ros::param::param<std::string>("~l_hand_frame", l_hand_frame_, "l_hand");
-    ros::param::param<std::string>("~r_hand_frame", r_hand_frame_, "r_hand");
+//    ros::param::param<std::string>("~l_hand_frame", l_hand_frame_, "l_hand");
+//    ros::param::param<std::string>("~r_hand_frame", r_hand_frame_, "r_hand");
+    //Get hand parameters from server
+    l_hand_frame_ = "l_hand";
+    r_hand_frame_ = "r_hand";
+
+    if(!nh.getParam("/left_wrist_link", l_hand_frame_))
+        ROS_WARN("No left wrist link defined, using l_hand as default");
+
+    if(!nh.getParam("/right_wrist_link", r_hand_frame_))
+        ROS_WARN("No right wrist link defined, using r_hand as default");
+
     ros::param::param<std::string>("~pelvis_frame", pelvis_frame_, "pelvis");
 }
 
@@ -304,9 +314,9 @@ void MoveItOcsModelRos::incomingPlanToPoseRequestCallback(const std_msgs::String
     std::string link_name;
 
     if (group_name == "l_arm_group" || group_name == "l_arm_with_torso_group"){
-      link_name = "l_hand";
+      link_name = l_hand_frame_;
     }else{
-      link_name = "r_hand";
+      link_name = r_hand_frame_;
     }
 
     geometry_msgs::PoseStamped target_pose;

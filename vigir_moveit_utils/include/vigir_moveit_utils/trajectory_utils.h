@@ -117,6 +117,16 @@ public:
     marker_.color.g = g;
     marker_.color.b = b;
     marker_.color.a = a;
+
+    //Get hand parameters from server
+    left_wrist_link_  = "l_hand";
+    right_wrist_link_ = "r_hand";
+
+    if(!pnh.getParam("/left_wrist_link", left_wrist_link_))
+        ROS_WARN("No left wrist link defined, using l_hand as default");
+
+    if(!pnh.getParam("/right_wrist_link", right_wrist_link_))
+        ROS_WARN("No right wrist link defined, using r_hand as default");
   }
 
   void publishTrajectoryEndeffectorVis(const robot_trajectory::RobotTrajectory& trajectory, bool increase_marker_id = false)
@@ -139,7 +149,7 @@ public:
         const robot_state::RobotState& state = trajectory.getWayPoint(i);
 
         //@TODO: Properly get tips for group
-        const Eigen::Affine3d& transform = state.getGlobalLinkTransform("l_hand");
+        const Eigen::Affine3d& transform = state.getGlobalLinkTransform(trajectory.getGroupName().substr(0,1) == "r" ? right_wrist_link_ : left_wrist_link_);
 
         marker_.points[i].x = transform.translation().x();
         marker_.points[i].y = transform.translation().y();
@@ -159,6 +169,8 @@ protected:
   ros::Publisher marker_array_pub_;
   visualization_msgs::Marker marker_;
   visualization_msgs::MarkerArray marker_array_;
+  std::string left_wrist_link_;
+  std::string right_wrist_link_;
 };
 
 class TrajectoryMerger
