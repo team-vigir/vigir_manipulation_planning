@@ -350,7 +350,7 @@ void MoveItOcsModelRos::incomingPlanToJointRequestCallback(const std_msgs::Strin
         request.planner_id = "drake";
     }
     else {
-        request.planner_id = ""; // default planner
+        request.planner_id = "RRTkConfigDefault"; // default planner
     }
 
     const std::string& group = msg->data;
