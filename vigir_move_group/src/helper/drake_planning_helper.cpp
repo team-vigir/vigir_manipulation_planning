@@ -226,7 +226,7 @@ bool DrakePlanningHelper::planCartesianMotion(const vigir_planning_msgs::MoveGoa
         try{
           ROS_INFO("No world virtual joint given - using tf-transform");
           tf::StampedTransform pelvis_tf;
-          transform_listener_.lookupTransform("/world", "/pelvis", ros::Time(0), pelvis_tf);
+          transform_listener_.lookupTransform("/world", "/pelvis_link", ros::Time(0), pelvis_tf);
 
           geometry_msgs::Transform pelvis_pose_msg;
           tf::transformTFToMsg(pelvis_tf, pelvis_pose_msg);
