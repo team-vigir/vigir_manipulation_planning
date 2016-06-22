@@ -45,10 +45,13 @@ namespace head_control{
         ros::NodeHandle nh_("");
         ros::NodeHandle pnh_("~");
 
+        std::string head_traj_namespace = "/thormang";
+        pnh_.getParam("head_traj_namespace", head_traj_namespace);
         pnh_.param("track_frame_threshold", track_frame_threshold,0.01);
+
         head_control_sub = nh_.subscribe("/thor_mang/head_control_mode", 1, &HeadControl::HeadControlCb, this);
 
-        joint_trajectory_pub = nh_.advertise<trajectory_msgs::JointTrajectory>("/thor_mang/head_traj_controller/command", 0, false);
+        joint_trajectory_pub = nh_.advertise<trajectory_msgs::JointTrajectory>(head_traj_namespace+"/head_traj_controller/command", 0, false);
 
         old_target_frame_origin.setZero();
         head_cmd.resize(2, 0);
@@ -125,8 +128,8 @@ namespace head_control{
 
         // Create joint names list
         std::vector<std::string> joints;
-        joints.push_back("head_pan");
-        joints.push_back("head_tilt");
+        joints.push_back("head_y");
+        joints.push_back("head_p");
         jointTrajectory.joint_names = joints;
 
         // create point list
@@ -155,8 +158,8 @@ namespace head_control{
         ros::Time now = ros::Time::now();
 
         try {
-            tf.waitForTransform("utorso", target_frame_id, now, ros::Duration(1.0));
-            tf.lookupTransform("utorso", target_frame_id, now, lookat_point_transform);
+            tf.waitForTransform("chest_link", target_frame_id, now, ros::Duration(1.0));
+            tf.lookupTransform("chest_link", target_frame_id, now, lookat_point_transform);
         } catch (std::runtime_error& e) {
             ROS_WARN("Could not transform look_at position to target frame_id %s", e.what());
             return std::vector<double>();
@@ -168,8 +171,8 @@ namespace head_control{
         }
 
         try {
-            tf.waitForTransform("utorso", "head_link", now, ros::Duration(1.0));
-            tf.lookupTransform("utorso", "head_link", now, base_camera_transform);
+            tf.waitForTransform("chest_link", "head_link", now, ros::Duration(1.0));
+            tf.lookupTransform("chest_link", "head_link", now, base_camera_transform);
         } catch (std::runtime_error& e) {
             ROS_WARN("Could not transform from base frame to camera_frame %s", e.what());
             return std::vector<double>();
