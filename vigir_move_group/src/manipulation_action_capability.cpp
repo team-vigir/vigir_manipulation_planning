@@ -661,11 +661,11 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
 
   cart_path.request.jump_threshold = 2.0;
   cart_path.request.max_step = 0.01;
-  cart_path.request.avoid_collisions = false;//goal->extended_planning_options.allow_environment_collisions;
+  cart_path.request.avoid_collisions = true;//goal->extended_planning_options.allow_environment_collisions;
   cart_path.request.group_name = goal->request.group_name;
 
   setMoveState(PLANNING);
-  this->computeCartesianPath(cart_path.request, cart_path.response, goal->request.max_velocity_scaling_factor);
+  this->computeCartesianPath(cart_path.request, cart_path.response, goal->request.max_velocity_scaling_factor, goal->extended_planning_options.allow_environment_collisions);
 
   {
     planning_scene_monitor::LockedPlanningSceneRO lscene(context_->planning_scene_monitor_);
@@ -780,7 +780,8 @@ void move_group::MoveGroupManipulationAction::setMoveState(MoveGroupState state)
 // This is basically a copy of the original MoveIt! cartesian planner with minor mods
 bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::GetCartesianPath::Request &req,
                                                                    moveit_msgs::GetCartesianPath::Response &res,
-                                                                   double max_velocity_scaling_factor)
+                                                                   double max_velocity_scaling_factor,
+                                                                   bool avoid_environment_collisons)
 {
   /*
   if (marker_array_pub_.getNumSubscribers() > 0){
@@ -861,10 +862,13 @@ bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::
           boost::scoped_ptr<kinematic_constraints::KinematicConstraintSet> kset;
           if (req.avoid_collisions || !kinematic_constraints::isEmpty(req.path_constraints))
           {
+            ROS_INFO("Processing collison check, req.avoid_collision: %d, allow_env_coll %d, kinematic_constraints: %d",req.avoid_collisions, allow_environment_collisions, kinematic_constraints::isEmpty(req.path_constraints));
             ls.reset(new planning_scene_monitor::LockedPlanningSceneRO(context_->planning_scene_monitor_));
             kset.reset(new kinematic_constraints::KinematicConstraintSet((*ls)->getRobotModel()));
             kset->add(req.path_constraints, (*ls)->getTransforms());
             constraint_fn = boost::bind(&isStateValid, req.avoid_collisions ? static_cast<const planning_scene::PlanningSceneConstPtr&>(*ls).get() : NULL, kset->empty() ? NULL : kset.get(), _1, _2, _3);
+          }else{
+            ROS_INFO("Not processing collison check, req.avoid_collision: %d, allow_env_coll %d, kinematic_constraints: %d",req.avoid_collisions, allow_environment_collisions, kinematic_constraints::isEmpty(req.path_constraints));
           }
           bool global_frame = !robot_state::Transforms::sameFrame(link_name, req.header.frame_id);
           ROS_INFO("Attempting to follow %u waypoints for link '%s' using a step of %lf m and jump threshold %lf (in %s reference frame)",
