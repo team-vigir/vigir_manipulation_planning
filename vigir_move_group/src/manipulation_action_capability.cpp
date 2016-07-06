@@ -661,7 +661,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
 
   cart_path.request.jump_threshold = 2.0;
   cart_path.request.max_step = 0.01;
-  cart_path.request.avoid_collisions = false;//goal->extended_planning_options.allow_environment_collisions;
+  cart_path.request.avoid_collisions = true;//goal->extended_planning_options.allow_environment_collisions;
   cart_path.request.group_name = goal->request.group_name;
 
   setMoveState(PLANNING);
