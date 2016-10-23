@@ -52,6 +52,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <std_srvs/Empty.h>
 
+
 namespace occupancy_map_monitor
 {
 
@@ -69,6 +70,8 @@ public:
   virtual void stop();
   virtual ShapeHandle excludeShape(const shapes::ShapeConstPtr &shape);
   virtual void forgetShape(ShapeHandle handle);
+
+  void LidarQueueThread();
 
 protected:
 
@@ -124,6 +127,11 @@ private:
 
   ros::Subscriber initial_pose_sub_;
   ros::ServiceServer clear_service_;
+
+  ros::CallbackQueue lidar_queue_;
+  boost::thread lidar_callback_queue_thread_;
+protected:
+  boost::mutex shape_lock_;
 
   //octomap::KeySet free_cells, occupied_cells, model_cells, clip_cells;
 

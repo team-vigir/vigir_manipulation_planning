@@ -153,6 +153,9 @@ bool LidarOctomapUpdater::initialize()
   initial_pose_sub_ = private_nh_.subscribe("/initialpose", 1, &LidarOctomapUpdater::initialPoseCallback, this);
   clear_service_ = private_nh_.advertiseService("/clear_octomap", &LidarOctomapUpdater::clearOctomap, this);
 
+  this->lidar_callback_queue_thread_ =
+      boost::thread(boost::bind(&LidarOctomapUpdater::LidarQueueThread, this));
+
   return true;
 }
 
@@ -161,7 +164,7 @@ void LidarOctomapUpdater::start()
   if (point_cloud_subscriber_)
     return;
   /* subscribe to point cloud topic using tf filter*/
-  point_cloud_subscriber_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(root_nh_, point_cloud_topic_, 40);
+  point_cloud_subscriber_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(root_nh_, point_cloud_topic_, 40, ros::TransportHints(), &lidar_queue_);
   if (tf_ && !monitor_->getMapFrame().empty())
   {
     point_cloud_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*point_cloud_subscriber_, *tf_, monitor_->getMapFrame(), 40);
@@ -174,6 +177,14 @@ void LidarOctomapUpdater::start()
     ROS_INFO("Listening to '%s'", point_cloud_topic_.c_str());
   }
 }
+
+void LidarOctomapUpdater::LidarQueueThread() {
+    static const double timeout = 0.05;
+
+    while (ros::ok()) {
+      lidar_queue_.callAvailable(ros::WallDuration(timeout));
+    }
+  }
 
 void LidarOctomapUpdater::stopHelper()
 {
@@ -190,6 +201,8 @@ void LidarOctomapUpdater::stop()
 
 ShapeHandle LidarOctomapUpdater::excludeShape(const shapes::ShapeConstPtr &shape)
 {
+  boost::mutex::scoped_lock scoped_lock(shape_lock_);
+
   ShapeHandle h = 0;
   if (shape_mask_)
     h = shape_mask_->addShape(shape, scale_, padding_);
@@ -200,6 +213,8 @@ ShapeHandle LidarOctomapUpdater::excludeShape(const shapes::ShapeConstPtr &shape
 
 void LidarOctomapUpdater::forgetShape(ShapeHandle handle)
 {
+  boost::mutex::scoped_lock scoped_lock(shape_lock_);
+
   if (shape_mask_)
     shape_mask_->removeShape(handle);
 }
@@ -322,8 +337,12 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   //We are in world frame, so using the scan max range cuts off things in a circle around world origin.
   //@TODO: Do this in a nicer way.
   double max_mask_range = 20000.0;
-  shape_mask_->maskContainment(*cloud_msg, sensor_origin_eigen, 0.0, max_mask_range, mask_);
-  updateMask(*cloud_msg, sensor_origin_eigen, mask_);
+
+  {
+    boost::mutex::scoped_lock scoped_lock(shape_lock_);
+    shape_mask_->maskContainment(*cloud_msg, sensor_origin_eigen, 0.0, max_mask_range, mask_);
+    updateMask(*cloud_msg, sensor_origin_eigen, mask_);
+  }
 
   self_filter_finished_time = ros::WallTime::now();
 
