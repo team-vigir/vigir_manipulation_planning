@@ -571,9 +571,16 @@ void LidarOctomapUpdater::resetOctomap(bool use_prior)
 {
   if (use_prior && !p_prior_map_file_.empty()){
     ROS_INFO("Resetting planning scene octomap to prior map");
+
     tree_->lockWrite();
-    tree_->readBinary(p_prior_map_file_);
+
+    if (!tree_->readBinary(p_prior_map_file_)){
+      ROS_WARN("Failed reading prior octomap, instead completely clearing octomap!");
+      tree_->clear();
+    }
+
     tree_->unlockWrite();
+
   }else{
     ROS_INFO("Resetting planning scene octomap to cleared map");
     tree_->lockWrite();
