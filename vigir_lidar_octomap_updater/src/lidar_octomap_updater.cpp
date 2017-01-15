@@ -204,9 +204,10 @@ ShapeHandle LidarOctomapUpdater::excludeShape(const shapes::ShapeConstPtr &shape
   boost::mutex::scoped_lock scoped_lock(shape_lock_);
 
   ShapeHandle h = 0;
-  if (shape_mask_)
+  if (shape_mask_){
+    shape->print();
     h = shape_mask_->addShape(shape, scale_, padding_);
-  else
+  }else
     ROS_ERROR("Shape filter not yet initialized!");
   return h;
 }
