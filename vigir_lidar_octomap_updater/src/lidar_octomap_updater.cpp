@@ -313,6 +313,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   }
 
   uint32_t index_offset = -1;
+  bool has_intensity = false;
 
   //Check if field "index" exists, exit otherwise
   for(unsigned int i = 0; i < cloud_msg->fields.size(); ++i)
@@ -320,6 +321,11 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     if(cloud_msg->fields[i].name == "index")
     {
       index_offset = cloud_msg->fields[i].offset;
+    }
+
+    else if(cloud_msg->fields[i].name == "intensity")
+    {
+      has_intensity = true;
     }
     //ROS_INFO("Field name: %s ", cloud_msg->fields[i].name.c_str());
   }
@@ -360,6 +366,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
   boost::scoped_ptr<sensor_msgs::PointCloud2Iterator<float> > iter_filtered_x;
   boost::scoped_ptr<sensor_msgs::PointCloud2Iterator<float> > iter_filtered_y;
   boost::scoped_ptr<sensor_msgs::PointCloud2Iterator<float> > iter_filtered_z;
+  boost::scoped_ptr<sensor_msgs::PointCloud2Iterator<float> > iter_filtered_i;
 
   bool publish_filtered_cloud = (!filtered_cloud_topic_.empty()) && (filtered_cloud_publisher_.getNumSubscribers() > 0);
 
@@ -367,13 +374,19 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
     filtered_cloud.reset(new sensor_msgs::PointCloud2());
     filtered_cloud->header = cloud_msg->header;
     sensor_msgs::PointCloud2Modifier pcd_modifier(*filtered_cloud);
-    pcd_modifier.setPointCloud2FieldsByString(1, "xyz");
+    //pcd_modifier.setPointCloud2FieldsByString(2, "xyz", "i");
+    pcd_modifier.setPointCloud2Fields(4,
+      "x", 1, sensor_msgs::PointField::FLOAT32,
+      "y", 1, sensor_msgs::PointField::FLOAT32,
+      "z", 1, sensor_msgs::PointField::FLOAT32,
+      "intensity", 1, sensor_msgs::PointField::FLOAT32);
     pcd_modifier.resize(cloud_msg->width * cloud_msg->height);
 
     //we have created a filtered_out, so we can create the iterators now
     iter_filtered_x.reset(new sensor_msgs::PointCloud2Iterator<float>(*filtered_cloud, "x"));
     iter_filtered_y.reset(new sensor_msgs::PointCloud2Iterator<float>(*filtered_cloud, "y"));
     iter_filtered_z.reset(new sensor_msgs::PointCloud2Iterator<float>(*filtered_cloud, "z"));
+    iter_filtered_i.reset(new sensor_msgs::PointCloud2Iterator<float>(*filtered_cloud, "intensity"));
   }
 
   size_t filtered_cloud_size = 0;
@@ -401,6 +414,9 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
       {
         //if (mask_[row_c + col] == point_containment_filter::ShapeMask::CLIP)
         //  continue;
+
+        if (has_intensity && isnan(pt_iter[3]))
+          continue;
 
         /* check for NaN */
         if (!isnan(pt_iter[0]) && !isnan(pt_iter[1]) && !isnan(pt_iter[2]))
@@ -431,10 +447,12 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
               **iter_filtered_x = pt_iter[0];
               **iter_filtered_y = pt_iter[1];
               **iter_filtered_z = pt_iter[2];
+              **iter_filtered_i = has_intensity ? pt_iter[3] : 1.0f;
               ++filtered_cloud_size;
               ++*iter_filtered_x;
               ++*iter_filtered_y;
               ++*iter_filtered_z;
+              ++*iter_filtered_i;
             }
           }
         }
