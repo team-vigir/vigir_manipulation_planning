@@ -152,6 +152,8 @@ bool LidarOctomapUpdater::initialize()
 
   initial_pose_sub_ = private_nh_.subscribe("/initialpose", 1, &LidarOctomapUpdater::initialPoseCallback, this);
   clear_service_ = private_nh_.advertiseService("/clear_octomap", &LidarOctomapUpdater::clearOctomap, this);
+  clear_robot_vicinity_service_ = private_nh_.advertiseService("/clear_robot_vicinity_octomap", &LidarOctomapUpdater::clearRobotVicinityOctomap, this);
+
 
   this->lidar_callback_queue_thread_ =
       boost::thread(boost::bind(&LidarOctomapUpdater::LidarQueueThread, this));
@@ -581,6 +583,68 @@ void LidarOctomapUpdater::initialPoseCallback(const geometry_msgs::PoseWithCovar
 bool LidarOctomapUpdater::clearOctomap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
 {
   this->resetOctomap();
+
+  return true;
+}
+
+bool LidarOctomapUpdater::clearRobotVicinityOctomap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
+{
+  if (tf_)
+  {
+    tf::StampedTransform robot_pose;
+    try
+    {
+      ros::Time end_time   = scan_filtered_.header.stamp + ros::Duration().fromSec((scan_filtered_.ranges.size() -1)*scan_filtered_.time_increment) ;
+
+
+      if(tf_->waitForTransform(monitor_->getMapFrame(), "base_link", ros::Time(0), wait_duration_)){
+        tf_->lookupTransform(monitor_->getMapFrame(), "base_link", ros::Time(0), robot_pose);
+      }
+    }
+    catch (tf::TransformException& ex)
+    {
+      ROS_ERROR_STREAM("Transform error of sensor data: " << ex.what() << "; quitting selective clearing callback in LidarOctomapUpdater");
+      return false;
+    }
+    catch(...)
+    {
+      ROS_ERROR_STREAM("Exception while retrieving robot pose for selective clearing in LidarOctomapUpdater");
+      return false;
+    }
+
+
+
+    octomap::point3d min, max;
+
+    min.x() = robot_pose.getOrigin().x() - 0.3;
+    min.y() = robot_pose.getOrigin().y() - 0.3;
+    min.z() = robot_pose.getOrigin().z();
+
+    max.x() = robot_pose.getOrigin().x() + 0.3;
+    max.y() = robot_pose.getOrigin().y() + 0.3;
+    max.z() = robot_pose.getOrigin().z() + 1.1;
+
+    ROS_INFO("Clearing octomap around robot, coords min x: %f y: %f z: %f max x: %f y: %f z: %f", min.x(), min.y(), min.z(), max.x(), max.y(), max.z());
+
+    tree_->lockWrite();
+
+    for(octomap::OcTree::leaf_bbx_iterator it = tree_->begin_leafs_bbx(min,max),
+        end=tree_->end_leafs_bbx(); it!= end; ++it)
+    {
+      tree_->deleteNode(it.getKey(), it.getDepth());
+    }
+
+    tree_->unlockWrite();
+
+
+  }
+  else
+  {
+    ROS_ERROR("No tf listener, cannot run selective clearing in LidarOctomapUpdater");
+    return false;
+  }
+
+
 
   return true;
 }

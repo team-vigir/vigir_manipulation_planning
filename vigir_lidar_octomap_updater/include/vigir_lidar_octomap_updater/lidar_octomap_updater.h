@@ -83,6 +83,7 @@ private:
   void cloudMsgCallback(const sensor_msgs::LaserScan::ConstPtr &cloud_msg);
   void initialPoseCallback(const geometry_msgs::PoseWithCovarianceStamped pose);
   bool clearOctomap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
+  bool clearRobotVicinityOctomap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
   void stopHelper();
 
   void resetOctomap(bool load_prior = true);
@@ -127,6 +128,7 @@ private:
 
   ros::Subscriber initial_pose_sub_;
   ros::ServiceServer clear_service_;
+  ros::ServiceServer clear_robot_vicinity_service_;
 
   ros::CallbackQueue lidar_queue_;
   boost::thread lidar_callback_queue_thread_;
