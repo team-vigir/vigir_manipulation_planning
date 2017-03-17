@@ -68,6 +68,7 @@
 #include <message_filters/subscriber.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <XmlRpcException.h>
+#include <std_srvs/SetBool.h>
 
 #include <tf/transform_datatypes.h>
 
@@ -83,7 +84,8 @@ LidarOctomapUpdater::LidarOctomapUpdater() : OccupancyMapUpdater("LidarCloudUpda
                                                        point_subsample_(1),
                                                        point_cloud_subscriber_(NULL),
                                                        point_cloud_filter_(NULL),
-                                                       filter_chain_("sensor_msgs::LaserScan")
+                                                       filter_chain_("sensor_msgs::LaserScan"),
+                                                       disable_octomap_updates_(false)
 {
 }
 
@@ -153,6 +155,8 @@ bool LidarOctomapUpdater::initialize()
   initial_pose_sub_ = private_nh_.subscribe("/initialpose", 1, &LidarOctomapUpdater::initialPoseCallback, this);
   clear_service_ = private_nh_.advertiseService("/clear_octomap", &LidarOctomapUpdater::clearOctomap, this);
   clear_robot_vicinity_service_ = private_nh_.advertiseService("/clear_robot_vicinity_octomap", &LidarOctomapUpdater::clearRobotVicinityOctomap, this);
+
+  disable_octomap_updates_service_ = private_nh_.advertiseService("/disable_octomap_updates", &LidarOctomapUpdater::disableOctomapUpdates, this);
 
 
   this->lidar_callback_queue_thread_ =
@@ -395,6 +399,8 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
 
   tree_->lockRead();
 
+  bool octomap_updates_disabled_for_this_cloud = disable_octomap_updates_;
+
   //Make copy of filtered scan, modify below with self filter information
   scan_self_filtered_ = scan_filtered_;
 
@@ -461,20 +467,22 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
       }
     }
 
-    /* compute the free cells along each ray that ends at an occupied cell */
-    for (octomap::KeySet::iterator it = occupied_cells.begin(), end = occupied_cells.end(); it != end; ++it)
-      if (tree_->computeRayKeys(sensor_origin, tree_->keyToCoord(*it), key_ray_))
-        free_cells.insert(key_ray_.begin(), key_ray_.end());
+    if (!octomap_updates_disabled_for_this_cloud){
+        /* compute the free cells along each ray that ends at an occupied cell */
+        for (octomap::KeySet::iterator it = occupied_cells.begin(), end = occupied_cells.end(); it != end; ++it)
+          if (tree_->computeRayKeys(sensor_origin, tree_->keyToCoord(*it), key_ray_))
+            free_cells.insert(key_ray_.begin(), key_ray_.end());
 
-    /* compute the free cells along each ray that ends at a model cell */
-    for (octomap::KeySet::iterator it = model_cells.begin(), end = model_cells.end(); it != end; ++it)
-      if (tree_->computeRayKeys(sensor_origin, tree_->keyToCoord(*it), key_ray_))
-        free_cells.insert(key_ray_.begin(), key_ray_.end());
+        /* compute the free cells along each ray that ends at a model cell */
+        for (octomap::KeySet::iterator it = model_cells.begin(), end = model_cells.end(); it != end; ++it)
+          if (tree_->computeRayKeys(sensor_origin, tree_->keyToCoord(*it), key_ray_))
+            free_cells.insert(key_ray_.begin(), key_ray_.end());
 
-    /* compute the free cells along each ray that ends at a clipped cell */
-    for (octomap::KeySet::iterator it = clip_cells.begin(), end = clip_cells.end(); it != end; ++it)
-      if (tree_->computeRayKeys(sensor_origin, tree_->keyToCoord(*it), key_ray_))
-        free_cells.insert(key_ray_.begin(), key_ray_.end());
+        /* compute the free cells along each ray that ends at a clipped cell */
+        for (octomap::KeySet::iterator it = clip_cells.begin(), end = clip_cells.end(); it != end; ++it)
+          if (tree_->computeRayKeys(sensor_origin, tree_->keyToCoord(*it), key_ray_))
+            free_cells.insert(key_ray_.begin(), key_ray_.end());
+    }
 
     //std::cout << free_cells.bucket_count() <<  "\n";
   }
@@ -535,38 +543,40 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
 
   // ----------------- Update octomap --------------------
 
+  if (!octomap_updates_disabled_for_this_cloud){
 
-  /* cells that overlap with the model are not occupied */
-  for (octomap::KeySet::iterator it = model_cells.begin(), end = model_cells.end(); it != end; ++it)
-    occupied_cells.erase(*it);
+      /* cells that overlap with the model are not occupied */
+      for (octomap::KeySet::iterator it = model_cells.begin(), end = model_cells.end(); it != end; ++it)
+        occupied_cells.erase(*it);
 
-  /* occupied cells are not free */
-  for (octomap::KeySet::iterator it = occupied_cells.begin(), end = occupied_cells.end(); it != end; ++it)
-    free_cells.erase(*it);
+      /* occupied cells are not free */
+      for (octomap::KeySet::iterator it = occupied_cells.begin(), end = occupied_cells.end(); it != end; ++it)
+        free_cells.erase(*it);
 
-  tree_->lockWrite();
+      tree_->lockWrite();
 
-  try
-  {
-    /* mark free cells only if not seen occupied in this cloud */
-    for (octomap::KeySet::iterator it = free_cells.begin(), end = free_cells.end(); it != end; ++it)
-      tree_->updateNode(*it, false);
+      try
+      {
+        /* mark free cells only if not seen occupied in this cloud */
+        for (octomap::KeySet::iterator it = free_cells.begin(), end = free_cells.end(); it != end; ++it)
+          tree_->updateNode(*it, false);
 
-    /* now mark all occupied cells */
-    for (octomap::KeySet::iterator it = occupied_cells.begin(), end = occupied_cells.end(); it != end; ++it)
-      tree_->updateNode(*it, true);
+        /* now mark all occupied cells */
+        for (octomap::KeySet::iterator it = occupied_cells.begin(), end = occupied_cells.end(); it != end; ++it)
+          tree_->updateNode(*it, true);
 
-    // set the logodds to the minimum for the cells that are part of the model
-    const float lg = tree_->getClampingThresMinLog() - tree_->getClampingThresMaxLog();
-    for (octomap::KeySet::iterator it = model_cells.begin(), end = model_cells.end(); it != end; ++it)
-      tree_->updateNode(*it, lg);
+        // set the logodds to the minimum for the cells that are part of the model
+        const float lg = tree_->getClampingThresMinLog() - tree_->getClampingThresMaxLog();
+        for (octomap::KeySet::iterator it = model_cells.begin(), end = model_cells.end(); it != end; ++it)
+          tree_->updateNode(*it, lg);
+      }
+      catch (...)
+      {
+        ROS_ERROR("Internal error while updating octree");
+      }
+      tree_->unlockWrite();
+      tree_->triggerUpdateCallback();
   }
-  catch (...)
-  {
-    ROS_ERROR("Internal error while updating octree");
-  }
-  tree_->unlockWrite();  
-  tree_->triggerUpdateCallback();
 
   ROS_DEBUG("Processed laser scan in %lf ms. Self filtering took %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0, (self_filter_finished_time - start).toSec() * 1000.0 );
 }
@@ -586,6 +596,24 @@ bool LidarOctomapUpdater::clearOctomap(std_srvs::Empty::Request &req, std_srvs::
 
   return true;
 }
+
+bool LidarOctomapUpdater::disableOctomapUpdates(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
+{
+  if (req.data){
+    ROS_INFO("Disable Octomap updates");
+  }else{
+    ROS_INFO("Enable Octomap updates");
+  }
+
+  tree_->lockWrite();
+  disable_octomap_updates_ = req.data;
+  tree_->unlockWrite();
+
+
+  res.success = true;
+  return true;
+}
+
 
 bool LidarOctomapUpdater::clearRobotVicinityOctomap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
 {

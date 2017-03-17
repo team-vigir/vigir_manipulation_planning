@@ -51,6 +51,7 @@
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <std_srvs/Empty.h>
+#include <std_srvs/SetBool.h>
 
 
 namespace occupancy_map_monitor
@@ -84,6 +85,7 @@ private:
   void initialPoseCallback(const geometry_msgs::PoseWithCovarianceStamped pose);
   bool clearOctomap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
   bool clearRobotVicinityOctomap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
+  bool disableOctomapUpdates(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
   void stopHelper();
 
   void resetOctomap(bool load_prior = true);
@@ -129,9 +131,12 @@ private:
   ros::Subscriber initial_pose_sub_;
   ros::ServiceServer clear_service_;
   ros::ServiceServer clear_robot_vicinity_service_;
+  ros::ServiceServer disable_octomap_updates_service_;
 
   ros::CallbackQueue lidar_queue_;
   boost::thread lidar_callback_queue_thread_;
+
+  bool disable_octomap_updates_;
 protected:
   boost::mutex shape_lock_;
 
