@@ -423,11 +423,11 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::LaserScan::ConstPt
         //if (mask_[row_c + col] == point_containment_filter::ShapeMask::CLIP)
         //  continue;
 
-        if (has_intensity && isnan(pt_iter[3]))
+        if (has_intensity && std::isnan(pt_iter[3]))
           continue;
 
         /* check for NaN */
-        if (!isnan(pt_iter[0]) && !isnan(pt_iter[1]) && !isnan(pt_iter[2]))
+        if (!std::isnan(pt_iter[0]) && !std::isnan(pt_iter[1]) && !std::isnan(pt_iter[2]))
         {
           /* transform to map frame */
           //tf::Vector3 point_tf = map_H_sensor * tf::Vector3(pt_iter[0], pt_iter[1],
