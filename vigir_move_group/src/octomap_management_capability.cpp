@@ -76,7 +76,7 @@ void move_group::OctomapManagementCapability::sysCommandCallback(const std_msgs:
       planning_scene_monitor::LockedPlanningSceneRO ls (context_->planning_scene_monitor_);
       collision_detection::CollisionWorld::ObjectConstPtr map = ls.getPlanningSceneMonitor()->getPlanningScene()->getWorld()->getObject("<octomap>");
       const shapes::OcTree* octree_shape = static_cast<const shapes::OcTree*>(map->shapes_[0].get());
-      const boost::shared_ptr<const octomap::OcTree> octree_ = octree_shape->octree;
+      const std::shared_ptr<const octomap::OcTree> octree_ = octree_shape->octree;
 
       ROS_INFO("Writing octomap to %s", file_name.c_str());
       octree_->write(file_name);
