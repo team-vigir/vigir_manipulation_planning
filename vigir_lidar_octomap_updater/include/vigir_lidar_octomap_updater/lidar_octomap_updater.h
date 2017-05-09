@@ -114,7 +114,7 @@ private:
   tf::MessageFilter<sensor_msgs::PointCloud2> *point_cloud_filter_;
 
   /* used to store all cells in the map which a given ray passes through during raycasting.
-     we cache this here because it dynamically pre-allocates a lot of memory in its contsructor */
+     we cache this here because it dynamically pre-allocates a lot of memory in its constructor */
   octomap::KeyRay key_ray_;
 
   boost::scoped_ptr<point_containment_filter::ShapeMask> shape_mask_;

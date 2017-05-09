@@ -601,18 +601,19 @@ void LidarOctomapUpdater::laserMsgCallback(const sensor_msgs::LaserScan::ConstPt
 }
 
 
-void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::ConstPtr &cloud_msg)
+void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::ConstPtr &cloud_msg_in)
 {
 
   ROS_DEBUG("Received a new point cloud message");
   ros::WallTime start = ros::WallTime::now();
+  ros::WallTime self_filter_finished_time;
 
   if (monitor_->getMapFrame().empty())
-    monitor_->setMapFrame(cloud_msg->header.frame_id);
+    monitor_->setMapFrame(cloud_msg_in->header.frame_id);
 
   /* get transform for cloud into map frame */
   tf::StampedTransform map_H_sensor;
-  if (monitor_->getMapFrame() == cloud_msg->header.frame_id)
+  if (monitor_->getMapFrame() == cloud_msg_in->header.frame_id)
     map_H_sensor.setIdentity();
   else
   {
@@ -620,7 +621,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
     {
       try
       {
-        tf_->lookupTransform(monitor_->getMapFrame(), cloud_msg->header.frame_id, cloud_msg->header.stamp,
+        tf_->lookupTransform(monitor_->getMapFrame(), cloud_msg_in->header.frame_id, cloud_msg_in->header.stamp,
                              map_H_sensor);
       }
       catch (tf::TransformException& ex)
@@ -639,13 +640,13 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
   Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
 
 
-  if (!updateTransformCache(cloud_msg->header.frame_id, cloud_msg->header.stamp))
+  if (!updateTransformCache(cloud_msg_in->header.frame_id, cloud_msg_in->header.stamp))
   {
     ROS_ERROR_THROTTLE(1, "Transform cache was not updated. Self-filtering may fail.");
     return;
   }
 
-  //if (cloud_msg->height > 1){
+  //if (cloud_msg_in->height > 1){
   //  ROS_ERROR_THROTTLE(1,"Cloud height > 1 not supported by lidar octomap updater!");
   //  return;
   //}
@@ -654,18 +655,18 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
   bool has_intensity = false;
 
   //Check if field "index" exists, exit otherwise
-  for(unsigned int i = 0; i < cloud_msg->fields.size(); ++i)
+  for(unsigned int i = 0; i < cloud_msg_in->fields.size(); ++i)
   {
-    if(cloud_msg->fields[i].name == "index")
+    if(cloud_msg_in->fields[i].name == "index")
     {
-      index_offset = cloud_msg->fields[i].offset;
+      index_offset = cloud_msg_in->fields[i].offset;
     }
 
-    else if(cloud_msg->fields[i].name == "intensity")
+    else if(cloud_msg_in->fields[i].name == "intensity")
     {
       has_intensity = true;
     }
-    //ROS_INFO("Field name: %s ", cloud_msg->fields[i].name.c_str());
+    //ROS_INFO("Field name: %s ", cloud_msg_in->fields[i].name.c_str());
   }
 
   //ROS_INFO("Index offset: %d", index_offset);
@@ -684,11 +685,11 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
 
   {
     boost::mutex::scoped_lock scoped_lock(shape_lock_);
-    shape_mask_->maskContainment(*cloud_msg, sensor_origin_eigen, 0.0, max_mask_range, mask_);
-    updateMask(*cloud_msg, sensor_origin_eigen, mask_);
+    shape_mask_->maskContainment(*cloud_msg_in, sensor_origin_eigen, 0.0, max_mask_range, mask_);
+    updateMask(*cloud_msg_in, sensor_origin_eigen, mask_);
   }
 
-  //self_filter_finished_time = ros::WallTime::now();
+  self_filter_finished_time = ros::WallTime::now();
 
   octomap::KeySet free_cells, occupied_cells, model_cells, clip_cells;
   //free_cells.clear();
@@ -710,7 +711,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
 
   if (publish_filtered_cloud) {
     filtered_cloud.reset(new sensor_msgs::PointCloud2());
-    filtered_cloud->header = cloud_msg->header;
+    filtered_cloud->header = cloud_msg_in->header;
     sensor_msgs::PointCloud2Modifier pcd_modifier(*filtered_cloud);
     //pcd_modifier.setPointCloud2FieldsByString(2, "xyz", "i");
     pcd_modifier.setPointCloud2Fields(4,
@@ -718,7 +719,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
       "y", 1, sensor_msgs::PointField::FLOAT32,
       "z", 1, sensor_msgs::PointField::FLOAT32,
       "intensity", 1, sensor_msgs::PointField::FLOAT32);
-    pcd_modifier.resize(cloud_msg->width * cloud_msg->height);
+    pcd_modifier.resize(cloud_msg_in->width * cloud_msg_in->height);
 
     //we have created a filtered_out, so we can create the iterators now
     iter_filtered_x.reset(new sensor_msgs::PointCloud2Iterator<float>(*filtered_cloud, "x"));
@@ -736,26 +737,31 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
   //Make copy of filtered scan, modify below with self filter information
   //scan_self_filtered_ = scan_filtered_;
 
+  double max_range_squared = max_range_ * max_range_;
+
   try
   {
     /* do ray tracing to find which cells this point cloud indicates should be free, and which it indicates
      * should be occupied */
-    //for (
-    unsigned int row = 0;//; row < cloud_msg->height; row += point_subsample_)
+    for (unsigned int row = 0; row < cloud_msg_in->height; row += point_subsample_)
     {
-      //unsigned int row_c = row * cloud_msg->width;
-      sensor_msgs::PointCloud2ConstIterator<float> pt_iter(*cloud_msg, "x");
-      sensor_msgs::PointCloud2ConstIterator<unsigned int> index_iter(*cloud_msg, "index");
-      //set iterator to point at start of the current row
-      //pt_iter += row_c;
+      unsigned int row_c = row * cloud_msg_in->width;
+      sensor_msgs::PointCloud2ConstIterator<float> pt_iter(*cloud_msg_in, "x");
+      //sensor_msgs::PointCloud2ConstIterator<unsigned int> index_iter(*cloud_msg_in, "index");
+      //set iterator to point at start of the current rowindex_iter
+      pt_iter += row_c;
 
-      for (unsigned int col = 0; col < cloud_msg->width; col += point_subsample_,
-        pt_iter += point_subsample_, index_iter += point_subsample_)
+      for (unsigned int col = 0; col < cloud_msg_in->width; col += point_subsample_,
+        pt_iter += point_subsample_) //index_iter += point_subsample_)
       {
         //if (mask_[row_c + col] == point_containment_filter::ShapeMask::CLIP)
         //  continue;
 
-        if (has_intensity && isnan(pt_iter[3]))
+        if (has_intensity && std::isnan(pt_iter[3]))
+          continue;
+
+        //if (sensor_origin_tf.distance(tf::Vector3(pt_iter[0], pt_iter[1], pt_iter[2])) > this->max_range_)
+        if (tf::Vector3(pt_iter[0], pt_iter[1], pt_iter[2]).length2() > max_range_squared)
           continue;
 
         /* check for NaN */
@@ -764,15 +770,20 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
           /* transform to map frame */
           //tf::Vector3 point_tf = map_H_sensor * tf::Vector3(pt_iter[0], pt_iter[1],
           //  pt_iter[2]);
+
+
+
+
+
           tf::Vector3 point_tf (map_H_sensor * tf::Vector3(pt_iter[0], pt_iter[1], pt_iter[2]));
 
           /* occupied cell at ray endpoint if ray is shorter than max range and this point
              isn't on a part of the robot*/
-          if (mask_[col] == point_containment_filter::ShapeMask::INSIDE){
+          if (mask_[row_c + col] == point_containment_filter::ShapeMask::INSIDE){
             model_cells.insert(tree_->coordToKey(point_tf.getX(), point_tf.getY(), point_tf.getZ()));
             //scan_self_filtered_.ranges[index_iter[0]] = std::numeric_limits<float>::quiet_NaN();
           }
-          else if (mask_[col] == point_containment_filter::ShapeMask::CLIP)
+          else if (mask_[row_c + col] == point_containment_filter::ShapeMask::CLIP)
           {
             // CLIP cells are only those outside min to max range. Given we operate in world frame for
             // containment check and scan is prefiltered for min/max, there are no CLIP cells.
@@ -820,6 +831,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
   }
   catch (...)
   {
+    ROS_ERROR("Caught expection during point cloud update!");
     tree_->unlockRead();
     return;
   }
@@ -911,7 +923,7 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
       tree_->triggerUpdateCallback();
   }
 
-  //ROS_DEBUG("Processed laser scan in %lf ms. Self filtering took %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0, (self_filter_finished_time - start).toSec() * 1000.0 );
+  ROS_DEBUG("Processed laser scan in %lf ms. Self filtering took %lf ms", (ros::WallTime::now() - start).toSec() * 1000.0, (self_filter_finished_time - start).toSec() * 1000.0 );
 }
 
 void LidarOctomapUpdater::initialPoseCallback(const geometry_msgs::PoseWithCovarianceStamped pose)
