@@ -81,7 +81,8 @@ protected:
 private:
 
   bool getShapeTransform(ShapeHandle h, Eigen::Affine3d &transform) const;
-  void cloudMsgCallback(const sensor_msgs::LaserScan::ConstPtr &cloud_msg);
+  void laserMsgCallback(const sensor_msgs::LaserScan::ConstPtr &cloud_msg);
+  void cloudMsgCallback(const sensor_msgs::PointCloud2::ConstPtr &cloud_msg);
   void initialPoseCallback(const geometry_msgs::PoseWithCovarianceStamped pose);
   bool clearOctomap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
   bool clearRobotVicinityOctomap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
@@ -95,6 +96,7 @@ private:
   boost::shared_ptr<tf::Transformer> tf_;
 
   /* params */
+  std::string laser_scan_topic_;
   std::string point_cloud_topic_;
   double scale_;
   double padding_;
@@ -105,11 +107,14 @@ private:
 
   std::string p_prior_map_file_;
 
-  message_filters::Subscriber<sensor_msgs::LaserScan> *point_cloud_subscriber_;
-  tf::MessageFilter<sensor_msgs::LaserScan> *point_cloud_filter_;
+  message_filters::Subscriber<sensor_msgs::LaserScan> *laser_scan_subscriber_;
+  tf::MessageFilter<sensor_msgs::LaserScan> *laser_scan_filter_;
+
+  message_filters::Subscriber<sensor_msgs::PointCloud2> *point_cloud_subscriber_;
+  tf::MessageFilter<sensor_msgs::PointCloud2> *point_cloud_filter_;
 
   /* used to store all cells in the map which a given ray passes through during raycasting.
-     we cache this here because it dynamically pre-allocates a lot of memory in its contsructor */
+     we cache this here because it dynamically pre-allocates a lot of memory in its constructor */
   octomap::KeyRay key_ray_;
 
   boost::scoped_ptr<point_containment_filter::ShapeMask> shape_mask_;
