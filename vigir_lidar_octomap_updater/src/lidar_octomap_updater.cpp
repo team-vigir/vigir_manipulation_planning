@@ -169,6 +169,11 @@ bool LidarOctomapUpdater::initialize()
   this->lidar_callback_queue_thread_ =
       boost::thread(boost::bind(&LidarOctomapUpdater::LidarQueueThread, this));
 
+  octo_min_distance_ = 0.3;
+  octo_max_distance_ = 4.0;
+  secondary_rays_max_dist_ = 4.0;
+  secondary_rays_opening_angle_ = 0.05;
+
 
   ros::AdvertiseServiceOptions ops=ros::AdvertiseServiceOptions::create<hector_nav_msgs::GetDistanceToObstacle>("get_distance_to_obstacle", boost::bind(&LidarOctomapUpdater::lookupServiceCallback, this,_1,_2),ros::VoidConstPtr(),&service_queue_);
   dist_lookup_srv_server_ = private_nh_.advertiseService(ops);
@@ -204,7 +209,7 @@ void LidarOctomapUpdater::start()
   //if (point_cloud_subscriber_)
   //  return;
   /* subscribe to point cloud topic using tf filter*/
-  point_cloud_subscriber_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(root_nh_, point_cloud_topic_, 40, ros::TransportHints(), &lidar_queue_);
+  point_cloud_subscriber_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(root_nh_, point_cloud_topic_, 2, ros::TransportHints(), &lidar_queue_);
   if (tf_ && !monitor_->getMapFrame().empty())
   {
     point_cloud_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_subscriber_, *tf_, monitor_->getMapFrame(), 40);
