@@ -77,6 +77,8 @@
 #include <octomap/octomap.h>
 #include <octomap_ros/conversions.h>
 
+#include <angles/angles.h>
+
 namespace occupancy_map_monitor
 {
 
@@ -169,11 +171,14 @@ bool LidarOctomapUpdater::initialize()
   this->lidar_callback_queue_thread_ =
       boost::thread(boost::bind(&LidarOctomapUpdater::LidarQueueThread, this));
 
-  octo_min_distance_ = 0.3;
-  octo_max_distance_ = 4.0;
-  secondary_rays_max_dist_ = 4.0;
-  secondary_rays_opening_angle_ = 0.05;
+  // Done by dyn rec callback now
+  //octo_min_distance_ = 0.3;
+  //octo_max_distance_ = 4.0;
+  //secondary_rays_max_dist_ = 4.0;
+  //secondary_rays_opening_angle_ = 0.05;
 
+  dyn_rec_server_.reset(new dynamic_reconfigure::Server<vigir_lidar_octomap_updater::LidarOctomapUpdaterConfig>(ros::NodeHandle("~/lidar_octomap_updater")));
+  dyn_rec_server_->setCallback(boost::bind(&LidarOctomapUpdater::dynRecParamCallback, this, _1, _2));
 
   ros::AdvertiseServiceOptions ops=ros::AdvertiseServiceOptions::create<hector_nav_msgs::GetDistanceToObstacle>("get_distance_to_obstacle", boost::bind(&LidarOctomapUpdater::lookupServiceCallback, this,_1,_2),ros::VoidConstPtr(),&service_queue_);
   dist_lookup_srv_server_ = private_nh_.advertiseService(ops);
@@ -1073,15 +1078,14 @@ void LidarOctomapUpdater::serviceThread(){
 }
 
 
-/*
-void move_group::OctomapRaycastCapability::dynRecParamCallback(hector_move_group_capabilities::OctomapRaycastCapabilityConfig &config, uint32_t level)
+void LidarOctomapUpdater::dynRecParamCallback(vigir_lidar_octomap_updater::LidarOctomapUpdaterConfig &config, uint32_t level)
 {
   octo_min_distance_ = config.min_distance_to_obstacle;
   octo_max_distance_ = config.max_distance_to_obstacle;
   secondary_rays_max_dist_ = config.secondary_rays_max_dist;
   secondary_rays_opening_angle_ = angles::from_degrees(config.secondary_rays_opening_angle_deg);
 }
-*/
+
 
 bool LidarOctomapUpdater::lookupServiceCallback(hector_nav_msgs::GetDistanceToObstacle::Request  &req,
                                                                  hector_nav_msgs::GetDistanceToObstacle::Response &res )

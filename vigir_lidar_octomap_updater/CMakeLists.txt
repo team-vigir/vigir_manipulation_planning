@@ -14,12 +14,15 @@ find_package(catkin REQUIRED COMPONENTS
   laser_filters
   vigir_perception_msgs
   hector_nav_msgs
+  dynamic_reconfigure
 )
+
+generate_dynamic_reconfigure_options(cfg/LidarOctomapUpdater.cfg)
 
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES vigir_lidar_octomap_updater
-  CATKIN_DEPENDS moveit_ros_perception pluginlib roscpp vigir_perception_msgs hector_nav_msgs
+  CATKIN_DEPENDS moveit_ros_perception pluginlib roscpp vigir_perception_msgs hector_nav_msgs dynamic_reconfigure
 #  DEPENDS system_lib
 )
 

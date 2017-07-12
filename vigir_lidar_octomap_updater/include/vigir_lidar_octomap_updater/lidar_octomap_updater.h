@@ -55,6 +55,9 @@
 
 #include <hector_nav_msgs/GetDistanceToObstacle.h>
 
+#include <dynamic_reconfigure/server.h>
+#include <vigir_lidar_octomap_updater/LidarOctomapUpdaterConfig.h>
+
 
 namespace occupancy_map_monitor
 {
@@ -75,6 +78,8 @@ public:
   virtual void forgetShape(ShapeHandle handle);
 
   void LidarQueueThread();
+
+  void dynRecParamCallback(vigir_lidar_octomap_updater::LidarOctomapUpdaterConfig &config, uint32_t level);
 
 protected:
 
@@ -113,6 +118,8 @@ private:
                      std::vector<octomap::point3d>& directions,
                      std::vector<octomap::point3d>& endPoints,
                      int n);
+
+  boost::shared_ptr< dynamic_reconfigure::Server<vigir_lidar_octomap_updater::LidarOctomapUpdaterConfig> >dyn_rec_server_;
 
 
 
