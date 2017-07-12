@@ -53,6 +53,8 @@
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
 
+#include <hector_nav_msgs/GetDistanceToObstacle.h>
+
 
 namespace occupancy_map_monitor
 {
@@ -90,6 +92,29 @@ private:
   void stopHelper();
 
   void resetOctomap(bool load_prior = true);
+
+
+  void serviceThread();
+  bool lookupServiceCallback(hector_nav_msgs::GetDistanceToObstacle::Request  &req,
+                             hector_nav_msgs::GetDistanceToObstacle::Response &res );
+
+  void cast_ray_mod_direction(
+                                              const octomap::point3d& origin,
+                                              const octomap::OcTree& octree,
+                                              const tf::Vector3& direction,
+                                              double pitch,
+                                              double yaw,
+                                              octomap::point3d& end_point);
+
+  void get_endpoints(const octomap::point3d& origin,
+                     const octomap::OcTree& octree,
+                     const float reference_distance,
+                     const tf::Vector3& direction,
+                     std::vector<octomap::point3d>& directions,
+                     std::vector<octomap::point3d>& endPoints,
+                     int n);
+
+
 
   ros::NodeHandle root_nh_;
   ros::NodeHandle private_nh_;
@@ -142,6 +167,25 @@ private:
   boost::thread lidar_callback_queue_thread_;
 
   bool disable_octomap_updates_;
+
+
+
+
+  ros::ServiceServer dist_lookup_srv_server_;
+
+  ros::Publisher m_markerPub;
+
+  ros::CallbackQueue service_queue_;
+  boost::thread service_thread_;
+
+  //boost::shared_ptr<tf::Transformer> tf_;
+
+  double octo_min_distance_;
+  double octo_max_distance_;
+  double secondary_rays_max_dist_;
+  double secondary_rays_opening_angle_;
+
+  std::string target_frame_;
 protected:
   boost::mutex shape_lock_;
 
