@@ -108,8 +108,8 @@ void move_group::MoveGroupManipulationAction::setupHandData()
 {
   const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
 
-  left_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,"l_hand");
-  right_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,"r_hand");
+  left_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,"gripper_wrist_link");
+  right_hand_links_vector_ = {""}; //robot_model_utils::getSubLinks(*robot_model,"r_hand");
 }
 
 void move_group::MoveGroupManipulationAction::setCollisionOptions(bool all_env_collision_allow,
@@ -898,7 +898,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
 
   cart_path.request.jump_threshold = 2.0;
   cart_path.request.max_step = 0.01;
-  cart_path.request.avoid_collisions = false;//goal->extended_planning_options.allow_environment_collisions;
+  cart_path.request.avoid_collisions = true;//goal->extended_planning_options.allow_environment_collisions;
   cart_path.request.group_name = goal->request.group_name;
 
   setMoveState(PLANNING);

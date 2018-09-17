@@ -58,10 +58,10 @@ namespace planning_scene_utils{
 
     std::string start_pose_link;
 
-    if (!get_eef_link(group_name, start_pose_link))
-      return false;
+//    if (!get_eef_link(group_name, start_pose_link))
+//      return false;
 
-    transform = curr_state.getGlobalLinkTransform(start_pose_link);
+    transform = curr_state.getGlobalLinkTransform("gripper_wrist_link");
 
     return true;
   }

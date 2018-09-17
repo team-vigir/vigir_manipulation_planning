@@ -33,6 +33,8 @@
 #include <moveit/planning_pipeline/planning_pipeline.h>
 
 #include <vigir_moveit_utils/trajectory_utils.h>
+#include <boost/scoped_ptr.hpp>
+
 
 namespace plan_execution
 {

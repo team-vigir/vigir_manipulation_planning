@@ -40,8 +40,6 @@
 
 #include <moveit_msgs/JointConstraint.h>
 
-#include <flor_planning_msgs/JointPositionConstraints.h>
-
 #include <eigen_conversions/eigen_msg.h>
 
 #include <vigir_planning_msgs/constraints_conversion.h>

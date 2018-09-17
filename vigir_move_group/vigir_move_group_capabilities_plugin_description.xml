@@ -6,11 +6,11 @@
     </description>
   </class>-->
   
-<!--  <class name="move_group/MoveGroupManipulationAction" type="move_group::MoveGroupManipulationAction" base_class_type="move_group::MoveGroupCapability">
+  <class name="move_group/MoveGroupManipulationAction" type="move_group::MoveGroupManipulationAction" base_class_type="move_group::MoveGroupCapability">
     <description>
       Manipulation action capability, extending default MoveAction with custom functionality
     </description>
-  </class>-->
+  </class>
 
   <class name="move_group/OctomapAccessCapability" type="move_group::OctomapAccessCapability" base_class_type="move_group::MoveGroupCapability">
     <description>
