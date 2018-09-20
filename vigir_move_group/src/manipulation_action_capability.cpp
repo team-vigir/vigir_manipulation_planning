@@ -45,6 +45,7 @@
 #include <moveit/trajectory_processing/trajectory_tools.h>
 #include <moveit/kinematic_constraints/utils.h>
 #include <moveit/move_group/capability_names.h>
+#include <moveit/move_group_interface/move_group_interface.h>
 
 #include <moveit/robot_state/conversions.h>
 #include <moveit_msgs/DisplayTrajectory.h>
@@ -108,7 +109,7 @@ void move_group::MoveGroupManipulationAction::setupHandData()
 {
   const robot_model::RobotModelConstPtr& robot_model = context_->planning_pipeline_->getRobotModel();
 
-  left_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,"gripper_wrist_link");
+  left_hand_links_vector_ = robot_model_utils::getSubLinks(*robot_model,"gripper_grasp_main_link");
   right_hand_links_vector_ = {""}; //robot_model_utils::getSubLinks(*robot_model,"r_hand");
 }
 

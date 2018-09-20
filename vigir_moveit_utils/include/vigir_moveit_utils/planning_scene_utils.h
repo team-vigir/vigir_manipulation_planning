@@ -61,7 +61,7 @@ namespace planning_scene_utils{
 //    if (!get_eef_link(group_name, start_pose_link))
 //      return false;
 
-    transform = curr_state.getGlobalLinkTransform("gripper_wrist_link");
+    transform = curr_state.getGlobalLinkTransform("gripper_grasp_main_link");
 
     return true;
   }
