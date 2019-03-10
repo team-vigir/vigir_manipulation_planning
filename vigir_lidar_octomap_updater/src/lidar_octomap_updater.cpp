@@ -269,7 +269,7 @@ void LidarOctomapUpdater::forgetShape(ShapeHandle handle)
     shape_mask_->removeShape(handle);
 }
 
-bool LidarOctomapUpdater::getShapeTransform(ShapeHandle h, Eigen::Affine3d &transform) const
+bool LidarOctomapUpdater::getShapeTransform(ShapeHandle h, Eigen::Isometry3d &transform) const
 {
   ShapeTransformCache::const_iterator it = transform_cache_.find(h);
   if (it == transform_cache_.end())

@@ -87,7 +87,7 @@ protected:
 
 private:
 
-  bool getShapeTransform(ShapeHandle h, Eigen::Affine3d &transform) const;
+  bool getShapeTransform(ShapeHandle h, Eigen::Isometry3d &transform) const;
   void laserMsgCallback(const sensor_msgs::LaserScan::ConstPtr &cloud_msg);
   void cloudMsgCallback(const sensor_msgs::PointCloud2::ConstPtr &cloud_msg);
   void initialPoseCallback(const geometry_msgs::PoseWithCovarianceStamped pose);

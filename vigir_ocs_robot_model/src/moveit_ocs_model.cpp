@@ -70,7 +70,7 @@ bool MoveItOcsModel::getManipulationMetrics(const std::string& group_name,
 bool MoveItOcsModel::getLinkPose(const std::string& link_name, geometry_msgs::Pose& pose) const
 {
   if (robot_model_->hasLinkModel(link_name)){
-    const Eigen::Affine3d& link_state = robot_state_->getGlobalLinkTransform(link_name);
+    const Eigen::Isometry3d& link_state = robot_state_->getGlobalLinkTransform(link_name);
 
 
     //transform_utils::eigenPose2Msg (link_state, pose);
@@ -84,7 +84,7 @@ bool MoveItOcsModel::getLinkPose(const std::string& link_name, geometry_msgs::Po
 
 bool MoveItOcsModel::getJointPose(const std::string& joint_name, geometry_msgs::Pose& pose) const
 {
-  const Eigen::Affine3d& joint_state = robot_state_->getJointTransform(robot_state_->getJointModel(joint_name));
+  const Eigen::Isometry3d& joint_state = robot_state_->getJointTransform(robot_state_->getJointModel(joint_name));
 
   //transform_utils::eigenPose2Msg (joint_state, pose);
   tf::poseEigenToMsg(joint_state, pose);
@@ -176,8 +176,8 @@ void MoveItOcsModel::getDifferingLinks(const sensor_msgs::JointState state,
   {
      const std::string& link_name = link_names[i];
 
-     const Eigen::Affine3d& link_state_ghost = robot_state_->getGlobalLinkTransform(link_name);
-     const Eigen::Affine3d& link_state_real  = robot_state_real.getGlobalLinkTransform(link_name);
+     const Eigen::Isometry3d& link_state_ghost = robot_state_->getGlobalLinkTransform(link_name);
+     const Eigen::Isometry3d& link_state_real  = robot_state_real.getGlobalLinkTransform(link_name);
 
      //Checking for translation is enough
      if((link_state_ghost.translation() - link_state_real.translation()).norm() > 0.01)

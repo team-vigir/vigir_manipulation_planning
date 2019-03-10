@@ -46,8 +46,8 @@ namespace constrained_motion_utils{
    * @param angular_resolution always positive angular resolution in rad
    * @param arc_length signed arc length
    */
-  static void getCircularArcPoses(const Eigen::Affine3d& rotation_center,
-                                  const Eigen::Affine3d& start_point,
+  static void getCircularArcPoses(const Eigen::Isometry3d& rotation_center,
+                                  const Eigen::Isometry3d& start_point,
                                   std::vector<geometry_msgs::Pose>& poses,
                                   double angular_resolution,
                                   double arc_length,
@@ -64,7 +64,7 @@ namespace constrained_motion_utils{
     poses.resize(size);
 
     for (size_t i = 1; i <= size; ++i){
-      Eigen::Affine3d rotation_increment (Eigen::AngleAxisd(direction*angular_resolution*static_cast<double>(i), Eigen::Vector3d::UnitX()));
+      Eigen::Isometry3d rotation_increment (Eigen::AngleAxisd(direction*angular_resolution*static_cast<double>(i), Eigen::Vector3d::UnitX()));
 
       Eigen::Translation3d translation_increment (pitch_increment*static_cast<double>(i) * Eigen::Vector3d::UnitX());
 

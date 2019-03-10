@@ -248,15 +248,15 @@ public:
       std::vector<double> v = py_bindings_tools::doubleFromList(pose);
       if (v.size() == 6 || v.size() == 7)
       {
-        Eigen::Affine3d p;
+        Eigen::Isometry3d p;
         if (v.size() == 6)
         {
           Eigen::Quaterniond q;
           tf::quaternionTFToEigen(tf::createQuaternionFromRPY(v[3], v[4], v[5]), q);
-          p = Eigen::Affine3d(q);
+          p = Eigen::Isometry3d(q);
         }
         else
-          p = Eigen::Affine3d(Eigen::Quaterniond(v[6], v[3], v[4], v[5]));
+          p = Eigen::Isometry3d(Eigen::Quaterniond(v[6], v[3], v[4], v[5]));
         p.translation() = Eigen::Vector3d(v[0], v[1], v[2]);
         geometry_msgs::Pose pm;
         tf::poseEigenToMsg(p, pm);

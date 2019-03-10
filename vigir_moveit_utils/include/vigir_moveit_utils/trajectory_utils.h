@@ -139,7 +139,7 @@ public:
         const robot_state::RobotState& state = trajectory.getWayPoint(i);
 
         //@TODO: Properly get tips for group
-        const Eigen::Affine3d& transform = state.getGlobalLinkTransform("l_hand");
+        const Eigen::Isometry3d& transform = state.getGlobalLinkTransform("l_hand");
 
         marker_.points[i].x = transform.translation().x();
         marker_.points[i].y = transform.translation().y();

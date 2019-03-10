@@ -167,7 +167,7 @@ void VigirManipulationController::initializeManipulationController(ros::NodeHand
         robot_model::LinkTransformMap hand_palm_tf_map = robot_model_->getLinkModel(hand_link_)->getAssociatedFixedTransforms();
         ROS_INFO("Requested linktransform for %s_palm",hand_side_.c_str());
 
-        Eigen::Affine3d hand_palm_aff;
+        Eigen::Isometry3d hand_palm_aff;
         bool found = false;
 
         for(robot_model::LinkTransformMap::iterator it = hand_palm_tf_map.begin(); it != hand_palm_tf_map.end(); ++it){
