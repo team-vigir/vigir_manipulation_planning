@@ -127,7 +127,7 @@ void ContinuousPlanExecution::continuousReplanningThread()
 
   tmp.setToRandomPositions(jmg);
 
-  const Eigen::Affine3d& target_pose = tmp.getGlobalLinkTransform(jmg->getSolverInstance()->getTipFrame());
+  const Eigen::Isometry3d& target_pose = tmp.getGlobalLinkTransform(jmg->getSolverInstance()->getTipFrame());
 
   if (debug_pose_pub_.getNumSubscribers() > 0){
     geometry_msgs::PoseStamped pose_stamped;

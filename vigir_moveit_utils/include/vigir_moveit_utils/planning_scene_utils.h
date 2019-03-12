@@ -51,7 +51,7 @@ namespace planning_scene_utils{
 
   bool getEndeffectorTransform(const std::string& group_name,
                                const planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor,
-                               Eigen::Affine3d& transform)
+                               Eigen::Isometry3d& transform)
   {
     planning_scene_monitor::LockedPlanningSceneRO lscene(planning_scene_monitor);
     const robot_state::RobotState& curr_state = lscene.getPlanningSceneMonitor()->getPlanningScene()->getCurrentState();

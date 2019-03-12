@@ -266,7 +266,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback(const vigir_pl
         {
           ROS_INFO("Calculating new waypoints given reference point for CIRCULAR MOTIONS");
           //Only used if keep endeffector orientation true or if circular motion requested
-          Eigen::Affine3d eef_start_pose;
+          Eigen::Isometry3d eef_start_pose;
 
           if(planning_scene_utils::getEndeffectorTransform(goal->request.group_name,
                                                             context_->planning_scene_monitor_,
@@ -745,7 +745,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCircularM
       }
 
       //Only used if keep endeffector orientation true or if circular motion requested
-      Eigen::Affine3d eef_start_pose;
+      Eigen::Isometry3d eef_start_pose;
 
       if((goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION ||
          (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS &&
@@ -775,7 +775,7 @@ void move_group::MoveGroupManipulationAction::executeMoveCallback_DrakeCircularM
       {
 
 
-        Eigen::Affine3d rotation_center;
+        Eigen::Isometry3d rotation_center;
         tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
 
         std::vector <geometry_msgs::Pose> pose_vec;
@@ -819,7 +819,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
 {
 
   //Only used if keep endeffector orientation true or if circular motion requested
-  Eigen::Affine3d eef_start_pose;
+  Eigen::Isometry3d eef_start_pose;
 
   if((goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION ||
      (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS &&
@@ -876,7 +876,7 @@ void move_group::MoveGroupManipulationAction::executeCartesianMoveCallback_PlanA
     this->performTransform(rotation_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame());
 
 
-    Eigen::Affine3d rotation_center;
+    Eigen::Isometry3d rotation_center;
     tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
 
     {
@@ -1171,7 +1171,7 @@ bool move_group::MoveGroupManipulationAction::planCircularMotionUsingDrake(const
         }
 
           //Only used if keep endeffector orientation true or if circular motion requested
-          Eigen::Affine3d eef_start_pose;
+          Eigen::Isometry3d eef_start_pose;
 
           if((goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CIRCULAR_MOTION ||
              (goal->extended_planning_options.target_motion_type == vigir_planning_msgs::ExtendedPlanningOptions::TYPE_CARTESIAN_WAYPOINTS &&
@@ -1200,7 +1200,7 @@ bool move_group::MoveGroupManipulationAction::planCircularMotionUsingDrake(const
           this->performTransform(rotation_pose, context_->planning_scene_monitor_->getRobotModel()->getModelFrame());
 
 
-          Eigen::Affine3d rotation_center;
+          Eigen::Isometry3d rotation_center;
           tf::poseMsgToEigen(rotation_pose.pose, rotation_center);
 
           std::vector <geometry_msgs::Pose> pose_vec;
@@ -1338,7 +1338,7 @@ bool move_group::MoveGroupManipulationAction::computeCartesianPath(moveit_msgs::
       link_name = jmg->getLinkModelNames().back();
 
     bool ok = true;
-    EigenSTL::vector_Affine3d waypoints(req.waypoints.size());
+    EigenSTL::vector_Isometry3d waypoints(req.waypoints.size());
     const std::string &default_frame = context_->planning_scene_monitor_->getRobotModel()->getModelFrame();
     bool no_transform = req.header.frame_id.empty() || robot_state::Transforms::sameFrame(req.header.frame_id, default_frame) ||
       robot_state::Transforms::sameFrame(req.header.frame_id, link_name);

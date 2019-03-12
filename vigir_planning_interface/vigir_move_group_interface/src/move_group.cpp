@@ -301,8 +301,8 @@ public:
         if (c->knowsFrameTransform(frame))
         {
           // transform the pose first if possible, then do IK
-          const Eigen::Affine3d &t = getJointStateTarget().getFrameTransform(frame);
-          Eigen::Affine3d p;
+          const Eigen::Isometry3d &t = getJointStateTarget().getFrameTransform(frame);
+          Eigen::Isometry3d p;
           tf::poseMsgToEigen(eef_pose, p);
           return getJointStateTarget().setFromIK(getJointModelGroup(), t * p, eef, 0, 0.0, moveit::core::GroupStateValidityCallbackFn(), o);
         }
@@ -1284,7 +1284,7 @@ bool moveit::planning_interface::VigirMoveGroup::setJointValueTarget(const geome
   return impl_->setJointValueTarget(eef_pose.pose, end_effector_link, eef_pose.header.frame_id, false);
 }
 
-bool moveit::planning_interface::VigirMoveGroup::setJointValueTarget(const Eigen::Affine3d &eef_pose, const std::string &end_effector_link)
+bool moveit::planning_interface::VigirMoveGroup::setJointValueTarget(const Eigen::Isometry3d &eef_pose, const std::string &end_effector_link)
 { 
   geometry_msgs::Pose msg;
   tf::poseEigenToMsg(eef_pose, msg);
@@ -1301,7 +1301,7 @@ bool moveit::planning_interface::VigirMoveGroup::setApproximateJointValueTarget(
   return impl_->setJointValueTarget(eef_pose.pose, end_effector_link, eef_pose.header.frame_id, true);
 }
 
-bool moveit::planning_interface::VigirMoveGroup::setApproximateJointValueTarget(const Eigen::Affine3d &eef_pose, const std::string &end_effector_link)
+bool moveit::planning_interface::VigirMoveGroup::setApproximateJointValueTarget(const Eigen::Isometry3d &eef_pose, const std::string &end_effector_link)
 { 
   geometry_msgs::Pose msg;
   tf::poseEigenToMsg(eef_pose, msg);
@@ -1350,7 +1350,7 @@ void moveit::planning_interface::VigirMoveGroup::clearPoseTargets()
   impl_->clearPoseTargets();
 }
 
-bool moveit::planning_interface::VigirMoveGroup::setPoseTarget(const Eigen::Affine3d &pose, const std::string &end_effector_link)
+bool moveit::planning_interface::VigirMoveGroup::setPoseTarget(const Eigen::Isometry3d &pose, const std::string &end_effector_link)
 {
   std::vector<geometry_msgs::PoseStamped> pose_msg(1);
   tf::poseEigenToMsg(pose, pose_msg[0].pose);
@@ -1374,7 +1374,7 @@ bool moveit::planning_interface::VigirMoveGroup::setPoseTarget(const geometry_ms
   return setPoseTargets(targets, end_effector_link);
 }
 
-bool moveit::planning_interface::VigirMoveGroup::setPoseTargets(const EigenSTL::vector_Affine3d &target, const std::string &end_effector_link)
+bool moveit::planning_interface::VigirMoveGroup::setPoseTargets(const EigenSTL::vector_Isometry3d &target, const std::string &end_effector_link)
 {
   std::vector<geometry_msgs::PoseStamped> pose_out(target.size());
   ros::Time tm = ros::Time::now();
@@ -1592,7 +1592,7 @@ std::vector<double> moveit::planning_interface::VigirMoveGroup::getRandomJointVa
 geometry_msgs::PoseStamped moveit::planning_interface::VigirMoveGroup::getRandomPose(const std::string &end_effector_link)
 {
   const std::string &eef = end_effector_link.empty() ? getEndEffectorLink() : end_effector_link;
-  Eigen::Affine3d pose;
+  Eigen::Isometry3d pose;
   pose.setIdentity();
   if (eef.empty())
     ROS_ERROR("No end-effector specified");
@@ -1617,7 +1617,7 @@ geometry_msgs::PoseStamped moveit::planning_interface::VigirMoveGroup::getRandom
 geometry_msgs::PoseStamped moveit::planning_interface::VigirMoveGroup::getCurrentPose(const std::string &end_effector_link)
 {
   const std::string &eef = end_effector_link.empty() ? getEndEffectorLink() : end_effector_link;
-  Eigen::Affine3d pose;
+  Eigen::Isometry3d pose;
   pose.setIdentity();
   if (eef.empty())
     ROS_ERROR("No end-effector specified");

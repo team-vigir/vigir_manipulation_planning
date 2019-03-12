@@ -134,7 +134,7 @@ namespace group_utils{
                                         redundant_joints_vector);
     }
 
-    Eigen::Affine3d mat;
+    Eigen::Isometry3d mat;
     tf::poseMsgToEigen(goal_pose, mat);
 
     bool success = false;
