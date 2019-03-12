@@ -82,6 +82,17 @@
 namespace occupancy_map_monitor
 {
 
+void setIdentityTransform(geometry_msgs::TransformStamped& t)
+{
+  t.transform.translation.x = 0;
+  t.transform.translation.y = 0;
+  t.transform.translation.z = 0;
+  t.transform.rotation.x = 0;
+  t.transform.rotation.y = 0;
+  t.transform.rotation.z = 0;
+  t.transform.rotation.w = 1;
+}
+
 LidarOctomapUpdater::LidarOctomapUpdater() : OccupancyMapUpdater("LidarCloudUpdater"),
                                                        private_nh_("~"),
                                                        scale_(1.0),
@@ -201,7 +212,7 @@ void LidarOctomapUpdater::start()
   laser_scan_subscriber_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(root_nh_, laser_scan_topic_, 40, ros::TransportHints(), &lidar_queue_);
   if (tf_ && !monitor_->getMapFrame().empty())
   {
-    laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_subscriber_, *tf_, monitor_->getMapFrame(), 40);
+    laser_scan_filter_ = new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_subscriber_, *tf_, monitor_->getMapFrame(), 40, 0);
     laser_scan_filter_->registerCallback(boost::bind(&LidarOctomapUpdater::laserMsgCallback, this, _1));
     ROS_INFO("Listening to '%s' using message filter with target frame '%s'", laser_scan_topic_.c_str(), laser_scan_filter_->getTargetFramesString().c_str());
   }
@@ -217,7 +228,7 @@ void LidarOctomapUpdater::start()
   point_cloud_subscriber_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(root_nh_, point_cloud_topic_, 2, ros::TransportHints(), &lidar_queue_);
   if (tf_ && !monitor_->getMapFrame().empty())
   {
-    point_cloud_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_subscriber_, *tf_, monitor_->getMapFrame(), 40);
+    point_cloud_filter_ = new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_subscriber_, *tf_, monitor_->getMapFrame(), 40, 0);
     point_cloud_filter_->registerCallback(boost::bind(&LidarOctomapUpdater::cloudMsgCallback, this, _1));
     ROS_INFO("Listening to '%s' using message filter with target frame '%s'", point_cloud_topic_.c_str(), point_cloud_filter_->getTargetFramesString().c_str());
   }
@@ -269,7 +280,7 @@ void LidarOctomapUpdater::forgetShape(ShapeHandle handle)
     shape_mask_->removeShape(handle);
 }
 
-bool LidarOctomapUpdater::getShapeTransform(ShapeHandle h, Eigen::Affine3d &transform) const
+bool LidarOctomapUpdater::getShapeTransform(ShapeHandle h, Eigen::Isometry3d &transform) const
 {
   ShapeTransformCache::const_iterator it = transform_cache_.find(h);
   if (it == transform_cache_.end())
@@ -300,10 +311,10 @@ void LidarOctomapUpdater::laserMsgCallback(const sensor_msgs::LaserScan::ConstPt
     monitor_->setMapFrame(scan_msg->header.frame_id);
 
   /* get transform for cloud into map frame */
-  tf::StampedTransform map_H_sensor;
-  tf::StampedTransform map_H_sensor_last_ray;
+  geometry_msgs::TransformStamped map_H_sensor;
+  geometry_msgs::TransformStamped map_H_sensor_last_ray;
   if (monitor_->getMapFrame() == scan_filtered_.header.frame_id)
-    map_H_sensor.setIdentity();
+    setIdentityTransform(map_H_sensor);
   else
   {
     if (tf_)
@@ -312,13 +323,10 @@ void LidarOctomapUpdater::laserMsgCallback(const sensor_msgs::LaserScan::ConstPt
       {
         ros::Time end_time   = scan_filtered_.header.stamp + ros::Duration().fromSec((scan_filtered_.ranges.size() -1)*scan_filtered_.time_increment) ;
 
-        if(tf_->waitForTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, scan_filtered_.header.stamp, wait_duration_) &&
-           tf_->waitForTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, end_time, wait_duration_)){
-          tf_->lookupTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, scan_filtered_.header.stamp, map_H_sensor);
-          tf_->lookupTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, end_time, map_H_sensor_last_ray);
-        }
+        map_H_sensor = tf_->lookupTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, scan_filtered_.header.stamp, wait_duration_);
+        map_H_sensor_last_ray = tf_->lookupTransform(monitor_->getMapFrame(), scan_filtered_.header.frame_id, end_time, wait_duration_);
       }
-      catch (tf::TransformException& ex)
+      catch (tf2::TransformException& ex)
       {
         ROS_ERROR_STREAM("Transform error of sensor data: " << ex.what() << "; quitting callback in LidarOctomapUpdater");
         return;
@@ -337,9 +345,9 @@ void LidarOctomapUpdater::laserMsgCallback(const sensor_msgs::LaserScan::ConstPt
   }
 
   /* compute sensor origin in map frame */
-  const tf::Vector3 &sensor_origin_tf = map_H_sensor.getOrigin();
-  octomap::point3d sensor_origin(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
-  Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
+  const geometry_msgs::Vector3 &sensor_origin_tf = map_H_sensor.transform.translation;
+  octomap::point3d sensor_origin(sensor_origin_tf.x, sensor_origin_tf.y, sensor_origin_tf.z);
+  Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.x, sensor_origin_tf.y, sensor_origin_tf.z);
 
   try
   {
@@ -562,8 +570,8 @@ void LidarOctomapUpdater::laserMsgCallback(const sensor_msgs::LaserScan::ConstPt
     filtered_localized_scan_.processed_scan.ranges[vigir_perception_msgs::FilteredLocalizedLaserScan::SCAN_RAW].echoes = scan_msg->ranges;
     filtered_localized_scan_.processed_scan.intensities[0].echoes = scan_msg->intensities;
 
-    tf::transformTFToMsg(map_H_sensor, filtered_localized_scan_.transform_first_ray);
-    tf::transformTFToMsg(map_H_sensor_last_ray, filtered_localized_scan_.transform_last_ray);
+    filtered_localized_scan_.transform_first_ray = map_H_sensor.transform;
+    filtered_localized_scan_.transform_last_ray = map_H_sensor_last_ray.transform;
 
     filtered_localized_scan_publisher_.publish(filtered_localized_scan_);
   }
@@ -637,19 +645,18 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
     monitor_->setMapFrame(cloud_msg_in->header.frame_id);
 
   /* get transform for cloud into map frame */
-  tf::StampedTransform map_H_sensor;
+  geometry_msgs::TransformStamped map_H_sensor;
   if (monitor_->getMapFrame() == cloud_msg_in->header.frame_id)
-    map_H_sensor.setIdentity();
+    setIdentityTransform(map_H_sensor);
   else
   {
     if (tf_)
     {
       try
       {
-        tf_->lookupTransform(monitor_->getMapFrame(), cloud_msg_in->header.frame_id, cloud_msg_in->header.stamp,
-                             map_H_sensor);
+        map_H_sensor = tf_->lookupTransform(monitor_->getMapFrame(), cloud_msg_in->header.frame_id, cloud_msg_in->header.stamp, ros::Duration(1.0));
       }
-      catch (tf::TransformException& ex)
+      catch (tf2::TransformException& ex)
       {
         ROS_ERROR_STREAM("Transform error of sensor data: " << ex.what() << "; quitting callback");
         return;
@@ -660,9 +667,9 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
   }
 
   /* compute sensor origin in map frame */
-  const tf::Vector3& sensor_origin_tf = map_H_sensor.getOrigin();
-  octomap::point3d sensor_origin(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
-  Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.getX(), sensor_origin_tf.getY(), sensor_origin_tf.getZ());
+  const geometry_msgs::Vector3& sensor_origin_tf = map_H_sensor.transform.translation;
+  octomap::point3d sensor_origin(sensor_origin_tf.x, sensor_origin_tf.y, sensor_origin_tf.z);
+  Eigen::Vector3d sensor_origin_eigen(sensor_origin_tf.x, sensor_origin_tf.y, sensor_origin_tf.z);
 
 
   if (!updateTransformCache(cloud_msg_in->header.frame_id, cloud_msg_in->header.stamp))
@@ -796,11 +803,10 @@ void LidarOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::Const
           //tf::Vector3 point_tf = map_H_sensor * tf::Vector3(pt_iter[0], pt_iter[1],
           //  pt_iter[2]);
 
+            tf2::Stamped<tf2::Transform> map_H_sensor_tf;
+            tf2::fromMsg(map_H_sensor, map_H_sensor_tf);
 
-
-
-
-          tf::Vector3 point_tf (map_H_sensor * tf::Vector3(pt_iter[0], pt_iter[1], pt_iter[2]));
+            tf2::Vector3 point_tf = map_H_sensor_tf * tf2::Vector3(pt_iter[0], pt_iter[1], pt_iter[2]);
 
           /* occupied cell at ray endpoint if ray is shorter than max range and this point
              isn't on a part of the robot*/
@@ -989,17 +995,15 @@ bool LidarOctomapUpdater::clearRobotVicinityOctomap(std_srvs::Empty::Request &re
 {
   if (tf_)
   {
-    tf::StampedTransform robot_pose;
+    geometry_msgs::TransformStamped robot_pose;
     try
     {
       ros::Time end_time   = scan_filtered_.header.stamp + ros::Duration().fromSec((scan_filtered_.ranges.size() -1)*scan_filtered_.time_increment) ;
 
 
-      if(tf_->waitForTransform(monitor_->getMapFrame(), "base_link", ros::Time(0), wait_duration_)){
-        tf_->lookupTransform(monitor_->getMapFrame(), "base_link", ros::Time(0), robot_pose);
-      }
+      robot_pose = tf_->lookupTransform(monitor_->getMapFrame(), "base_link", ros::Time(0), wait_duration_);
     }
-    catch (tf::TransformException& ex)
+    catch (tf2::TransformException& ex)
     {
       ROS_ERROR_STREAM("Transform error of sensor data: " << ex.what() << "; quitting selective clearing callback in LidarOctomapUpdater");
       return false;
@@ -1014,13 +1018,13 @@ bool LidarOctomapUpdater::clearRobotVicinityOctomap(std_srvs::Empty::Request &re
 
     octomap::point3d min, max;
 
-    min.x() = robot_pose.getOrigin().x() - 0.3;
-    min.y() = robot_pose.getOrigin().y() - 0.3;
-    min.z() = robot_pose.getOrigin().z();
+    min.x() = static_cast<float>(robot_pose.transform.translation.x) - 0.3f;
+    min.y() = static_cast<float>(robot_pose.transform.translation.y) - 0.3f;
+    min.z() = static_cast<float>(robot_pose.transform.translation.z);
 
-    max.x() = robot_pose.getOrigin().x() + 0.3;
-    max.y() = robot_pose.getOrigin().y() + 0.3;
-    max.z() = robot_pose.getOrigin().z() + 1.1;
+    max.x() = static_cast<float>(robot_pose.transform.translation.x) + 0.3f;
+    max.y() = static_cast<float>(robot_pose.transform.translation.y) + 0.3f;
+    max.z() = static_cast<float>(robot_pose.transform.translation.z) + 1.1f;
 
     ROS_INFO("Clearing octomap around robot, coords min x: %f y: %f z: %f max x: %f y: %f z: %f", min.x(), min.y(), min.z(), max.x(), max.y(), max.z());
 
@@ -1092,28 +1096,33 @@ bool LidarOctomapUpdater::lookupServiceCallback(hector_nav_msgs::GetDistanceToOb
 {
 
   ROS_DEBUG("Octomap distance lookup service called");
-  tf::StampedTransform camera_transform;
+  geometry_msgs::TransformStamped camera_transform;
 
   //const std::string target_frame = context_->planning_scene_monitor_->getPlanningScene()->getPlanningFrame();
   const std::string target_frame = monitor_->getMapFrame();
 
   try{
-    tf_->waitForTransform(target_frame ,req.point.header.frame_id, req.point.header.stamp, ros::Duration(1.0));
-    tf_->lookupTransform(target_frame, req.point.header.frame_id, req.point.header.stamp, camera_transform);
-  }catch(tf::TransformException e){
+    camera_transform = tf_->lookupTransform(target_frame, req.point.header.frame_id, req.point.header.stamp, ros::Duration(1.0));
+  }catch(tf2::TransformException& e){
     ROS_ERROR("Transform failed in lookup distance service call: %s",e.what());
     return false;
   }
 
   bool useOutliers = true;
 
+  const octomap::point3d origin(camera_transform.transform.translation.x,
+                                camera_transform.transform.translation.y,
+                                camera_transform.transform.translation.z);
 
-  const octomap::point3d origin = octomap::pointTfToOctomap(camera_transform.getOrigin());
+  tf2::Stamped<tf2::Transform> camera_transform_tf;
+  tf2::fromMsg(camera_transform, camera_transform_tf);
 
-  tf::Point end_point = camera_transform * tf::Point(req.point.point.x, req.point.point.y, req.point.point.z);
-  tf::Vector3 direction = end_point - camera_transform.getOrigin();
+  tf2::Vector3 end_point = camera_transform_tf * tf2::Vector3(req.point.point.x, req.point.point.y, req.point.point.z);
+  tf2::Vector3 direction = end_point - camera_transform_tf.getOrigin();
+  tf::Vector3 direction_tf1(direction.x(), direction.y(), direction.z());
 
-  const octomap::point3d directionOc = octomap::pointTfToOctomap(direction);
+
+  const octomap::point3d directionOc = octomap::pointTfToOctomap(direction_tf1);
   std::vector<octomap::point3d> endPoints;
   std::vector<float> distances;
   int n=2;
@@ -1139,7 +1148,7 @@ bool LidarOctomapUpdater::lookupServiceCallback(hector_nav_msgs::GetDistanceToOb
   if (distances.size()!=0) {
     int count_outliers;
     endPoints.resize(1+(n*2));
-    get_endpoints(origin, *octree_, distances[0], direction, directions, endPoints, n);
+    get_endpoints(origin, *octree_, distances[0], direction_tf1, directions, endPoints, n);
     if (useOutliers) {
       double distance_threshold=0.7;
       count_outliers=0;

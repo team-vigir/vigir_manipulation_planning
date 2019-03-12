@@ -39,15 +39,19 @@
 
 #include <ros/ros.h>
 #include <tf/tf.h>
-#include <tf/message_filter.h>
+#include <tf2_ros/message_filter.h>
 #include <message_filters/subscriber.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/LaserScan.h>
+#include <ros/callback_queue.h>
 #include <moveit/occupancy_map_monitor/occupancy_map_updater.h>
 #include <moveit/point_containment_filter/shape_mask.h>
 #include <laser_geometry/laser_geometry.h>
 #include <filters/filter_chain.h>
 #include <vigir_perception_msgs/FilteredLocalizedLaserScan.h>
+
+#include <tf2/transform_datatypes.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <std_srvs/Empty.h>
@@ -87,7 +91,7 @@ protected:
 
 private:
 
-  bool getShapeTransform(ShapeHandle h, Eigen::Affine3d &transform) const;
+  bool getShapeTransform(ShapeHandle h, Eigen::Isometry3d &transform) const;
   void laserMsgCallback(const sensor_msgs::LaserScan::ConstPtr &cloud_msg);
   void cloudMsgCallback(const sensor_msgs::PointCloud2::ConstPtr &cloud_msg);
   void initialPoseCallback(const geometry_msgs::PoseWithCovarianceStamped pose);
@@ -125,7 +129,7 @@ private:
 
   ros::NodeHandle root_nh_;
   ros::NodeHandle private_nh_;
-  boost::shared_ptr<tf::Transformer> tf_;
+  std::shared_ptr<tf2_ros::Buffer> tf_;
 
   /* params */
   std::string laser_scan_topic_;
@@ -140,10 +144,10 @@ private:
   std::string p_prior_map_file_;
 
   message_filters::Subscriber<sensor_msgs::LaserScan> *laser_scan_subscriber_;
-  tf::MessageFilter<sensor_msgs::LaserScan> *laser_scan_filter_;
+  tf2_ros::MessageFilter<sensor_msgs::LaserScan> *laser_scan_filter_;
 
   message_filters::Subscriber<sensor_msgs::PointCloud2> *point_cloud_subscriber_;
-  tf::MessageFilter<sensor_msgs::PointCloud2> *point_cloud_filter_;
+  tf2_ros::MessageFilter<sensor_msgs::PointCloud2> *point_cloud_filter_;
 
   /* used to store all cells in the map which a given ray passes through during raycasting.
      we cache this here because it dynamically pre-allocates a lot of memory in its constructor */

@@ -34,7 +34,7 @@
 
 /* Author: Ioan Sucan */
 
-#include <class_loader/class_loader.h>
+#include <class_loader/class_loader.hpp>
 #include <vigir_lidar_octomap_updater/lidar_octomap_updater.h>
 
 CLASS_LOADER_REGISTER_CLASS( occupancy_map_monitor::LidarOctomapUpdater, occupancy_map_monitor::OccupancyMapUpdater )
